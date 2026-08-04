@@ -20,6 +20,9 @@ apps/
   api/
   worker/
   mock-payment/
+  migrate/
+  seed/
+  reset/
 api/
   openapi/
 deploy/
