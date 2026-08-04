@@ -1,0 +1,27 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# JavaScript
+node_modules/
+.next/
+out/
+coverage/
+
+# Go
+bin/
+*.test
+coverage.out
+
+# Generated local state
+.DS_Store
+.idea/
+.vscode/
+tmp/
+
+# Infrastructure
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan

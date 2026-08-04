@@ -1,0 +1,17 @@
+{
+  "name": "cartlabs",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "web:dev": "pnpm --filter web dev",
+    "web:build": "pnpm --filter web build",
+    "web:lint": "pnpm --filter web lint",
+    "web:typecheck": "pnpm --filter web typecheck",
+    "openapi:lint": "redocly lint api/openapi/openapi.yaml",
+    "openapi:generate:ts": "openapi-typescript api/openapi/openapi.yaml -o apps/web/src/lib/api/schema.d.ts"
+  },
+  "devDependencies": {
+    "@redocly/cli": "latest",
+    "openapi-typescript": "latest"
+  }
+}
