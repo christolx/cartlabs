@@ -1,0 +1,195 @@
+openapi: 3.0.3
+info:
+  title: Cartlabs API
+  version: 0.1.0
+  description: Public REST contract for Cartlabs web and API applications.
+servers:
+  - url: /api/v1
+    description: Current host
+tags:
+  - name: Health
+    description: Runtime liveness and dependency readiness.
+  - name: Identity
+    description: User authentication and session lifecycle.
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      tags: [Health]
+      summary: Check API process liveness
+      security: []
+      responses:
+        "200":
+          description: API process is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /health/ready:
+    get:
+      operationId: getReadiness
+      tags: [Health]
+      summary: Check required dependency readiness
+      security: []
+      responses:
+        "200":
+          description: API and required dependencies are ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: One or more required dependencies are unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [Identity]
+      summary: Authenticate using email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication succeeded; refresh token is set as a cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessToken"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      tags: [Identity]
+      summary: Rotate refresh token and issue a new access token
+      security:
+        - RefreshCookie: []
+      responses:
+        "200":
+          description: Session refreshed; rotated refresh token is set as a cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessToken"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [Identity]
+      summary: Revoke current refresh-token family
+      security:
+        - RefreshCookie: []
+      responses:
+        "204":
+          description: Session revoked
+        "501":
+          $ref: "#/components/responses/NotImplemented"
+components:
+  securitySchemes:
+    RefreshCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-cartlabs_refresh
+  responses:
+    Unauthorized:
+      description: Credentials or session are invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    NotImplemented:
+      description: Contract reserved for identity implementation phase
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+      example:
+        status: ok
+        dependencies:
+          postgres: ok
+          redis: ok
+          rabbitmq: ok
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+    AccessToken:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Access-token lifetime in seconds.
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          format: int32
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        requestId:
+          type: string
