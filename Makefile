@@ -2,12 +2,14 @@ SHELL := /bin/sh
 
 COMPOSE ?= docker compose
 COMPOSE_FILE := deploy/compose/compose.yml
+E2E_API_URL ?= http://localhost:8080/api/v1
+HURL ?= hurl
 
 .DEFAULT_GOAL := help
 
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev \
 	compose-up compose-full compose-down compose-logs migrate seed reset \
-	generate fmt lint test build check clean
+	generate fmt lint test e2e-api build check clean
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -69,6 +71,10 @@ lint: ## Run format, static, frontend, and OpenAPI checks
 test: ## Run backend tests and frontend type checking
 	go test ./...
 	pnpm web:typecheck
+
+e2e-api: ## Run black-box API workflow tests against a running API
+	$(HURL) --test --error-format long --retry 10 \
+		--variable base_url=$(E2E_API_URL) tests/e2e/api/*.hurl
 
 build: ## Build all runtime applications
 	go build ./apps/...
