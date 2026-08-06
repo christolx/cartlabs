@@ -14,6 +14,7 @@ import (
 	"github.com/christolx/cartlabs/internal/httpapi"
 	"github.com/christolx/cartlabs/internal/identity"
 	"github.com/christolx/cartlabs/internal/platform"
+	"github.com/christolx/cartlabs/internal/purchase"
 	marketstore "github.com/christolx/cartlabs/internal/store"
 )
 
@@ -45,11 +46,22 @@ func main() {
 	}
 	storeService := marketstore.NewService(marketstore.NewPostgresRepository(dependencies.Postgres))
 	catalogService := catalog.NewService(catalog.NewPostgresRepository(dependencies.Postgres))
+	purchaseService, err := purchase.NewService(
+		purchase.NewPostgresRepository(dependencies.Postgres),
+		purchase.NewHTTPPaymentProvider(cfg.PaymentProviderURL, cfg.MockPaymentAPIKey),
+		purchase.Config{WebhookSecret: []byte(cfg.PaymentWebhookSecret), WebhookURL: cfg.PaymentWebhookURL,
+			ReservationTTL: 15 * time.Minute, DemoMode: cfg.DemoMode},
+	)
+	if err != nil {
+		logger.Error("configure purchases", "error", err)
+		os.Exit(1)
+	}
 
 	server := &http.Server{
 		Addr: cfg.APIAddress,
 		Handler: httpapi.New(dependencies, logger,
 			httpapi.WithServices(identityService, storeService, catalogService),
+			httpapi.WithPurchaseService(purchaseService),
 			httpapi.WithAuthRateLimiter(identity.NewRedisRateLimiter(dependencies.Redis)),
 			httpapi.WithRefreshCookie(cfg.CookieSecure, cfg.RefreshTokenTTL),
 		).Handler(),

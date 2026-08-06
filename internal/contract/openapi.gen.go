@@ -17,6 +17,36 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for CartCurrency.
+const (
+	CartCurrencyIDR CartCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the CartCurrency enum.
+func (e CartCurrency) Valid() bool {
+	switch e {
+	case CartCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for CartItemCurrency.
+const (
+	CartItemCurrencyIDR CartItemCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the CartItemCurrency enum.
+func (e CartItemCurrency) Valid() bool {
+	switch e {
+	case CartItemCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for HealthStatus.
 const (
 	Degraded HealthStatus = "degraded"
@@ -74,6 +104,81 @@ func (e ModerationStatus) Valid() bool {
 	}
 }
 
+// Defines values for PaymentCompletionInputOutcome.
+const (
+	PaymentCompletionInputOutcomeFailed    PaymentCompletionInputOutcome = "failed"
+	PaymentCompletionInputOutcomeSucceeded PaymentCompletionInputOutcome = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the PaymentCompletionInputOutcome enum.
+func (e PaymentCompletionInputOutcome) Valid() bool {
+	switch e {
+	case PaymentCompletionInputOutcomeFailed:
+		return true
+	case PaymentCompletionInputOutcomeSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PaymentStatus.
+const (
+	PaymentStatusExpired   PaymentStatus = "expired"
+	PaymentStatusFailed    PaymentStatus = "failed"
+	PaymentStatusPending   PaymentStatus = "pending"
+	PaymentStatusSucceeded PaymentStatus = "succeeded"
+)
+
+// Valid indicates whether the value is a known member of the PaymentStatus enum.
+func (e PaymentStatus) Valid() bool {
+	switch e {
+	case PaymentStatusExpired:
+		return true
+	case PaymentStatusFailed:
+		return true
+	case PaymentStatusPending:
+		return true
+	case PaymentStatusSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PaymentWebhookEventDataCurrency.
+const (
+	PaymentWebhookEventDataCurrencyIDR PaymentWebhookEventDataCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the PaymentWebhookEventDataCurrency enum.
+func (e PaymentWebhookEventDataCurrency) Valid() bool {
+	switch e {
+	case PaymentWebhookEventDataCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PaymentWebhookEventType.
+const (
+	PaymentWebhookEventTypePaymentFailed    PaymentWebhookEventType = "payment.failed"
+	PaymentWebhookEventTypePaymentSucceeded PaymentWebhookEventType = "payment.succeeded"
+)
+
+// Valid indicates whether the value is a known member of the PaymentWebhookEventType enum.
+func (e PaymentWebhookEventType) Valid() bool {
+	switch e {
+	case PaymentWebhookEventTypePaymentFailed:
+		return true
+	case PaymentWebhookEventTypePaymentSucceeded:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ProductDetailStatus.
 const (
 	Archived  ProductDetailStatus = "archived"
@@ -95,6 +200,60 @@ func (e ProductDetailStatus) Valid() bool {
 	}
 }
 
+// Defines values for PurchaseCurrency.
+const (
+	PurchaseCurrencyIDR PurchaseCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the PurchaseCurrency enum.
+func (e PurchaseCurrency) Valid() bool {
+	switch e {
+	case PurchaseCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PurchaseItemCurrency.
+const (
+	PurchaseItemCurrencyIDR PurchaseItemCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the PurchaseItemCurrency enum.
+func (e PurchaseItemCurrency) Valid() bool {
+	switch e {
+	case PurchaseItemCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for PurchaseStatus.
+const (
+	PurchaseStatusExpired        PurchaseStatus = "expired"
+	PurchaseStatusPaid           PurchaseStatus = "paid"
+	PurchaseStatusPaymentFailed  PurchaseStatus = "payment_failed"
+	PurchaseStatusPendingPayment PurchaseStatus = "pending_payment"
+)
+
+// Valid indicates whether the value is a known member of the PurchaseStatus enum.
+func (e PurchaseStatus) Valid() bool {
+	switch e {
+	case PurchaseStatusExpired:
+		return true
+	case PurchaseStatusPaid:
+		return true
+	case PurchaseStatusPaymentFailed:
+		return true
+	case PurchaseStatusPendingPayment:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for Role.
 const (
 	Admin  Role = "admin"
@@ -110,6 +269,42 @@ func (e Role) Valid() bool {
 	case Buyer:
 		return true
 	case Seller:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SellerOrderCurrency.
+const (
+	SellerOrderCurrencyIDR SellerOrderCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the SellerOrderCurrency enum.
+func (e SellerOrderCurrency) Valid() bool {
+	switch e {
+	case SellerOrderCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SellerOrderStatus.
+const (
+	SellerOrderStatusCancelled      SellerOrderStatus = "cancelled"
+	SellerOrderStatusPaid           SellerOrderStatus = "paid"
+	SellerOrderStatusPendingPayment SellerOrderStatus = "pending_payment"
+)
+
+// Valid indicates whether the value is a known member of the SellerOrderStatus enum.
+func (e SellerOrderStatus) Valid() bool {
+	switch e {
+	case SellerOrderStatusCancelled:
+		return true
+	case SellerOrderStatusPaid:
+		return true
+	case SellerOrderStatusPendingPayment:
 		return true
 	default:
 		return false
@@ -159,6 +354,51 @@ func (e VariantInputCurrency) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// Cart defines model for Cart.
+type Cart struct {
+	Currency      CartCurrency       `json:"currency"`
+	Id            openapi_types.UUID `json:"id"`
+	Stores        []CartStore        `json:"stores"`
+	SubtotalMinor int64              `json:"subtotalMinor"`
+	TotalQuantity int                `json:"totalQuantity"`
+	UpdatedAt     time.Time          `json:"updatedAt"`
+}
+
+// CartCurrency defines model for Cart.Currency.
+type CartCurrency string
+
+// CartItem defines model for CartItem.
+type CartItem struct {
+	AvailableStock int                `json:"availableStock"`
+	Currency       CartItemCurrency   `json:"currency"`
+	ImageUrl       string             `json:"imageUrl"`
+	LineTotalMinor int64              `json:"lineTotalMinor"`
+	ProductId      openapi_types.UUID `json:"productId"`
+	ProductName    string             `json:"productName"`
+	ProductSlug    string             `json:"productSlug"`
+	Quantity       int                `json:"quantity"`
+	Sku            string             `json:"sku"`
+	UnitPriceMinor int64              `json:"unitPriceMinor"`
+	VariantId      openapi_types.UUID `json:"variantId"`
+	VariantName    string             `json:"variantName"`
+}
+
+// CartItemCurrency defines model for CartItem.Currency.
+type CartItemCurrency string
+
+// CartItemInput defines model for CartItemInput.
+type CartItemInput struct {
+	Quantity int `json:"quantity"`
+}
+
+// CartStore defines model for CartStore.
+type CartStore struct {
+	Items         []CartItem         `json:"items"`
+	StoreId       openapi_types.UUID `json:"storeId"`
+	StoreName     string             `json:"storeName"`
+	SubtotalMinor int64              `json:"subtotalMinor"`
 }
 
 // Category defines model for Category.
@@ -212,6 +452,46 @@ type ModerationInputStatus string
 
 // ModerationStatus defines model for ModerationStatus.
 type ModerationStatus string
+
+// Notification defines model for Notification.
+type Notification struct {
+	Body      string             `json:"body"`
+	CreatedAt time.Time          `json:"createdAt"`
+	Id        openapi_types.UUID `json:"id"`
+	Kind      string             `json:"kind"`
+	ReadAt    *time.Time         `json:"readAt,omitempty"`
+	Title     string             `json:"title"`
+}
+
+// PaymentCompletionInput defines model for PaymentCompletionInput.
+type PaymentCompletionInput struct {
+	Outcome PaymentCompletionInputOutcome `json:"outcome"`
+}
+
+// PaymentCompletionInputOutcome defines model for PaymentCompletionInput.Outcome.
+type PaymentCompletionInputOutcome string
+
+// PaymentStatus defines model for PaymentStatus.
+type PaymentStatus string
+
+// PaymentWebhookEvent defines model for PaymentWebhookEvent.
+type PaymentWebhookEvent struct {
+	CreatedAt time.Time `json:"createdAt"`
+	Data      struct {
+		AmountMinor int64                           `json:"amountMinor"`
+		Currency    PaymentWebhookEventDataCurrency `json:"currency"`
+		IntentId    openapi_types.UUID              `json:"intentId"`
+		Reference   string                          `json:"reference"`
+	} `json:"data"`
+	Id   openapi_types.UUID      `json:"id"`
+	Type PaymentWebhookEventType `json:"type"`
+}
+
+// PaymentWebhookEventDataCurrency defines model for PaymentWebhookEvent.Data.Currency.
+type PaymentWebhookEventDataCurrency string
+
+// PaymentWebhookEventType defines model for PaymentWebhookEvent.Type.
+type PaymentWebhookEventType string
 
 // Problem defines model for Problem.
 type Problem struct {
@@ -280,8 +560,70 @@ type ProductSummary struct {
 	StoreName     string             `json:"storeName"`
 }
 
+// Purchase defines model for Purchase.
+type Purchase struct {
+	BuyerId              openapi_types.UUID `json:"buyerId"`
+	CreatedAt            time.Time          `json:"createdAt"`
+	Currency             PurchaseCurrency   `json:"currency"`
+	Id                   openapi_types.UUID `json:"id"`
+	PaymentIntentId      string             `json:"paymentIntentId"`
+	PaymentStatus        PaymentStatus      `json:"paymentStatus"`
+	Reference            string             `json:"reference"`
+	ReservationExpiresAt time.Time          `json:"reservationExpiresAt"`
+	SellerOrders         []SellerOrder      `json:"sellerOrders"`
+	Status               PurchaseStatus     `json:"status"`
+	SubtotalMinor        int64              `json:"subtotalMinor"`
+	TotalMinor           int64              `json:"totalMinor"`
+	UpdatedAt            time.Time          `json:"updatedAt"`
+}
+
+// PurchaseCurrency defines model for Purchase.Currency.
+type PurchaseCurrency string
+
+// PurchaseItem defines model for PurchaseItem.
+type PurchaseItem struct {
+	Currency       PurchaseItemCurrency `json:"currency"`
+	Id             openapi_types.UUID   `json:"id"`
+	ImageUrl       string               `json:"imageUrl"`
+	LineTotalMinor int64                `json:"lineTotalMinor"`
+	ProductId      openapi_types.UUID   `json:"productId"`
+	ProductName    string               `json:"productName"`
+	Quantity       int                  `json:"quantity"`
+	Sku            string               `json:"sku"`
+	UnitPriceMinor int64                `json:"unitPriceMinor"`
+	VariantId      openapi_types.UUID   `json:"variantId"`
+	VariantName    string               `json:"variantName"`
+}
+
+// PurchaseItemCurrency defines model for PurchaseItem.Currency.
+type PurchaseItemCurrency string
+
+// PurchaseStatus defines model for PurchaseStatus.
+type PurchaseStatus string
+
 // Role defines model for Role.
 type Role string
+
+// SellerOrder defines model for SellerOrder.
+type SellerOrder struct {
+	CreatedAt     time.Time           `json:"createdAt"`
+	Currency      SellerOrderCurrency `json:"currency"`
+	Id            openapi_types.UUID  `json:"id"`
+	Items         []PurchaseItem      `json:"items"`
+	PurchaseId    openapi_types.UUID  `json:"purchaseId"`
+	Reference     string              `json:"reference"`
+	Status        SellerOrderStatus   `json:"status"`
+	StoreId       openapi_types.UUID  `json:"storeId"`
+	StoreName     string              `json:"storeName"`
+	SubtotalMinor int64               `json:"subtotalMinor"`
+	UpdatedAt     time.Time           `json:"updatedAt"`
+}
+
+// SellerOrderCurrency defines model for SellerOrder.Currency.
+type SellerOrderCurrency string
+
+// SellerOrderStatus defines model for SellerOrderStatus.
+type SellerOrderStatus string
 
 // Session defines model for Session.
 type Session struct {
@@ -353,6 +695,9 @@ type VariantInputCurrency string
 // CategoryFilter defines model for CategoryFilter.
 type CategoryFilter = string
 
+// IdempotencyKey defines model for IdempotencyKey.
+type IdempotencyKey = string
+
 // InStock defines model for InStock.
 type InStock = bool
 
@@ -373,6 +718,9 @@ type ProductId = openapi_types.UUID
 
 // ProductSlug defines model for ProductSlug.
 type ProductSlug = string
+
+// PurchaseId defines model for PurchaseId.
+type PurchaseId = openapi_types.UUID
 
 // Search defines model for Search.
 type Search = string
@@ -418,6 +766,16 @@ type ListCatalogProductsParams struct {
 	PageSize *PageSize       `form:"pageSize,omitempty" json:"pageSize,omitempty"`
 }
 
+// CheckoutParams defines parameters for Checkout.
+type CheckoutParams struct {
+	IdempotencyKey IdempotencyKey `json:"Idempotency-Key"`
+}
+
+// ReceivePaymentWebhookParams defines parameters for ReceivePaymentWebhook.
+type ReceivePaymentWebhookParams struct {
+	XCartlabsSignature string `json:"X-Cartlabs-Signature"`
+}
+
 // ModerateProductJSONRequestBody defines body for ModerateProduct for application/json ContentType.
 type ModerateProductJSONRequestBody = ModerationInput
 
@@ -429,6 +787,15 @@ type DemoLoginJSONRequestBody = DemoLoginRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
+
+// SetCartItemJSONRequestBody defines body for SetCartItem for application/json ContentType.
+type SetCartItemJSONRequestBody = CartItemInput
+
+// ReceivePaymentWebhookJSONRequestBody defines body for ReceivePaymentWebhook for application/json ContentType.
+type ReceivePaymentWebhookJSONRequestBody = PaymentWebhookEvent
+
+// CompleteDemoPaymentJSONRequestBody defines body for CompleteDemoPayment for application/json ContentType.
+type CompleteDemoPaymentJSONRequestBody = PaymentCompletionInput
 
 // CreateSellerProductJSONRequestBody defines body for CreateSellerProduct for application/json ContentType.
 type CreateSellerProductJSONRequestBody = ProductInput
@@ -456,60 +823,83 @@ type AdjustVariantInventoryJSONRequestBody = InventoryAdjustment
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

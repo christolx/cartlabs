@@ -15,6 +15,7 @@ import (
 	"github.com/christolx/cartlabs/internal/catalog"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
+	"github.com/christolx/cartlabs/internal/purchase"
 	marketstore "github.com/christolx/cartlabs/internal/store"
 )
 
@@ -58,6 +59,19 @@ type CatalogService interface {
 	FindPublic(context.Context, string) (catalog.Product, error)
 }
 
+type PurchaseService interface {
+	Cart(context.Context, identity.Principal) (purchase.Cart, error)
+	SetCartItem(context.Context, identity.Principal, string, int) (purchase.Cart, error)
+	RemoveCartItem(context.Context, identity.Principal, string) (purchase.Cart, error)
+	Checkout(context.Context, identity.Principal, string) (purchase.Purchase, error)
+	ListPurchases(context.Context, identity.Principal) ([]purchase.Purchase, error)
+	Purchase(context.Context, identity.Principal, string) (purchase.Purchase, error)
+	SellerOrders(context.Context, identity.Principal) ([]purchase.SellerOrder, error)
+	ConfirmPayment(context.Context, identity.Principal, string, string) (purchase.Purchase, error)
+	HandleWebhook(context.Context, []byte, string) error
+	Notifications(context.Context, identity.Principal) ([]purchase.Notification, error)
+}
+
 type Server struct {
 	handler http.Handler
 }
@@ -66,6 +80,7 @@ type serverConfig struct {
 	identity      IdentityService
 	stores        StoreService
 	catalog       CatalogService
+	purchases     PurchaseService
 	cookieSecure  bool
 	refreshMaxAge int
 	rateLimiter   RateLimiter
@@ -85,6 +100,10 @@ func WithServices(identityService IdentityService, storeService StoreService, ca
 		config.stores = storeService
 		config.catalog = catalogService
 	}
+}
+
+func WithPurchaseService(service PurchaseService) Option {
+	return func(config *serverConfig) { config.purchases = service }
 }
 
 func WithRefreshCookie(secure bool, maxAge time.Duration) Option {
@@ -134,6 +153,16 @@ func New(checker ReadinessChecker, logger *slog.Logger, options ...Option) *Serv
 	mux.HandleFunc("PATCH /api/v1/admin/stores/{storeId}/moderation", application.auth(application.moderateStore))
 	mux.HandleFunc("GET /api/v1/admin/products", application.auth(application.adminProducts))
 	mux.HandleFunc("PATCH /api/v1/admin/products/{productId}/moderation", application.auth(application.moderateProduct))
+	mux.HandleFunc("GET /api/v1/cart", application.auth(application.getCart))
+	mux.HandleFunc("PUT /api/v1/cart/items/{variantId}", application.auth(application.setCartItem))
+	mux.HandleFunc("DELETE /api/v1/cart/items/{variantId}", application.auth(application.removeCartItem))
+	mux.HandleFunc("POST /api/v1/checkout", application.auth(application.checkout))
+	mux.HandleFunc("GET /api/v1/purchases", application.auth(application.listPurchases))
+	mux.HandleFunc("GET /api/v1/purchases/{purchaseId}", application.auth(application.getPurchase))
+	mux.HandleFunc("POST /api/v1/purchases/{purchaseId}/pay", application.auth(application.confirmPayment))
+	mux.HandleFunc("GET /api/v1/seller/orders", application.auth(application.sellerOrders))
+	mux.HandleFunc("GET /api/v1/notifications", application.auth(application.notifications))
+	mux.HandleFunc("POST /api/v1/payments/webhook", application.paymentWebhook)
 
 	return &Server{handler: requestLogger(logger, recoverPanic(logger, mux))}
 }

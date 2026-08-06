@@ -83,6 +83,10 @@ services:
       ACCESS_TOKEN_SECRET: ${ACCESS_TOKEN_SECRET:-cartlabs-local-access-token-secret-change-me}
       DEMO_MODE: ${DEMO_MODE:-true}
       COOKIE_SECURE: "false"
+      PAYMENT_PROVIDER_URL: http://mock-payment:8081
+      PAYMENT_WEBHOOK_URL: http://api:8080/api/v1/payments/webhook
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-cartlabs-local-webhook-secret-change-me}
+      MOCK_PAYMENT_API_KEY: ${MOCK_PAYMENT_API_KEY:-cartlabs-local-payment-api-key}
     ports:
       - "8080:8080"
     depends_on:
@@ -91,6 +95,8 @@ services:
       redis:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      mock-payment:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health/live"]
@@ -129,6 +135,8 @@ services:
         APP: mock-payment
     environment:
       MOCK_PAYMENT_ADDR: :8081
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-cartlabs-local-webhook-secret-change-me}
+      MOCK_PAYMENT_API_KEY: ${MOCK_PAYMENT_API_KEY:-cartlabs-local-payment-api-key}
     ports:
       - "8081:8081"
     healthcheck:

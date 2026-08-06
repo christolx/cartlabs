@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cartlabs API
-  version: 0.2.0
+  version: 0.3.0
   description: Public REST contract for Cartlabs web and API applications.
 servers:
   - url: /api/v1
@@ -18,6 +18,14 @@ tags:
     description: Seller-owned catalog management.
   - name: Admin
     description: Marketplace moderation.
+  - name: Cart
+    description: Buyer cart and checkout.
+  - name: Purchases
+    description: Purchase and seller-order views.
+  - name: Payments
+    description: Mock payment completion and signed webhooks.
+  - name: Notifications
+    description: Durable user notifications.
 security:
   - BearerAuth: []
 paths:
@@ -419,6 +427,176 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/ProductDetail"}
         "404": {$ref: "#/components/responses/NotFound"}
+  /cart:
+    get:
+      operationId: getCart
+      summary: Get buyer cart grouped by seller
+      tags: [Cart]
+      responses:
+        "200":
+          description: Current cart with live price and stock
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Cart"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /cart/items/{variantId}:
+    put:
+      operationId: setCartItem
+      summary: Add or replace cart item quantity
+      tags: [Cart]
+      parameters:
+        - {$ref: "#/components/parameters/VariantId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CartItemInput"}
+      responses:
+        "200":
+          description: Updated cart
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Cart"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+    delete:
+      operationId: removeCartItem
+      summary: Remove cart item
+      tags: [Cart]
+      parameters:
+        - {$ref: "#/components/parameters/VariantId"}
+      responses:
+        "200":
+          description: Updated cart
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Cart"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /checkout:
+    post:
+      operationId: checkout
+      summary: Reserve inventory and create seller orders
+      description: Reusing same Idempotency-Key returns original purchase without reserving twice.
+      tags: [Cart]
+      parameters:
+        - {$ref: "#/components/parameters/IdempotencyKey"}
+      responses:
+        "201":
+          description: Purchase and payment intent created
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Purchase"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/ServiceUnavailableProblem"}
+  /purchases:
+    get:
+      operationId: listPurchases
+      summary: List buyer purchases
+      tags: [Purchases]
+      responses:
+        "200":
+          description: Buyer purchases newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/Purchase"}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /purchases/{purchaseId}:
+    get:
+      operationId: getPurchase
+      summary: Get buyer purchase
+      tags: [Purchases]
+      parameters:
+        - {$ref: "#/components/parameters/PurchaseId"}
+      responses:
+        "200":
+          description: Purchase with seller orders and immutable item snapshots
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Purchase"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /purchases/{purchaseId}/pay:
+    post:
+      operationId: completeDemoPayment
+      summary: Complete mock payment
+      description: Demo-only endpoint; provider sends signed webhook before response.
+      tags: [Payments]
+      parameters:
+        - {$ref: "#/components/parameters/PurchaseId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PaymentCompletionInput"}
+      responses:
+        "200":
+          description: Purchase after webhook transition
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Purchase"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+        "503": {$ref: "#/components/responses/ServiceUnavailableProblem"}
+  /seller/orders:
+    get:
+      operationId: listSellerOrders
+      summary: List orders belonging to seller store
+      tags: [Purchases]
+      responses:
+        "200":
+          description: Seller order snapshots
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/SellerOrder"}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /notifications:
+    get:
+      operationId: listNotifications
+      summary: List durable user notifications
+      tags: [Notifications]
+      responses:
+        "200":
+          description: Notifications newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/Notification"}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /payments/webhook:
+    post:
+      operationId: receivePaymentWebhook
+      summary: Receive signed mock payment event
+      tags: [Payments]
+      security: []
+      parameters:
+        - name: X-Cartlabs-Signature
+          in: header
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PaymentWebhookEvent"}
+      responses:
+        "204": {description: Event accepted or already processed}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "404": {$ref: "#/components/responses/NotFound"}
 components:
   securitySchemes:
     BearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
@@ -431,6 +609,8 @@ components:
     ProductId: {name: productId, in: path, required: true, schema: {type: string, format: uuid}}
     VariantId: {name: variantId, in: path, required: true, schema: {type: string, format: uuid}}
     StoreId: {name: storeId, in: path, required: true, schema: {type: string, format: uuid}}
+    PurchaseId: {name: purchaseId, in: path, required: true, schema: {type: string, format: uuid}}
+    IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}
     ProductSlug: {name: slug, in: path, required: true, schema: {type: string}}
     Search: {name: q, in: query, schema: {type: string, maxLength: 100}}
     CategoryFilter: {name: category, in: query, schema: {type: string}}
@@ -627,3 +807,126 @@ components:
       properties:
         status: {type: string, enum: [approved, rejected]}
         note: {type: string, maxLength: 500}
+    CartItemInput:
+      type: object
+      additionalProperties: false
+      required: [quantity]
+      properties:
+        quantity: {type: integer, minimum: 1, maximum: 99}
+    CartItem:
+      type: object
+      required: [variantId, productId, productName, productSlug, variantName, sku, imageUrl, quantity, availableStock, unitPriceMinor, lineTotalMinor, currency]
+      properties:
+        variantId: {type: string, format: uuid}
+        productId: {type: string, format: uuid}
+        productName: {type: string}
+        productSlug: {type: string}
+        variantName: {type: string}
+        sku: {type: string}
+        imageUrl: {type: string, format: uri-reference}
+        quantity: {type: integer, minimum: 1}
+        availableStock: {type: integer, minimum: 0}
+        unitPriceMinor: {type: integer, format: int64, minimum: 0}
+        lineTotalMinor: {type: integer, format: int64, minimum: 0}
+        currency: {type: string, enum: [IDR]}
+    CartStore:
+      type: object
+      required: [storeId, storeName, items, subtotalMinor]
+      properties:
+        storeId: {type: string, format: uuid}
+        storeName: {type: string}
+        items: {type: array, minItems: 1, items: {$ref: "#/components/schemas/CartItem"}}
+        subtotalMinor: {type: integer, format: int64, minimum: 0}
+    Cart:
+      type: object
+      required: [id, currency, stores, subtotalMinor, totalQuantity, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        currency: {type: string, enum: [IDR]}
+        stores: {type: array, items: {$ref: "#/components/schemas/CartStore"}}
+        subtotalMinor: {type: integer, format: int64, minimum: 0}
+        totalQuantity: {type: integer, minimum: 0}
+        updatedAt: {type: string, format: date-time}
+    PurchaseStatus: {type: string, enum: [pending_payment, paid, payment_failed, expired]}
+    PaymentStatus: {type: string, enum: [pending, succeeded, failed, expired]}
+    SellerOrderStatus: {type: string, enum: [pending_payment, paid, cancelled]}
+    PurchaseItem:
+      type: object
+      required: [id, productId, variantId, productName, variantName, sku, imageUrl, quantity, unitPriceMinor, lineTotalMinor, currency]
+      properties:
+        id: {type: string, format: uuid}
+        productId: {type: string, format: uuid}
+        variantId: {type: string, format: uuid}
+        productName: {type: string}
+        variantName: {type: string}
+        sku: {type: string}
+        imageUrl: {type: string, format: uri-reference}
+        quantity: {type: integer, minimum: 1}
+        unitPriceMinor: {type: integer, format: int64, minimum: 0}
+        lineTotalMinor: {type: integer, format: int64, minimum: 0}
+        currency: {type: string, enum: [IDR]}
+    SellerOrder:
+      type: object
+      required: [id, purchaseId, reference, storeId, storeName, status, currency, subtotalMinor, items, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        purchaseId: {type: string, format: uuid}
+        reference: {type: string}
+        storeId: {type: string, format: uuid}
+        storeName: {type: string}
+        status: {$ref: "#/components/schemas/SellerOrderStatus"}
+        currency: {type: string, enum: [IDR]}
+        subtotalMinor: {type: integer, format: int64, minimum: 0}
+        items: {type: array, minItems: 1, items: {$ref: "#/components/schemas/PurchaseItem"}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    Purchase:
+      type: object
+      required: [id, reference, buyerId, status, paymentStatus, paymentIntentId, currency, subtotalMinor, totalMinor, reservationExpiresAt, sellerOrders, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        reference: {type: string}
+        buyerId: {type: string, format: uuid}
+        status: {$ref: "#/components/schemas/PurchaseStatus"}
+        paymentStatus: {$ref: "#/components/schemas/PaymentStatus"}
+        paymentIntentId: {type: string}
+        currency: {type: string, enum: [IDR]}
+        subtotalMinor: {type: integer, format: int64, minimum: 0}
+        totalMinor: {type: integer, format: int64, minimum: 0}
+        reservationExpiresAt: {type: string, format: date-time}
+        sellerOrders: {type: array, minItems: 1, items: {$ref: "#/components/schemas/SellerOrder"}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    PaymentCompletionInput:
+      type: object
+      additionalProperties: false
+      required: [outcome]
+      properties:
+        outcome: {type: string, enum: [succeeded, failed]}
+    PaymentWebhookEvent:
+      type: object
+      additionalProperties: false
+      required: [id, type, createdAt, data]
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [payment.succeeded, payment.failed]}
+        createdAt: {type: string, format: date-time}
+        data:
+          type: object
+          additionalProperties: false
+          required: [intentId, reference, amountMinor, currency]
+          properties:
+            intentId: {type: string, format: uuid}
+            reference: {type: string}
+            amountMinor: {type: integer, format: int64, minimum: 0}
+            currency: {type: string, enum: [IDR]}
+    Notification:
+      type: object
+      required: [id, kind, title, body, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        kind: {type: string}
+        title: {type: string}
+        body: {type: string}
+        readAt: {type: string, format: date-time}
+        createdAt: {type: string, format: date-time}

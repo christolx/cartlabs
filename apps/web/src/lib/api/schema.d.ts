@@ -364,6 +364,166 @@ export interface paths {
         patch: operations["moderateProduct"];
         trace?: never;
     };
+    "/cart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get buyer cart grouped by seller */
+        get: operations["getCart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cart/items/{variantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Add or replace cart item quantity */
+        put: operations["setCartItem"];
+        post?: never;
+        /** Remove cart item */
+        delete: operations["removeCartItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reserve inventory and create seller orders
+         * @description Reusing same Idempotency-Key returns original purchase without reserving twice.
+         */
+        post: operations["checkout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List buyer purchases */
+        get: operations["listPurchases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchases/{purchaseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get buyer purchase */
+        get: operations["getPurchase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/purchases/{purchaseId}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Complete mock payment
+         * @description Demo-only endpoint; provider sends signed webhook before response.
+         */
+        post: operations["completeDemoPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List orders belonging to seller store */
+        get: operations["listSellerOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List durable user notifications */
+        get: operations["listNotifications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/payments/webhook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Receive signed mock payment event */
+        post: operations["receivePaymentWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -517,6 +677,150 @@ export interface components {
             status: "approved" | "rejected";
             note: string;
         };
+        CartItemInput: {
+            quantity: number;
+        };
+        CartItem: {
+            /** Format: uuid */
+            variantId: string;
+            /** Format: uuid */
+            productId: string;
+            productName: string;
+            productSlug: string;
+            variantName: string;
+            sku: string;
+            /** Format: uri-reference */
+            imageUrl: string;
+            quantity: number;
+            availableStock: number;
+            /** Format: int64 */
+            unitPriceMinor: number;
+            /** Format: int64 */
+            lineTotalMinor: number;
+            /** @enum {string} */
+            currency: "IDR";
+        };
+        CartStore: {
+            /** Format: uuid */
+            storeId: string;
+            storeName: string;
+            items: components["schemas"]["CartItem"][];
+            /** Format: int64 */
+            subtotalMinor: number;
+        };
+        Cart: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            currency: "IDR";
+            stores: components["schemas"]["CartStore"][];
+            /** Format: int64 */
+            subtotalMinor: number;
+            totalQuantity: number;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @enum {string} */
+        PurchaseStatus: "pending_payment" | "paid" | "payment_failed" | "expired";
+        /** @enum {string} */
+        PaymentStatus: "pending" | "succeeded" | "failed" | "expired";
+        /** @enum {string} */
+        SellerOrderStatus: "pending_payment" | "paid" | "cancelled";
+        PurchaseItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            productId: string;
+            /** Format: uuid */
+            variantId: string;
+            productName: string;
+            variantName: string;
+            sku: string;
+            /** Format: uri-reference */
+            imageUrl: string;
+            quantity: number;
+            /** Format: int64 */
+            unitPriceMinor: number;
+            /** Format: int64 */
+            lineTotalMinor: number;
+            /** @enum {string} */
+            currency: "IDR";
+        };
+        SellerOrder: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            purchaseId: string;
+            reference: string;
+            /** Format: uuid */
+            storeId: string;
+            storeName: string;
+            status: components["schemas"]["SellerOrderStatus"];
+            /** @enum {string} */
+            currency: "IDR";
+            /** Format: int64 */
+            subtotalMinor: number;
+            items: components["schemas"]["PurchaseItem"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Purchase: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            /** Format: uuid */
+            buyerId: string;
+            status: components["schemas"]["PurchaseStatus"];
+            paymentStatus: components["schemas"]["PaymentStatus"];
+            paymentIntentId: string;
+            /** @enum {string} */
+            currency: "IDR";
+            /** Format: int64 */
+            subtotalMinor: number;
+            /** Format: int64 */
+            totalMinor: number;
+            /** Format: date-time */
+            reservationExpiresAt: string;
+            sellerOrders: components["schemas"]["SellerOrder"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PaymentCompletionInput: {
+            /** @enum {string} */
+            outcome: "succeeded" | "failed";
+        };
+        PaymentWebhookEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            type: "payment.succeeded" | "payment.failed";
+            /** Format: date-time */
+            createdAt: string;
+            data: {
+                /** Format: uuid */
+                intentId: string;
+                reference: string;
+                /** Format: int64 */
+                amountMinor: number;
+                /** @enum {string} */
+                currency: "IDR";
+            };
+        };
+        Notification: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            title: string;
+            body: string;
+            /** Format: date-time */
+            readAt?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
     };
     responses: {
         BadRequest: {
@@ -645,6 +949,8 @@ export interface components {
         ProductId: string;
         VariantId: string;
         StoreId: string;
+        PurchaseId: string;
+        IdempotencyKey: string;
         ProductSlug: string;
         Search: string;
         CategoryFilter: string;
@@ -1243,6 +1549,254 @@ export interface operations {
                     "application/json": components["schemas"]["ProductDetail"];
                 };
             };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getCart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current cart with live price and stock */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cart"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    setCartItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: components["parameters"]["VariantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CartItemInput"];
+            };
+        };
+        responses: {
+            /** @description Updated cart */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cart"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    removeCartItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: components["parameters"]["VariantId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Updated cart */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Cart"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    checkout: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase and payment intent created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Purchase"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailableProblem"];
+        };
+    };
+    listPurchases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Buyer purchases newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Purchase"][];
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getPurchase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchaseId: components["parameters"]["PurchaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Purchase with seller orders and immutable item snapshots */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Purchase"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    completeDemoPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchaseId: components["parameters"]["PurchaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentCompletionInput"];
+            };
+        };
+        responses: {
+            /** @description Purchase after webhook transition */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Purchase"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            503: components["responses"]["ServiceUnavailableProblem"];
+        };
+    };
+    listSellerOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Seller order snapshots */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["SellerOrder"][];
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Notifications newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Notification"][];
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    receivePaymentWebhook: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Cartlabs-Signature": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentWebhookEvent"];
+            };
+        };
+        responses: {
+            /** @description Event accepted or already processed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
             404: components["responses"]["NotFound"];
         };
     };

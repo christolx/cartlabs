@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/christolx/cartlabs/internal/mockpayment"
 )
 
 func main() {
@@ -18,15 +19,23 @@ func main() {
 		address = ":8081"
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health/live", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-	})
+	apiKey := os.Getenv("MOCK_PAYMENT_API_KEY")
+	if apiKey == "" {
+		apiKey = "cartlabs-local-payment-api-key"
+	}
+	webhookSecret := os.Getenv("PAYMENT_WEBHOOK_SECRET")
+	if webhookSecret == "" {
+		webhookSecret = "cartlabs-local-webhook-secret-change-me"
+	}
+	application, err := mockpayment.New(mockpayment.Config{APIKey: apiKey, WebhookSecret: []byte(webhookSecret)})
+	if err != nil {
+		logger.Error("configure mock payment", "error", err)
+		os.Exit(1)
+	}
 
 	server := &http.Server{
 		Addr:              address,
-		Handler:           mux,
+		Handler:           application.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
