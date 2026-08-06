@@ -11,25 +11,11 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
-
-// Defines values for AccessTokenTokenType.
-const (
-	Bearer AccessTokenTokenType = "Bearer"
-)
-
-// Valid indicates whether the value is a known member of the AccessTokenTokenType enum.
-func (e AccessTokenTokenType) Valid() bool {
-	switch e {
-	case Bearer:
-		return true
-	default:
-		return false
-	}
-}
 
 // Defines values for HealthStatus.
 const (
@@ -49,19 +35,145 @@ func (e HealthStatus) Valid() bool {
 	}
 }
 
-// AccessToken defines model for AccessToken.
-type AccessToken struct {
-	AccessToken string `json:"accessToken"`
+// Defines values for ModerationInputStatus.
+const (
+	ModerationInputStatusApproved ModerationInputStatus = "approved"
+	ModerationInputStatusRejected ModerationInputStatus = "rejected"
+)
 
-	// ExpiresIn Access-token lifetime in seconds.
-	ExpiresIn int32                `json:"expiresIn"`
-	TokenType AccessTokenTokenType `json:"tokenType"`
+// Valid indicates whether the value is a known member of the ModerationInputStatus enum.
+func (e ModerationInputStatus) Valid() bool {
+	switch e {
+	case ModerationInputStatusApproved:
+		return true
+	case ModerationInputStatusRejected:
+		return true
+	default:
+		return false
+	}
 }
 
-// AccessTokenTokenType defines model for AccessToken.TokenType.
-type AccessTokenTokenType string
+// Defines values for ModerationStatus.
+const (
+	ModerationStatusApproved ModerationStatus = "approved"
+	ModerationStatusPending  ModerationStatus = "pending"
+	ModerationStatusRejected ModerationStatus = "rejected"
+)
 
-// Health Example: {"dependencies":{"postgres":"ok","rabbitmq":"ok","redis":"ok"},"status":"ok"}
+// Valid indicates whether the value is a known member of the ModerationStatus enum.
+func (e ModerationStatus) Valid() bool {
+	switch e {
+	case ModerationStatusApproved:
+		return true
+	case ModerationStatusPending:
+		return true
+	case ModerationStatusRejected:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProductDetailStatus.
+const (
+	Archived  ProductDetailStatus = "archived"
+	Draft     ProductDetailStatus = "draft"
+	Published ProductDetailStatus = "published"
+)
+
+// Valid indicates whether the value is a known member of the ProductDetailStatus enum.
+func (e ProductDetailStatus) Valid() bool {
+	switch e {
+	case Archived:
+		return true
+	case Draft:
+		return true
+	case Published:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for Role.
+const (
+	Admin  Role = "admin"
+	Buyer  Role = "buyer"
+	Seller Role = "seller"
+)
+
+// Valid indicates whether the value is a known member of the Role enum.
+func (e Role) Valid() bool {
+	switch e {
+	case Admin:
+		return true
+	case Buyer:
+		return true
+	case Seller:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for SessionTokenType.
+const (
+	Bearer SessionTokenType = "Bearer"
+)
+
+// Valid indicates whether the value is a known member of the SessionTokenType enum.
+func (e SessionTokenType) Valid() bool {
+	switch e {
+	case Bearer:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VariantCurrency.
+const (
+	VariantCurrencyIDR VariantCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the VariantCurrency enum.
+func (e VariantCurrency) Valid() bool {
+	switch e {
+	case VariantCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for VariantInputCurrency.
+const (
+	VariantInputCurrencyIDR VariantInputCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the VariantInputCurrency enum.
+func (e VariantInputCurrency) Valid() bool {
+	switch e {
+	case VariantInputCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Category defines model for Category.
+type Category struct {
+	Id   openapi_types.UUID `json:"id"`
+	Name string             `json:"name"`
+	Slug string             `json:"slug"`
+}
+
+// DemoLoginRequest defines model for DemoLoginRequest.
+type DemoLoginRequest struct {
+	Role Role `json:"role"`
+}
+
+// Health defines model for Health.
 type Health struct {
 	Dependencies *map[string]string `json:"dependencies,omitempty"`
 	Status       HealthStatus       `json:"status"`
@@ -70,56 +182,334 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// ImageInput defines model for ImageInput.
+type ImageInput struct {
+	AltText  string `json:"altText"`
+	Position int    `json:"position"`
+	Url      string `json:"url"`
+}
+
+// InventoryAdjustment defines model for InventoryAdjustment.
+type InventoryAdjustment struct {
+	Delta  int    `json:"delta"`
+	Reason string `json:"reason"`
+}
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Email    openapi_types.Email `json:"email"`
 	Password string              `json:"password"`
 }
 
+// ModerationInput defines model for ModerationInput.
+type ModerationInput struct {
+	Note   string                `json:"note"`
+	Status ModerationInputStatus `json:"status"`
+}
+
+// ModerationInputStatus defines model for ModerationInput.Status.
+type ModerationInputStatus string
+
+// ModerationStatus defines model for ModerationStatus.
+type ModerationStatus string
+
 // Problem defines model for Problem.
 type Problem struct {
 	Detail    *string `json:"detail,omitempty"`
-	Instance  *string `json:"instance,omitempty"`
 	RequestId *string `json:"requestId,omitempty"`
-	Status    int32   `json:"status"`
+	Status    int     `json:"status"`
 	Title     string  `json:"title"`
 	Type      string  `json:"type"`
 }
 
-// NotImplemented defines model for NotImplemented.
-type NotImplemented = Problem
+// ProductDetail defines model for ProductDetail.
+type ProductDetail struct {
+	Category         Category            `json:"category"`
+	CreatedAt        time.Time           `json:"createdAt"`
+	Description      string              `json:"description"`
+	Id               openapi_types.UUID  `json:"id"`
+	Images           []ProductImage      `json:"images"`
+	ModerationNote   string              `json:"moderationNote"`
+	ModerationStatus ModerationStatus    `json:"moderationStatus"`
+	Name             string              `json:"name"`
+	Slug             string              `json:"slug"`
+	Status           ProductDetailStatus `json:"status"`
+	StoreId          openapi_types.UUID  `json:"storeId"`
+	StoreName        *string             `json:"storeName,omitempty"`
+	UpdatedAt        time.Time           `json:"updatedAt"`
+	Variants         []Variant           `json:"variants"`
+}
 
-// Unauthorized defines model for Unauthorized.
-type Unauthorized = Problem
+// ProductDetailStatus defines model for ProductDetail.Status.
+type ProductDetailStatus string
+
+// ProductImage defines model for ProductImage.
+type ProductImage struct {
+	AltText  string             `json:"altText"`
+	Id       openapi_types.UUID `json:"id"`
+	Position int                `json:"position"`
+	Url      string             `json:"url"`
+}
+
+// ProductInput defines model for ProductInput.
+type ProductInput struct {
+	CategoryId  openapi_types.UUID `json:"categoryId"`
+	Description string             `json:"description"`
+	Name        string             `json:"name"`
+	Slug        string             `json:"slug"`
+}
+
+// ProductPage defines model for ProductPage.
+type ProductPage struct {
+	Items    []ProductSummary `json:"items"`
+	Page     int              `json:"page"`
+	PageSize int              `json:"pageSize"`
+	Total    int              `json:"total"`
+}
+
+// ProductSummary defines model for ProductSummary.
+type ProductSummary struct {
+	Category      Category           `json:"category"`
+	Currency      string             `json:"currency"`
+	Id            openapi_types.UUID `json:"id"`
+	ImageUrl      string             `json:"imageUrl"`
+	InStock       bool               `json:"inStock"`
+	MinPriceMinor int64              `json:"minPriceMinor"`
+	Name          string             `json:"name"`
+	Slug          string             `json:"slug"`
+	StoreName     string             `json:"storeName"`
+}
+
+// Role defines model for Role.
+type Role string
+
+// Session defines model for Session.
+type Session struct {
+	AccessToken string           `json:"accessToken"`
+	ExpiresIn   int              `json:"expiresIn"`
+	TokenType   SessionTokenType `json:"tokenType"`
+	User        User             `json:"user"`
+}
+
+// SessionTokenType defines model for Session.TokenType.
+type SessionTokenType string
+
+// Store defines model for Store.
+type Store struct {
+	CreatedAt      time.Time          `json:"createdAt"`
+	Description    string             `json:"description"`
+	Id             openapi_types.UUID `json:"id"`
+	ModerationNote string             `json:"moderationNote"`
+	Name           string             `json:"name"`
+	SellerId       openapi_types.UUID `json:"sellerId"`
+	Slug           string             `json:"slug"`
+	Status         ModerationStatus   `json:"status"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
+}
+
+// StoreInput defines model for StoreInput.
+type StoreInput struct {
+	Description string `json:"description"`
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+}
+
+// User defines model for User.
+type User struct {
+	DisplayName string              `json:"displayName"`
+	Email       openapi_types.Email `json:"email"`
+	Id          openapi_types.UUID  `json:"id"`
+	Role        Role                `json:"role"`
+}
+
+// Variant defines model for Variant.
+type Variant struct {
+	Active     bool               `json:"active"`
+	Attributes map[string]string  `json:"attributes"`
+	Currency   VariantCurrency    `json:"currency"`
+	Id         openapi_types.UUID `json:"id"`
+	Name       string             `json:"name"`
+	PriceMinor int64              `json:"priceMinor"`
+	Sku        string             `json:"sku"`
+	Stock      int                `json:"stock"`
+}
+
+// VariantCurrency defines model for Variant.Currency.
+type VariantCurrency string
+
+// VariantInput defines model for VariantInput.
+type VariantInput struct {
+	Attributes map[string]string    `json:"attributes"`
+	Currency   VariantInputCurrency `json:"currency"`
+	Name       string               `json:"name"`
+	PriceMinor int64                `json:"priceMinor"`
+	Sku        string               `json:"sku"`
+	Stock      int                  `json:"stock"`
+}
+
+// VariantInputCurrency defines model for VariantInput.Currency.
+type VariantInputCurrency string
+
+// CategoryFilter defines model for CategoryFilter.
+type CategoryFilter = string
+
+// InStock defines model for InStock.
+type InStock = bool
+
+// MaxPrice defines model for MaxPrice.
+type MaxPrice = int64
+
+// MinPrice defines model for MinPrice.
+type MinPrice = int64
+
+// Page defines model for Page.
+type Page = int
+
+// PageSize defines model for PageSize.
+type PageSize = int
+
+// ProductId defines model for ProductId.
+type ProductId = openapi_types.UUID
+
+// ProductSlug defines model for ProductSlug.
+type ProductSlug = string
+
+// Search defines model for Search.
+type Search = string
+
+// StoreId defines model for StoreId.
+type StoreId = openapi_types.UUID
+
+// VariantId defines model for VariantId.
+type VariantId = openapi_types.UUID
+
+// Problem400 defines model for BadRequest.
+type Problem400 = Problem
+
+// Problem409 defines model for Conflict.
+type Problem409 = Problem
+
+// Problem403 defines model for Forbidden.
+type Problem403 = Problem
+
+// Problem404 defines model for NotFound.
+type Problem404 = Problem
+
+// Problem401 defines model for Problem401.
+type Problem401 = Problem
+
+// Problem429 defines model for Problem429.
+type Problem429 = Problem
+
+// Problem503 defines model for Problem503.
+type Problem503 = Health
+
+// Problem503JSON defines model for Problem503JSON.
+type Problem503JSON = Problem
+
+// ListCatalogProductsParams defines parameters for ListCatalogProducts.
+type ListCatalogProductsParams struct {
+	Q        *Search         `form:"q,omitempty" json:"q,omitempty"`
+	Category *CategoryFilter `form:"category,omitempty" json:"category,omitempty"`
+	MinPrice *MinPrice       `form:"minPrice,omitempty" json:"minPrice,omitempty"`
+	MaxPrice *MaxPrice       `form:"maxPrice,omitempty" json:"maxPrice,omitempty"`
+	InStock  *InStock        `form:"inStock,omitempty" json:"inStock,omitempty"`
+	Page     *Page           `form:"page,omitempty" json:"page,omitempty"`
+	PageSize *PageSize       `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+}
+
+// ModerateProductJSONRequestBody defines body for ModerateProduct for application/json ContentType.
+type ModerateProductJSONRequestBody = ModerationInput
+
+// ModerateStoreJSONRequestBody defines body for ModerateStore for application/json ContentType.
+type ModerateStoreJSONRequestBody = ModerationInput
+
+// DemoLoginJSONRequestBody defines body for DemoLogin for application/json ContentType.
+type DemoLoginJSONRequestBody = DemoLoginRequest
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
+
+// CreateSellerProductJSONRequestBody defines body for CreateSellerProduct for application/json ContentType.
+type CreateSellerProductJSONRequestBody = ProductInput
+
+// UpdateSellerProductJSONRequestBody defines body for UpdateSellerProduct for application/json ContentType.
+type UpdateSellerProductJSONRequestBody = ProductInput
+
+// CreateProductImageJSONRequestBody defines body for CreateProductImage for application/json ContentType.
+type CreateProductImageJSONRequestBody = ImageInput
+
+// CreateProductVariantJSONRequestBody defines body for CreateProductVariant for application/json ContentType.
+type CreateProductVariantJSONRequestBody = VariantInput
+
+// UpdateSellerStoreJSONRequestBody defines body for UpdateSellerStore for application/json ContentType.
+type UpdateSellerStoreJSONRequestBody = StoreInput
+
+// CreateSellerStoreJSONRequestBody defines body for CreateSellerStore for application/json ContentType.
+type CreateSellerStoreJSONRequestBody = StoreInput
+
+// AdjustVariantInventoryJSONRequestBody defines body for AdjustVariantInventory for application/json ContentType.
+type AdjustVariantInventoryJSONRequestBody = InventoryAdjustment
 
 // Base64 encoded, compressed with deflate, json marshaled OpenAPI spec.
 // Stored as a slice of fixed-width chunks rather than one concatenated
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"3Fdbb9s4E/0rxHzf2yq2cynQep/SYLE1ttg1nPYpCIqxOLbZSKQ6pJx4A//3xVCSLfmSC9BtgX2yRJoz",
-	"Z86cmaEeIXV54SzZ4GH4CEy+cNZTfPnThVFeZJSTDaRlJXU2kA3yiEWRmRSDcbZfsJtmlP/y1Tsrez5d",
-	"UI7y9H+mGQzhf/2tm3616/vj6hSs1+sENPmUTSHmYAhXzgbGNCgmT7wkrWaOldFkgwkrZRpU0b0qFugJ",
-	"1gl8tliGhWPz9w+GyxShYeaVY+XJe8GFTMrYJWZGgxyqLYmjyzQl7z+5O4oIUGsjtjAbsyuIg5EMzDDz",
-	"lEDRWnoE7J4Mq4JgCD6wsXPhgB4Kw+RHcbcLs3J6EuSsysyMgskFofKUOqt9DxKYOc4xwBCMDednkEBu",
-	"rMnLHIanSePM2EBzYvEWbX2Ky49AVv53A+8JmRhuk1106wSYvpWGJT03nVDaptpBbI246VdKgzj9QJiF",
-	"RfT4gCKFKtSCrCab1jwVzoc5yzO4O0iAcTo1If+2eSdt6k1JTcBQbl+7lO+aPpytA7nYQ9642XIVsWia",
-	"M2rSz1NWGzjEykc3N3ZC30ry4ZWaohxNJg+b7FcrCeT48JHsXNg+e3OR7IdYoPf3jnXn9GaxY+D07G2U",
-	"U/P+9rlgGxAbc4fCbsrydRFrCnXIexEZ6wPalDoRlWxOmGbEJDsHeOCK+JE+aHOb9/36woeqvt68e9eq",
-	"tovB4GC9mVDJ/YjWXg55h+tQFV5lPzmuMwmG0pJNWF1LO6vonNCMyS+unLszEYWRfpNWrwlYzMXGly8f",
-	"nA8nKXLIcOq/cHVqiw0L8wetqg5r7Mztt7BxOc1Mqia/XX9SaTMkZDZc1UbVPU0VWq0uxyPVavqxudXs",
-	"webPl+MRJLAk9pX5Qe+0NxA2XUEWCwNDOO8NeudRhGERY+3LjOlnUm1Nn5FfUVf0JBKoihE2snjv9OqJ",
-	"gfS6QdQp9HU3kYFLigutMX42GHw33+25dWAQXpZhIYOwsq18maZEmvSvqs61qoaP8cpTUOgVqo1KFoSa",
-	"OEK+pnCyFdMW2q6GBcHF4PQY6g0N/c7NYJ3Am5cc2rn/tLUPw5vbBHyZ58irbuCkSm/sXMXuFaXYaocB",
-	"517KbVRfZeBWrG4k5crwpKZkfy+7F/tlcl3fQJiW7u67RbxX5ze36w4Lk+hOpSUz2dDkvL5wzDA32eoZ",
-	"DpqWcJSEGkEdIPw8qW8pjoCixl3AQPo/qPXnMx9D34lctG+8L0mhsnSvqvtetXlcB4t4u+tnZhkJmdMB",
-	"FfxO4aNZkiXv/00J1BfNQ41uPFIFuxiP8Qoj2qcaxNWC0jvVPpZtA2iYqP11eGDCanYcI2JCqM3PZUIS",
-	"3cwg1b4tx0+gKoIoxPMfAOgvS/IRlrvo+hio0uISTYbT7CV527ezimGZowmMJnkZa/xmtz1f1Q1yIS0u",
-	"gZIzGEIfC9NfnoIUVm1v99yktPGTrZFOJP4QpN720tUQlewa++yJFXYHtthrvl7lAzFdpRm1jG1KdX27",
-	"/icAAP//",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

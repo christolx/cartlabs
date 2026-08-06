@@ -9,9 +9,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/christolx/cartlabs/internal/catalog"
 	"github.com/christolx/cartlabs/internal/config"
 	"github.com/christolx/cartlabs/internal/httpapi"
+	"github.com/christolx/cartlabs/internal/identity"
 	"github.com/christolx/cartlabs/internal/platform"
+	marketstore "github.com/christolx/cartlabs/internal/store"
 )
 
 func main() {
@@ -30,10 +33,26 @@ func main() {
 		os.Exit(1)
 	}
 	defer dependencies.Close()
+	identityService, err := identity.NewService(identity.NewPostgresRepository(dependencies.Postgres), identity.Config{
+		AccessSecret: []byte(cfg.AccessTokenSecret),
+		AccessTTL:    cfg.AccessTokenTTL,
+		RefreshTTL:   cfg.RefreshTokenTTL,
+		DemoMode:     cfg.DemoMode,
+	})
+	if err != nil {
+		logger.Error("configure identity", "error", err)
+		os.Exit(1)
+	}
+	storeService := marketstore.NewService(marketstore.NewPostgresRepository(dependencies.Postgres))
+	catalogService := catalog.NewService(catalog.NewPostgresRepository(dependencies.Postgres))
 
 	server := &http.Server{
-		Addr:              cfg.APIAddress,
-		Handler:           httpapi.New(dependencies, logger).Handler(),
+		Addr: cfg.APIAddress,
+		Handler: httpapi.New(dependencies, logger,
+			httpapi.WithServices(identityService, storeService, catalogService),
+			httpapi.WithAuthRateLimiter(identity.NewRedisRateLimiter(dependencies.Redis)),
+			httpapi.WithRefreshCookie(cfg.CookieSecure, cfg.RefreshTokenTTL),
+		).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}

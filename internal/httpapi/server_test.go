@@ -1,16 +1,56 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
+
+	"github.com/christolx/cartlabs/internal/domain"
+	"github.com/christolx/cartlabs/internal/identity"
 )
 
 type fakeChecker struct {
 	ready bool
+}
+
+type fakeIdentity struct{}
+
+type fakeLimiter struct {
+	allowed bool
+	err     error
+}
+
+func (f fakeLimiter) Allow(context.Context, string, int, time.Duration) (bool, error) {
+	return f.allowed, f.err
+}
+
+func (fakeIdentity) Login(_ context.Context, email, password string) (identity.Session, string, error) {
+	if email != "buyer@example.com" || password != "valid-password" {
+		return identity.Session{}, "", domain.ErrUnauthorized
+	}
+	user := identity.User{ID: "user-1", Email: email, DisplayName: "Buyer", Role: identity.RoleBuyer}
+	return identity.Session{AccessToken: "access", TokenType: "Bearer", ExpiresIn: 900, User: user}, "refresh", nil
+}
+func (fakeIdentity) DemoLogin(context.Context, identity.Role) (identity.Session, string, error) {
+	return identity.Session{}, "", domain.ErrForbidden
+}
+func (fakeIdentity) Refresh(context.Context, string) (identity.Session, string, error) {
+	return identity.Session{}, "", domain.ErrUnauthorized
+}
+func (fakeIdentity) Logout(context.Context, string) error { return nil }
+func (fakeIdentity) Authenticate(_ context.Context, raw string) (identity.Principal, error) {
+	if raw != "access" {
+		return identity.Principal{}, domain.ErrUnauthorized
+	}
+	return identity.Principal{UserID: "user-1", Role: identity.RoleBuyer}, nil
+}
+func (fakeIdentity) User(_ context.Context, principal identity.Principal) (identity.User, error) {
+	return identity.User{ID: principal.UserID, Email: "buyer@example.com", DisplayName: "Buyer", Role: principal.Role}, nil
 }
 
 func (f fakeChecker) Check(context.Context) (map[string]string, bool) {
@@ -42,5 +82,59 @@ func TestReadinessFailure(t *testing.T) {
 
 	if response.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusServiceUnavailable)
+	}
+}
+
+func TestLoginSetsHttpOnlyRefreshCookie(t *testing.T) {
+	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithServices(fakeIdentity{}, nil, nil), WithRefreshCookie(true, 24*time.Hour))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password"}`))
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	cookies := response.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Name != "__Host-cartlabs_refresh" || !cookies[0].HttpOnly || !cookies[0].Secure || cookies[0].SameSite != http.SameSiteStrictMode {
+		t.Fatalf("cookie = %#v", cookies)
+	}
+}
+
+func TestLoginRateLimit(t *testing.T) {
+	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)),
+		WithServices(fakeIdentity{}, nil, nil), WithAuthRateLimiter(fakeLimiter{allowed: false}))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password"}`))
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if response.Header().Get("Retry-After") != "60" {
+		t.Fatalf("Retry-After = %q", response.Header().Get("Retry-After"))
+	}
+}
+
+func TestLoginRejectsUnknownJSONField(t *testing.T) {
+	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithServices(fakeIdentity{}, nil, nil))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password","admin":true}`))
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d", response.Code)
+	}
+}
+
+func TestProtectedRouteRequiresAndAcceptsBearerToken(t *testing.T) {
+	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithServices(fakeIdentity{}, nil, nil))
+	missing := httptest.NewRecorder()
+	server.Handler().ServeHTTP(missing, httptest.NewRequest(http.MethodGet, "/api/v1/me", nil))
+	if missing.Code != http.StatusUnauthorized {
+		t.Fatalf("missing status = %d", missing.Code)
+	}
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)
+	request.Header.Set("Authorization", "Bearer access")
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
 }

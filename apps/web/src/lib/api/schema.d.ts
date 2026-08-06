@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check API process liveness */
+        /** Check process liveness */
         get: operations["getLiveness"];
         put?: never;
         post?: never;
@@ -28,7 +28,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Check required dependency readiness */
+        /** Check dependency readiness */
         get: operations["getReadiness"];
         put?: never;
         post?: never;
@@ -47,8 +47,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Authenticate using email and password */
+        /** Authenticate with email and password */
         post: operations["login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/demo-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Authenticate as demo role */
+        post: operations["demoLogin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -64,7 +81,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Rotate refresh token and issue a new access token */
+        /** Rotate refresh session */
         post: operations["refreshSession"];
         delete?: never;
         options?: never;
@@ -81,7 +98,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Revoke current refresh-token family */
+        /** Revoke refresh family */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -89,20 +106,268 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get current user */
+        get: operations["getCurrentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List catalog categories */
+        get: operations["listCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search public products */
+        get: operations["listCatalogProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/products/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get public product detail */
+        get: operations["getCatalogProduct"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/store": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get seller store */
+        get: operations["getSellerStore"];
+        put?: never;
+        /** Create seller store */
+        post: operations["createSellerStore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update seller store */
+        patch: operations["updateSellerStore"];
+        trace?: never;
+    };
+    "/seller/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List seller products */
+        get: operations["listSellerProducts"];
+        put?: never;
+        /** Create seller product */
+        post: operations["createSellerProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/products/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update seller product */
+        patch: operations["updateSellerProduct"];
+        trace?: never;
+    };
+    "/seller/products/{productId}/variants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create product variant */
+        post: operations["createProductVariant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/products/{productId}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add product image */
+        post: operations["createProductImage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/products/{productId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish product for review */
+        post: operations["publishSellerProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/variants/{variantId}/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Adjust variant inventory */
+        patch: operations["adjustVariantInventory"];
+        trace?: never;
+    };
+    "/admin/stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List stores for moderation */
+        get: operations["listAdminStores"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/stores/{storeId}/moderation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Moderate store */
+        patch: operations["moderateStore"];
+        trace?: never;
+    };
+    "/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List products for moderation */
+        get: operations["listAdminProducts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{productId}/moderation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Moderate product */
+        patch: operations["moderateProduct"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * @example {
-         *       "status": "ok",
-         *       "dependencies": {
-         *         "postgres": "ok",
-         *         "redis": "ok",
-         *         "rabbitmq": "ok"
-         *       }
-         *     }
-         */
         Health: {
             /** @enum {string} */
             status: "ok" | "degraded";
@@ -110,46 +375,264 @@ export interface components {
                 [key: string]: string;
             };
         };
+        Problem: {
+            /** Format: uri-reference */
+            type: string;
+            title: string;
+            status: number;
+            detail?: string;
+            requestId?: string;
+        };
+        /** @enum {string} */
+        Role: "buyer" | "seller" | "admin";
+        /** @enum {string} */
+        ModerationStatus: "pending" | "approved" | "rejected";
         LoginRequest: {
             /** Format: email */
             email: string;
             /** Format: password */
             password: string;
         };
-        AccessToken: {
+        DemoLoginRequest: {
+            role: components["schemas"]["Role"];
+        };
+        Session: {
             accessToken: string;
             /** @enum {string} */
             tokenType: "Bearer";
-            /**
-             * Format: int32
-             * @description Access-token lifetime in seconds.
-             */
             expiresIn: number;
+            user: components["schemas"]["User"];
         };
-        Problem: {
+        User: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+            role: components["schemas"]["Role"];
+        };
+        StoreInput: {
+            name: string;
+            slug: string;
+            description: string;
+        };
+        Store: components["schemas"]["StoreInput"] & {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sellerId: string;
+            status: components["schemas"]["ModerationStatus"];
+            moderationNote: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Category: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+        };
+        ProductInput: {
+            /** Format: uuid */
+            categoryId: string;
+            name: string;
+            slug: string;
+            description: string;
+        };
+        VariantInput: {
+            sku: string;
+            name: string;
+            attributes: {
+                [key: string]: string;
+            };
+            /** Format: int64 */
+            priceMinor: number;
+            /** @enum {string} */
+            currency: "IDR";
+            stock: number;
+        };
+        Variant: components["schemas"]["VariantInput"] & {
+            /** Format: uuid */
+            id: string;
+            active: boolean;
+        };
+        ImageInput: {
             /** Format: uri-reference */
-            type: string;
-            title: string;
-            /** Format: int32 */
-            status: number;
-            detail?: string;
-            /** Format: uri-reference */
-            instance?: string;
-            requestId?: string;
+            url: string;
+            altText: string;
+            position: number;
+        };
+        ProductImage: components["schemas"]["ImageInput"] & {
+            /** Format: uuid */
+            id: string;
+        };
+        ProductSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            storeName: string;
+            category: components["schemas"]["Category"];
+            /** Format: int64 */
+            minPriceMinor: number;
+            currency: string;
+            inStock: boolean;
+            imageUrl: string;
+        };
+        ProductDetail: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            storeId: string;
+            storeName?: string;
+            category: components["schemas"]["Category"];
+            name: string;
+            slug: string;
+            description: string;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            moderationStatus: components["schemas"]["ModerationStatus"];
+            moderationNote: string;
+            variants: components["schemas"]["Variant"][];
+            images: components["schemas"]["ProductImage"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ProductPage: {
+            items: components["schemas"]["ProductSummary"][];
+            page: number;
+            pageSize: number;
+            total: number;
+        };
+        InventoryAdjustment: {
+            delta: number;
+            reason: string;
+        };
+        ModerationInput: {
+            /** @enum {string} */
+            status: "approved" | "rejected";
+            note: string;
         };
     };
     responses: {
-        /** @description Credentials or session are invalid */
+        BadRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
         Unauthorized: {
             headers: {
                 [name: string]: unknown;
             };
+            content?: never;
+        };
+        Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        NotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        Conflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        TooManyRequests: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        ServiceUnavailable: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        ServiceUnavailableProblem: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        /** @description Invalid request */
+        Problem400: {
+            headers: {
+                [name: string]: unknown;
+            };
             content: {
                 "application/problem+json": components["schemas"]["Problem"];
             };
         };
-        /** @description Contract reserved for identity implementation phase */
-        NotImplemented: {
+        /** @description Invalid credentials or session */
+        Problem401: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Insufficient permission */
+        Problem403: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Resource not found */
+        Problem404: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description State conflict */
+        Problem409: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Authentication attempts exceeded */
+        Problem429: {
+            headers: {
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/problem+json": components["schemas"]["Problem"];
+            };
+        };
+        /** @description Dependency unavailable */
+        Problem503: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Health"];
+            };
+        };
+        /** @description Authentication limiter unavailable */
+        Problem503JSON: {
             headers: {
                 [name: string]: unknown;
             };
@@ -158,7 +641,19 @@ export interface components {
             };
         };
     };
-    parameters: never;
+    parameters: {
+        ProductId: string;
+        VariantId: string;
+        StoreId: string;
+        ProductSlug: string;
+        Search: string;
+        CategoryFilter: string;
+        MinPrice: number;
+        MaxPrice: number;
+        InStock: boolean;
+        Page: number;
+        PageSize: number;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
@@ -174,7 +669,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description API process is alive */
+            /** @description Process alive */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -194,7 +689,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description API and required dependencies are ready */
+            /** @description Dependencies ready */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -203,15 +698,7 @@ export interface operations {
                     "application/json": components["schemas"]["Health"];
                 };
             };
-            /** @description One or more required dependencies are unavailable */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Health"];
-                };
-            };
+            503: components["responses"]["ServiceUnavailable"];
         };
     };
     login: {
@@ -227,18 +714,48 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Authentication succeeded; refresh token is set as a cookie */
+            /** @description Authenticated; refresh cookie set */
             200: {
                 headers: {
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AccessToken"];
+                    "application/json": components["schemas"]["Session"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            501: components["responses"]["NotImplemented"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailableProblem"];
+        };
+    };
+    demoLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DemoLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Authenticated as deterministic demo account */
+            200: {
+                headers: {
+                    "Set-Cookie"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+            503: components["responses"]["ServiceUnavailableProblem"];
         };
     };
     refreshSession: {
@@ -250,18 +767,17 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Session refreshed; rotated refresh token is set as a cookie */
+            /** @description Session rotated */
             200: {
                 headers: {
                     "Set-Cookie"?: string;
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AccessToken"];
+                    "application/json": components["schemas"]["Session"];
                 };
             };
             401: components["responses"]["Unauthorized"];
-            501: components["responses"]["NotImplemented"];
         };
     };
     logout: {
@@ -273,14 +789,461 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Session revoked */
+            /** @description Refresh family revoked */
             204: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            501: components["responses"]["NotImplemented"];
+        };
+    };
+    getCurrentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    listCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Categories */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Category"][];
+                    };
+                };
+            };
+        };
+    };
+    listCatalogProducts: {
+        parameters: {
+            query?: {
+                q?: components["parameters"]["Search"];
+                category?: components["parameters"]["CategoryFilter"];
+                minPrice?: components["parameters"]["MinPrice"];
+                maxPrice?: components["parameters"]["MaxPrice"];
+                inStock?: components["parameters"]["InStock"];
+                page?: components["parameters"]["Page"];
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published approved products */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+        };
+    };
+    getCatalogProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["ProductSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Published approved product detail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getSellerStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Seller store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createSellerStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreInput"];
+            };
+        };
+        responses: {
+            /** @description Store submitted for moderation */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    updateSellerStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoreInput"];
+            };
+        };
+        responses: {
+            /** @description Updated store; material changes return to pending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listSellerProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Products owned by seller store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["ProductDetail"][];
+                    };
+                };
+            };
+        };
+    };
+    createSellerProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductInput"];
+            };
+        };
+        responses: {
+            /** @description Draft product */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateSellerProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductInput"];
+            };
+        };
+        responses: {
+            /** @description Updated draft product */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createProductVariant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VariantInput"];
+            };
+        };
+        responses: {
+            /** @description Product variant */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Variant"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    createProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageInput"];
+            };
+        };
+        responses: {
+            /** @description Product image */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductImage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    publishSellerProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product submitted for moderation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    adjustVariantInventory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantId: components["parameters"]["VariantId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InventoryAdjustment"];
+            };
+        };
+        responses: {
+            /** @description Updated variant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Variant"];
+                };
+            };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listAdminStores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Stores awaiting or having moderation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["Store"][];
+                    };
+                };
+            };
+        };
+    };
+    moderateStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                storeId: components["parameters"]["StoreId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationInput"];
+            };
+        };
+        responses: {
+            /** @description Moderated store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Store"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAdminProducts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Products awaiting or having moderation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["ProductDetail"][];
+                    };
+                };
+            };
+        };
+    };
+    moderateProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ModerationInput"];
+            };
+        };
+        responses: {
+            /** @description Moderated product */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
         };
     };
 }

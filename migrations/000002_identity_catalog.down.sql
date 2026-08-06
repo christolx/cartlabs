@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS inventory_ledger;
+DROP TABLE IF EXISTS product_images;
+DROP TABLE IF EXISTS product_variants;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS stores;
+DROP TABLE IF EXISTS refresh_sessions;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS product_status;
+DROP TYPE IF EXISTS moderation_status;
+DROP TYPE IF EXISTS user_status;
+DROP TYPE IF EXISTS user_role;

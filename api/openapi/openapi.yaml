@@ -1,195 +1,629 @@
 openapi: 3.0.3
 info:
   title: Cartlabs API
-  version: 0.1.0
+  version: 0.2.0
   description: Public REST contract for Cartlabs web and API applications.
 servers:
   - url: /api/v1
-    description: Current host
 tags:
   - name: Health
-    description: Runtime liveness and dependency readiness.
+    description: Runtime health.
   - name: Identity
-    description: User authentication and session lifecycle.
+    description: Authentication and sessions.
+  - name: Stores
+    description: Seller store management.
+  - name: Catalog
+    description: Public marketplace catalog.
+  - name: Seller
+    description: Seller-owned catalog management.
+  - name: Admin
+    description: Marketplace moderation.
+security:
+  - BearerAuth: []
 paths:
   /health/live:
     get:
       operationId: getLiveness
+      summary: Check process liveness
       tags: [Health]
-      summary: Check API process liveness
       security: []
       responses:
         "200":
-          description: API process is alive
+          description: Process alive
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
+              schema: {$ref: "#/components/schemas/Health"}
   /health/ready:
     get:
       operationId: getReadiness
+      summary: Check dependency readiness
       tags: [Health]
-      summary: Check required dependency readiness
       security: []
       responses:
         "200":
-          description: API and required dependencies are ready
+          description: Dependencies ready
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
-        "503":
-          description: One or more required dependencies are unavailable
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Health"
+              schema: {$ref: "#/components/schemas/Health"}
+        "503": {$ref: "#/components/responses/ServiceUnavailable"}
   /auth/login:
     post:
       operationId: login
+      summary: Authenticate with email and password
       tags: [Identity]
-      summary: Authenticate using email and password
       security: []
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/LoginRequest"
+            schema: {$ref: "#/components/schemas/LoginRequest"}
       responses:
         "200":
-          description: Authentication succeeded; refresh token is set as a cookie
+          description: Authenticated; refresh cookie set
           headers:
-            Set-Cookie:
-              schema:
-                type: string
+            Set-Cookie: {schema: {type: string}}
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AccessToken"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "501":
-          $ref: "#/components/responses/NotImplemented"
+              schema: {$ref: "#/components/schemas/Session"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+        "429": {$ref: "#/components/responses/TooManyRequests"}
+        "503": {$ref: "#/components/responses/ServiceUnavailableProblem"}
+  /auth/demo-login:
+    post:
+      operationId: demoLogin
+      summary: Authenticate as demo role
+      tags: [Identity]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/DemoLoginRequest"}
+      responses:
+        "200":
+          description: Authenticated as deterministic demo account
+          headers:
+            Set-Cookie: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "429": {$ref: "#/components/responses/TooManyRequests"}
+        "503": {$ref: "#/components/responses/ServiceUnavailableProblem"}
   /auth/refresh:
     post:
       operationId: refreshSession
+      summary: Rotate refresh session
       tags: [Identity]
-      summary: Rotate refresh token and issue a new access token
       security:
         - RefreshCookie: []
       responses:
         "200":
-          description: Session refreshed; rotated refresh token is set as a cookie
+          description: Session rotated
           headers:
-            Set-Cookie:
-              schema:
-                type: string
+            Set-Cookie: {schema: {type: string}}
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/AccessToken"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "501":
-          $ref: "#/components/responses/NotImplemented"
+              schema: {$ref: "#/components/schemas/Session"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
   /auth/logout:
     post:
       operationId: logout
+      summary: Revoke refresh family
       tags: [Identity]
-      summary: Revoke current refresh-token family
       security:
         - RefreshCookie: []
       responses:
-        "204":
-          description: Session revoked
-        "501":
-          $ref: "#/components/responses/NotImplemented"
+        "204": {description: Refresh family revoked}
+  /me:
+    get:
+      operationId: getCurrentUser
+      summary: Get current user
+      tags: [Identity]
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/User"}
+        "401": {$ref: "#/components/responses/Unauthorized"}
+  /categories:
+    get:
+      operationId: listCategories
+      summary: List catalog categories
+      tags: [Catalog]
+      security: []
+      responses:
+        "200":
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/Category"}}
+  /catalog/products:
+    get:
+      operationId: listCatalogProducts
+      summary: Search public products
+      tags: [Catalog]
+      security: []
+      parameters:
+        - {$ref: "#/components/parameters/Search"}
+        - {$ref: "#/components/parameters/CategoryFilter"}
+        - {$ref: "#/components/parameters/MinPrice"}
+        - {$ref: "#/components/parameters/MaxPrice"}
+        - {$ref: "#/components/parameters/InStock"}
+        - {$ref: "#/components/parameters/Page"}
+        - {$ref: "#/components/parameters/PageSize"}
+      responses:
+        "200":
+          description: Published approved products
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductPage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+  /catalog/products/{slug}:
+    get:
+      operationId: getCatalogProduct
+      summary: Get public product detail
+      tags: [Catalog]
+      security: []
+      parameters:
+        - {$ref: "#/components/parameters/ProductSlug"}
+      responses:
+        "200":
+          description: Published approved product detail
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /seller/store:
+    get:
+      operationId: getSellerStore
+      summary: Get seller store
+      tags: [Stores]
+      responses:
+        "200":
+          description: Seller store
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Store"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    post:
+      operationId: createSellerStore
+      summary: Create seller store
+      tags: [Stores]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/StoreInput"}
+      responses:
+        "201":
+          description: Store submitted for moderation
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Store"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "409": {$ref: "#/components/responses/Conflict"}
+    patch:
+      operationId: updateSellerStore
+      summary: Update seller store
+      tags: [Stores]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/StoreInput"}
+      responses:
+        "200":
+          description: Updated store; material changes return to pending
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Store"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /seller/products:
+    get:
+      operationId: listSellerProducts
+      summary: List seller products
+      tags: [Seller]
+      responses:
+        "200":
+          description: Products owned by seller store
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/ProductDetail"}}
+    post:
+      operationId: createSellerProduct
+      summary: Create seller product
+      tags: [Seller]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ProductInput"}
+      responses:
+        "201":
+          description: Draft product
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /seller/products/{productId}:
+    patch:
+      operationId: updateSellerProduct
+      summary: Update seller product
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ProductInput"}
+      responses:
+        "200":
+          description: Updated draft product
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /seller/products/{productId}/variants:
+    post:
+      operationId: createProductVariant
+      summary: Create product variant
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/VariantInput"}
+      responses:
+        "201":
+          description: Product variant
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Variant"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /seller/products/{productId}/images:
+    post:
+      operationId: createProductImage
+      summary: Add product image
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ImageInput"}
+      responses:
+        "201":
+          description: Product image
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductImage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /seller/products/{productId}/publish:
+    post:
+      operationId: publishSellerProduct
+      summary: Publish product for review
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      responses:
+        "200":
+          description: Product submitted for moderation
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /seller/variants/{variantId}/inventory:
+    patch:
+      operationId: adjustVariantInventory
+      summary: Adjust variant inventory
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/VariantId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/InventoryAdjustment"}
+      responses:
+        "200":
+          description: Updated variant
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Variant"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /admin/stores:
+    get:
+      operationId: listAdminStores
+      summary: List stores for moderation
+      tags: [Admin]
+      responses:
+        "200":
+          description: Stores awaiting or having moderation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/Store"}}
+  /admin/stores/{storeId}/moderation:
+    patch:
+      operationId: moderateStore
+      summary: Moderate store
+      tags: [Admin]
+      parameters:
+        - {$ref: "#/components/parameters/StoreId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ModerationInput"}
+      responses:
+        "200":
+          description: Moderated store
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Store"}
+        "404": {$ref: "#/components/responses/NotFound"}
+  /admin/products:
+    get:
+      operationId: listAdminProducts
+      summary: List products for moderation
+      tags: [Admin]
+      responses:
+        "200":
+          description: Products awaiting or having moderation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/ProductDetail"}}
+  /admin/products/{productId}/moderation:
+    patch:
+      operationId: moderateProduct
+      summary: Moderate product
+      tags: [Admin]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ModerationInput"}
+      responses:
+        "200":
+          description: Moderated product
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "404": {$ref: "#/components/responses/NotFound"}
 components:
   securitySchemes:
+    BearerAuth: {type: http, scheme: bearer, bearerFormat: JWT}
     RefreshCookie:
       type: apiKey
       in: cookie
       name: __Host-cartlabs_refresh
+      description: Production Secure cookie with Path=/. Local HTTP uses cartlabs_refresh scoped to authentication routes.
+  parameters:
+    ProductId: {name: productId, in: path, required: true, schema: {type: string, format: uuid}}
+    VariantId: {name: variantId, in: path, required: true, schema: {type: string, format: uuid}}
+    StoreId: {name: storeId, in: path, required: true, schema: {type: string, format: uuid}}
+    ProductSlug: {name: slug, in: path, required: true, schema: {type: string}}
+    Search: {name: q, in: query, schema: {type: string, maxLength: 100}}
+    CategoryFilter: {name: category, in: query, schema: {type: string}}
+    MinPrice: {name: minPrice, in: query, schema: {type: integer, format: int64, minimum: 0}}
+    MaxPrice: {name: maxPrice, in: query, schema: {type: integer, format: int64, minimum: 0}}
+    InStock: {name: inStock, in: query, schema: {type: boolean}}
+    Page: {name: page, in: query, schema: {type: integer, minimum: 1, default: 1}}
+    PageSize: {name: pageSize, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
   responses:
-    Unauthorized:
-      description: Credentials or session are invalid
-      content:
-        application/problem+json:
-          schema:
-            $ref: "#/components/schemas/Problem"
-    NotImplemented:
-      description: Contract reserved for identity implementation phase
-      content:
-        application/problem+json:
-          schema:
-            $ref: "#/components/schemas/Problem"
+    BadRequest: {$ref: "#/components/responses/Problem400"}
+    Unauthorized: {$ref: "#/components/responses/Problem401"}
+    Forbidden: {$ref: "#/components/responses/Problem403"}
+    NotFound: {$ref: "#/components/responses/Problem404"}
+    Conflict: {$ref: "#/components/responses/Problem409"}
+    TooManyRequests: {$ref: "#/components/responses/Problem429"}
+    ServiceUnavailable: {$ref: "#/components/responses/Problem503"}
+    ServiceUnavailableProblem: {$ref: "#/components/responses/Problem503JSON"}
+    Problem400: {description: Invalid request, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
+    Problem401: {description: Invalid credentials or session, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
+    Problem403: {description: Insufficient permission, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
+    Problem404: {description: Resource not found, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
+    Problem409: {description: State conflict, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
+    Problem429: {description: Authentication attempts exceeded, headers: {Retry-After: {schema: {type: integer}}}, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
+    Problem503: {description: Dependency unavailable, content: {application/json: {schema: {$ref: "#/components/schemas/Health"}}}}
+    Problem503JSON: {description: Authentication limiter unavailable, content: {application/problem+json: {schema: {$ref: "#/components/schemas/Problem"}}}}
   schemas:
     Health:
       type: object
       required: [status]
       properties:
-        status:
-          type: string
-          enum: [ok, degraded]
-        dependencies:
-          type: object
-          additionalProperties:
-            type: string
-      example:
-        status: ok
-        dependencies:
-          postgres: ok
-          redis: ok
-          rabbitmq: ok
-    LoginRequest:
-      type: object
-      additionalProperties: false
-      required: [email, password]
-      properties:
-        email:
-          type: string
-          format: email
-          maxLength: 254
-        password:
-          type: string
-          format: password
-          minLength: 8
-          maxLength: 128
-    AccessToken:
-      type: object
-      additionalProperties: false
-      required: [accessToken, tokenType, expiresIn]
-      properties:
-        accessToken:
-          type: string
-        tokenType:
-          type: string
-          enum: [Bearer]
-        expiresIn:
-          type: integer
-          format: int32
-          minimum: 1
-          description: Access-token lifetime in seconds.
+        status: {type: string, enum: [ok, degraded]}
+        dependencies: {type: object, additionalProperties: {type: string}}
     Problem:
       type: object
       additionalProperties: false
       required: [type, title, status]
       properties:
-        type:
-          type: string
-          format: uri-reference
-        title:
-          type: string
-        status:
-          type: integer
-          format: int32
-          minimum: 400
-          maximum: 599
-        detail:
-          type: string
-        instance:
-          type: string
-          format: uri-reference
-        requestId:
-          type: string
+        type: {type: string, format: uri-reference}
+        title: {type: string}
+        status: {type: integer, minimum: 400, maximum: 599}
+        detail: {type: string}
+        requestId: {type: string}
+    Role: {type: string, enum: [buyer, seller, admin]}
+    ModerationStatus: {type: string, enum: [pending, approved, rejected]}
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: {type: string, format: email, maxLength: 254}
+        password: {type: string, format: password, minLength: 8, maxLength: 128}
+    DemoLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [role]
+      properties:
+        role: {$ref: "#/components/schemas/Role"}
+    Session:
+      type: object
+      required: [accessToken, tokenType, expiresIn, user]
+      properties:
+        accessToken: {type: string}
+        tokenType: {type: string, enum: [Bearer]}
+        expiresIn: {type: integer, minimum: 1}
+        user: {$ref: "#/components/schemas/User"}
+    User:
+      type: object
+      required: [id, email, displayName, role]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        displayName: {type: string}
+        role: {$ref: "#/components/schemas/Role"}
+    StoreInput:
+      type: object
+      additionalProperties: false
+      required: [name, slug, description]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 100}
+        slug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        description: {type: string, maxLength: 1000}
+    Store:
+      allOf:
+        - {$ref: "#/components/schemas/StoreInput"}
+        - type: object
+          required: [id, sellerId, status, moderationNote, createdAt, updatedAt]
+          properties:
+            id: {type: string, format: uuid}
+            sellerId: {type: string, format: uuid}
+            status: {$ref: "#/components/schemas/ModerationStatus"}
+            moderationNote: {type: string}
+            createdAt: {type: string, format: date-time}
+            updatedAt: {type: string, format: date-time}
+    Category:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        slug: {type: string}
+    ProductInput:
+      type: object
+      additionalProperties: false
+      required: [categoryId, name, slug, description]
+      properties:
+        categoryId: {type: string, format: uuid}
+        name: {type: string, minLength: 2, maxLength: 160}
+        slug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        description: {type: string, maxLength: 5000}
+    VariantInput:
+      type: object
+      additionalProperties: false
+      required: [sku, name, attributes, priceMinor, currency, stock]
+      properties:
+        sku: {type: string, minLength: 2, maxLength: 64}
+        name: {type: string, minLength: 1, maxLength: 120}
+        attributes: {type: object, additionalProperties: {type: string}}
+        priceMinor: {type: integer, format: int64, minimum: 0}
+        currency: {type: string, enum: [IDR]}
+        stock: {type: integer, minimum: 0}
+    Variant:
+      allOf:
+        - {$ref: "#/components/schemas/VariantInput"}
+        - type: object
+          required: [id, active]
+          properties:
+            id: {type: string, format: uuid}
+            active: {type: boolean}
+    ImageInput:
+      type: object
+      additionalProperties: false
+      required: [url, altText, position]
+      properties:
+        url: {type: string, format: uri-reference, pattern: '^(https?://|/[^/])'}
+        altText: {type: string, maxLength: 160}
+        position: {type: integer, minimum: 0}
+    ProductImage:
+      allOf:
+        - {$ref: "#/components/schemas/ImageInput"}
+        - type: object
+          required: [id]
+          properties:
+            id: {type: string, format: uuid}
+    ProductSummary:
+      type: object
+      required: [id, name, slug, storeName, category, minPriceMinor, currency, inStock, imageUrl]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        slug: {type: string}
+        storeName: {type: string}
+        category: {$ref: "#/components/schemas/Category"}
+        minPriceMinor: {type: integer, format: int64}
+        currency: {type: string}
+        inStock: {type: boolean}
+        imageUrl: {type: string}
+    ProductDetail:
+      type: object
+      required: [id, storeId, category, name, slug, description, status, moderationStatus, moderationNote, variants, images, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        storeId: {type: string, format: uuid}
+        storeName: {type: string}
+        category: {$ref: "#/components/schemas/Category"}
+        name: {type: string}
+        slug: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [draft, published, archived]}
+        moderationStatus: {$ref: "#/components/schemas/ModerationStatus"}
+        moderationNote: {type: string}
+        variants: {type: array, items: {$ref: "#/components/schemas/Variant"}}
+        images: {type: array, items: {$ref: "#/components/schemas/ProductImage"}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    ProductPage:
+      type: object
+      required: [items, page, pageSize, total]
+      properties:
+        items: {type: array, items: {$ref: "#/components/schemas/ProductSummary"}}
+        page: {type: integer}
+        pageSize: {type: integer}
+        total: {type: integer}
+    InventoryAdjustment:
+      type: object
+      additionalProperties: false
+      required: [delta, reason]
+      properties:
+        delta: {type: integer, not: {enum: [0]}}
+        reason: {type: string, minLength: 1, maxLength: 200}
+    ModerationInput:
+      type: object
+      additionalProperties: false
+      required: [status, note]
+      properties:
+        status: {type: string, enum: [approved, rejected]}
+        note: {type: string, maxLength: 500}
