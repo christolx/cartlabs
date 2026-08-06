@@ -66,7 +66,7 @@ Release tags add semantic-version tags. Avoid mutable `latest` in deployments.
 - **Unit:** domain state transitions and pure business rules
 - **Integration:** PostgreSQL repositories, Redis, RabbitMQ, and payment webhooks
 - **Contract:** OpenAPI request/response behavior and event schemas
-- **End-to-end:** buyer checkout, seller fulfillment, admin moderation
+- **End-to-end:** Hurl API vertical slices; Playwright buyer, seller, and admin journeys
 - **Security:** authorization matrix, webhook replay, rate limits, dependency scan
 - **Resilience:** duplicate events, worker restart, dependency outage, retry behavior
 
@@ -81,6 +81,8 @@ deterministic end-to-end suite for CI speed.
 - Example environment file contains no secrets.
 - Makefile or task runner exposes consistent commands for lint, test, seed, reset,
   generate, and run.
+- `make e2e-api` runs native Hurl workflows against a running local API. Override
+  `E2E_API_URL` when targeting another environment.
 
 ## Security Baseline
 
@@ -97,5 +99,5 @@ deterministic end-to-end suite for CI speed.
 - S3-compatible object storage such as MinIO for local product media
 - OpenTelemetry Collector, Prometheus, Grafana, and optionally Loki/Tempo
 - Trivy for images and IaC; Dependabot or Renovate for dependencies
-- Playwright for browser flows
+- Hurl for black-box API slice workflows; Playwright for browser flows
 - `golangci-lint`, TypeScript ESLint, and OpenAPI linting
