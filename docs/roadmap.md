@@ -5,6 +5,8 @@ evidence from earlier work.
 
 ## 0 — Foundations
 
+**Status:** Complete
+
 - Repository layout and developer commands
 - Compose stack with PostgreSQL, Redis, and RabbitMQ
 - CI lint, test, and build path
@@ -15,6 +17,8 @@ evidence from earlier work.
 
 ## 1 — Identity and Catalog
 
+**Status:** Complete
+
 - Authentication, refresh rotation, RBAC, and demo login
 - Seller store management
 - Products, variants, categories, images, and inventory
@@ -23,6 +27,8 @@ evidence from earlier work.
 **Exit:** seller publishes stock; buyer discovers it; admin can moderate it.
 
 ## 2 — Purchase Vertical Slice
+
+**Status:** Next
 
 - Multi-seller cart
 - Checkout totals and inventory reservation

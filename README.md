@@ -31,3 +31,17 @@ make reset
 
 Planning lives in [`docs/`](./docs/README.md). REST contract lives in
 [`api/openapi/openapi.yaml`](./api/openapi/openapi.yaml).
+
+## Demo accounts
+
+Set `DEMO_MODE=true` to enable role quick-login. Deterministic local/demo
+credentials use password `demo-pass-123`:
+
+| Role | Email |
+| --- | --- |
+| Buyer | `buyer@demo.cartlabs.local` |
+| Seller | `seller@demo.cartlabs.local` |
+| Admin | `admin@demo.cartlabs.local` |
+
+Quick-login remains disabled by default and cannot be enabled with production's
+local fallback token secret.
