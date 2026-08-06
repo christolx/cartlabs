@@ -13,14 +13,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cartlabs",
-  description: "Multi-vendor marketplace engineering project",
+  title: { default: "Cartlabs Market", template: "%s | Cartlabs" },
+  description: "Verified independent stores, live SKU inventory, and a tested multi-vendor marketplace.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="id"
+      data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
