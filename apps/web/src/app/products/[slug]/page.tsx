@@ -4,6 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { APIError, apiGet, formatMoney, type ProductDetail } from "@/lib/api/client";
+import type { components } from "@/lib/api/schema";
+
+type ReviewSummary = components["schemas"]["ReviewSummary"];
 
 export async function generateMetadata({ params }: PageProps<"/products/[slug]">): Promise<Metadata> {
   const { slug } = await params;
@@ -16,8 +19,12 @@ export async function generateMetadata({ params }: PageProps<"/products/[slug]">
 export default async function ProductPage({ params }: PageProps<"/products/[slug]">) {
   const { slug } = await params;
   let product: ProductDetail;
+  let reviews: ReviewSummary;
   try {
-    product = await apiGet<ProductDetail>(`/catalog/products/${encodeURIComponent(slug)}`);
+    [product, reviews] = await Promise.all([
+      apiGet<ProductDetail>(`/catalog/products/${encodeURIComponent(slug)}`),
+      apiGet<ReviewSummary>(`/catalog/products/${encodeURIComponent(slug)}/reviews`),
+    ]);
   } catch (error) {
     if (error instanceof APIError && error.status === 404) notFound();
     throw error;
@@ -49,9 +56,35 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
                 </div>
               ))}
             </div>
-            <p className="purchase-note">Checkout arrives in Milestone 2. Catalog stock shown live.</p>
+            <p className="purchase-note">Catalog stock shown live. Checkout available in role demo.</p>
           </div>
         </article>
+        <section className="review-section" aria-labelledby="reviews-heading">
+          <div className="review-heading">
+            <div>
+              <p className="eyebrow">Verified purchases</p>
+              <h2 id="reviews-heading">Buyer reviews</h2>
+            </div>
+            <div className="review-score" role="group" aria-label={`${reviews.average.toFixed(1)} out of 5 from ${reviews.count} reviews`}>
+              <strong>{reviews.count ? reviews.average.toFixed(1) : "—"}</strong>
+              <span>{reviews.count} {reviews.count === 1 ? "review" : "reviews"}</span>
+            </div>
+          </div>
+          {reviews.items.length ? (
+            <div className="public-review-list">
+              {reviews.items.map((review) => (
+                <article key={review.id}>
+                  <div className="public-review-meta">
+                    <strong>{review.title}</strong>
+                    <span>{review.rating} / 5</span>
+                  </div>
+                  <p>{review.body}</p>
+                  <footer><span>{review.buyerName}</span><span>Verified purchase</span><time dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString("id-ID")}</time></footer>
+                </article>
+              ))}
+            </div>
+          ) : <p className="empty-copy">No verified reviews yet.</p>}
+        </section>
       </main>
     </>
   );

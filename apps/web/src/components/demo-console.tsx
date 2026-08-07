@@ -14,6 +14,9 @@ type Cart = components["schemas"]["Cart"];
 type Purchase = components["schemas"]["Purchase"];
 type SellerOrder = components["schemas"]["SellerOrder"];
 type Notification = components["schemas"]["Notification"];
+type AdminOverview = components["schemas"]["AdminOverview"];
+type AuditEvent = components["schemas"]["AuditEvent"];
+type Review = components["schemas"]["Review"];
 
 const DEMO_PRODUCT_IMAGE_URL = "/images/shared-product.webp";
 
@@ -26,6 +29,8 @@ type Workspace = {
   purchases?: Purchase[];
   orders?: SellerOrder[];
   notifications?: Notification[];
+  overview?: AdminOverview;
+  auditEvents?: AuditEvent[];
 };
 
 async function request<T>(path: string, token: string, init?: RequestInit): Promise<T> {
@@ -78,11 +83,13 @@ export function DemoConsole() {
       return;
     }
     if (current.user.role === "admin") {
-      const [stores, products] = await Promise.all([
+      const [stores, products, overview, auditEvents] = await Promise.all([
         request<{ items: Store[] }>("/admin/stores", token),
         request<{ items: Product[] }>("/admin/products", token),
+        request<AdminOverview>("/admin/overview", token),
+        request<{ items: AuditEvent[] }>("/admin/audit-events", token),
       ]);
-      setWorkspace({ stores: stores.items, products: products.items, categories: [] });
+      setWorkspace({ stores: stores.items, products: products.items, categories: [], overview, auditEvents: auditEvents.items });
       return;
     }
 
@@ -242,6 +249,41 @@ export function DemoConsole() {
     }, "Payment simulation failed");
   }
 
+  async function cancelPurchase(purchaseId: string) {
+    if (!session) return;
+    await runAction(async () => {
+      const purchase = await request<Purchase>(`/purchases/${purchaseId}/cancel`, session.accessToken, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Cancelled from buyer demo" }),
+      });
+      await loadWorkspace(session);
+      setMessage(`Purchase ${purchase.reference} cancelled and inventory restored.`);
+    }, "Purchase cancellation failed");
+  }
+
+  async function createReview(purchaseItemId: string, productName: string) {
+    if (!session) return;
+    await runAction(async () => {
+      await request<Review>("/reviews", session.accessToken, {
+        method: "POST",
+        body: JSON.stringify({ purchaseItemId, rating: 5, title: "Verified delivery", body: `${productName} arrived as expected.` }),
+      });
+      setMessage(`Review published for ${productName}.`);
+    }, "Review creation failed");
+  }
+
+  async function updateSellerOrder(orderId: string, status: "processing" | "shipped" | "delivered" | "cancelled") {
+    if (!session) return;
+    await runAction(async () => {
+      await request<SellerOrder>(`/seller/orders/${orderId}/status`, session.accessToken, {
+        method: "PATCH",
+        body: JSON.stringify({ status, reason: status === "cancelled" ? "Cancelled from seller demo" : "" }),
+      });
+      await loadWorkspace(session);
+      setMessage(`Seller order moved to ${status}.`);
+    }, "Fulfillment update failed");
+  }
+
   return (
     <div className="demo-console">
       <div className="console-toolbar">
@@ -271,6 +313,8 @@ export function DemoConsole() {
           setCartQuantity={setCartQuantity}
           checkout={checkout}
           completePayment={completePayment}
+          cancelPurchase={cancelPurchase}
+          createReview={createReview}
         />
       )}
 
@@ -326,7 +370,7 @@ export function DemoConsole() {
           <section className="workspace-panel workspace-wide">
             <p className="panel-kicker">Fulfillment</p>
             <h2>Seller orders</h2>
-            <SellerOrderRows orders={workspace.orders ?? []} />
+            <SellerOrderRows orders={workspace.orders ?? []} busy={busy} updateOrder={updateSellerOrder} />
           </section>
           <section className="workspace-panel workspace-wide">
             <p className="panel-kicker">Events</p>
@@ -338,6 +382,11 @@ export function DemoConsole() {
 
       {session?.user.role === "admin" && (
         <div className="workspace-grid">
+          <section className="workspace-panel workspace-wide">
+            <p className="panel-kicker">Live totals</p>
+            <h2>Marketplace overview</h2>
+            <OverviewGrid overview={workspace.overview} />
+          </section>
           <section className="workspace-panel">
             <p className="panel-kicker">Review queue</p>
             <h2>Store moderation</h2>
@@ -347,6 +396,11 @@ export function DemoConsole() {
             <p className="panel-kicker">Review queue</p>
             <h2>Product moderation</h2>
             <ModerationRows items={workspace.products} kind="products" busy={busy} moderate={moderate} />
+          </section>
+          <section className="workspace-panel workspace-wide">
+            <p className="panel-kicker">Immutable activity</p>
+            <h2>Audit trail</h2>
+            <AuditRows events={workspace.auditEvents ?? []} />
           </section>
         </div>
       )}
@@ -360,12 +414,16 @@ function BuyerWorkspace({
   setCartQuantity,
   checkout,
   completePayment,
+  cancelPurchase,
+  createReview,
 }: {
   workspace: Workspace;
   busy: boolean;
   setCartQuantity: (variantId: string, quantity: number) => void;
   checkout: () => void;
   completePayment: (purchaseId: string, outcome: "succeeded" | "failed") => void;
+  cancelPurchase: (purchaseId: string) => void;
+  createReview: (purchaseItemId: string, productName: string) => void;
 }) {
   const cartQuantities = new Map(
     workspace.cart?.stores.flatMap((store) => store.items.map((item) => [item.variantId, item.quantity] as const)),
@@ -440,7 +498,7 @@ function BuyerWorkspace({
       <section className="workspace-panel">
         <p className="panel-kicker">Immutable snapshots</p>
         <h2>Purchases</h2>
-        <PurchaseRows purchases={workspace.purchases ?? []} busy={busy} completePayment={completePayment} />
+        <PurchaseRows purchases={workspace.purchases ?? []} busy={busy} completePayment={completePayment} cancelPurchase={cancelPurchase} createReview={createReview} />
       </section>
 
       <section className="workspace-panel">
@@ -494,10 +552,14 @@ function PurchaseRows({
   purchases,
   busy,
   completePayment,
+  cancelPurchase,
+  createReview,
 }: {
   purchases: Purchase[];
   busy: boolean;
   completePayment: (purchaseId: string, outcome: "succeeded" | "failed") => void;
+  cancelPurchase: (purchaseId: string) => void;
+  createReview: (purchaseItemId: string, productName: string) => void;
 }) {
   if (!purchases.length) return <p className="empty-copy">No purchases yet.</p>;
   return (
@@ -519,6 +581,12 @@ function PurchaseRows({
               <button className="quiet-button danger-button" disabled={busy} onClick={() => completePayment(purchase.id, "failed")}>Simulate failure</button>
             </div>
           )}
+          {(purchase.status === "pending_payment" || purchase.status === "paid") && purchase.sellerOrders.every((order) => order.status === "pending_payment" || order.status === "paid") && (
+            <button className="quiet-button danger-button purchase-cancel" disabled={busy} onClick={() => cancelPurchase(purchase.id)}>Cancel purchase</button>
+          )}
+          {purchase.sellerOrders.filter((order) => order.status === "delivered").flatMap((order) => order.items).map((item) => (
+            <button className="quiet-button review-button" key={item.id} disabled={busy} onClick={() => createReview(item.id, item.productName)}>Review {item.productName}</button>
+          ))}
         </article>
       ))}
     </div>
@@ -543,7 +611,7 @@ function ProductRows({ products }: { products: Product[] }) {
   );
 }
 
-function SellerOrderRows({ orders, compact = false }: { orders: SellerOrder[]; compact?: boolean }) {
+function SellerOrderRows({ orders, compact = false, busy = false, updateOrder }: { orders: SellerOrder[]; compact?: boolean; busy?: boolean; updateOrder?: (orderId: string, status: "processing" | "shipped" | "delivered" | "cancelled") => void }) {
   if (!orders.length) return <p className="empty-copy">No seller orders yet.</p>;
   return (
     <div className={compact ? "seller-order-list compact-orders" : "seller-order-list"}>
@@ -557,10 +625,36 @@ function SellerOrderRows({ orders, compact = false }: { orders: SellerOrder[]; c
             <strong>{formatMoney(order.subtotalMinor, order.currency)}</strong>
             <span data-status={order.status}>{order.status.replaceAll("_", " ")}</span>
           </div>
+          {updateOrder && <FulfillmentActions order={order} busy={busy} updateOrder={updateOrder} />}
         </div>
       ))}
     </div>
   );
+}
+
+function FulfillmentActions({ order, busy, updateOrder }: { order: SellerOrder; busy: boolean; updateOrder: (orderId: string, status: "processing" | "shipped" | "delivered" | "cancelled") => void }) {
+  const next = order.status === "paid" ? "processing" : order.status === "processing" ? "shipped" : order.status === "shipped" ? "delivered" : null;
+  if (!next && order.status !== "paid" && order.status !== "processing") return null;
+  return (
+    <div className="fulfillment-actions">
+      {next && <button className="quiet-button" disabled={busy} onClick={() => updateOrder(order.id, next)}>Mark {next}</button>}
+      {(order.status === "paid" || order.status === "processing") && <button className="quiet-button danger-button" disabled={busy} onClick={() => updateOrder(order.id, "cancelled")}>Cancel</button>}
+    </div>
+  );
+}
+
+function OverviewGrid({ overview }: { overview?: AdminOverview }) {
+  if (!overview) return <p className="empty-copy">Overview unavailable.</p>;
+  const values = [
+    ["Users", overview.users], ["Approved stores", overview.approvedStores], ["Published products", overview.publishedProducts],
+    ["Purchases", overview.purchases], ["Active orders", overview.activeSellerOrders], ["Delivered", overview.deliveredOrders],
+  ] as const;
+  return <div className="overview-grid">{values.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}<div className="overview-gmv"><span>Active GMV</span><strong>{formatMoney(overview.grossMerchandiseMinor, overview.currency)}</strong></div></div>;
+}
+
+function AuditRows({ events }: { events: AuditEvent[] }) {
+  if (!events.length) return <p className="empty-copy">No audited activity yet.</p>;
+  return <div className="audit-list">{events.map((event) => <div key={event.id}><div><strong>{event.action.replaceAll(".", " / ")}</strong><span>{event.actorName || event.actorRole}</span></div><time dateTime={event.createdAt}>{new Date(event.createdAt).toLocaleString("id-ID")}</time></div>)}</div>;
 }
 
 function NotificationRows({ notifications }: { notifications: Notification[] }) {
