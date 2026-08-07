@@ -17,6 +17,45 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AdminOverviewCurrency.
+const (
+	AdminOverviewCurrencyIDR AdminOverviewCurrency = "IDR"
+)
+
+// Valid indicates whether the value is a known member of the AdminOverviewCurrency enum.
+func (e AdminOverviewCurrency) Valid() bool {
+	switch e {
+	case AdminOverviewCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for AuditEventActorRole.
+const (
+	AuditEventActorRoleAdmin  AuditEventActorRole = "admin"
+	AuditEventActorRoleBuyer  AuditEventActorRole = "buyer"
+	AuditEventActorRoleSeller AuditEventActorRole = "seller"
+	AuditEventActorRoleSystem AuditEventActorRole = "system"
+)
+
+// Valid indicates whether the value is a known member of the AuditEventActorRole enum.
+func (e AuditEventActorRole) Valid() bool {
+	switch e {
+	case AuditEventActorRoleAdmin:
+		return true
+	case AuditEventActorRoleBuyer:
+		return true
+	case AuditEventActorRoleSeller:
+		return true
+	case AuditEventActorRoleSystem:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CartCurrency.
 const (
 	CartCurrencyIDR CartCurrency = "IDR"
@@ -41,6 +80,30 @@ const (
 func (e CartItemCurrency) Valid() bool {
 	switch e {
 	case CartItemCurrencyIDR:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for FulfillmentInputStatus.
+const (
+	FulfillmentInputStatusCancelled  FulfillmentInputStatus = "cancelled"
+	FulfillmentInputStatusDelivered  FulfillmentInputStatus = "delivered"
+	FulfillmentInputStatusProcessing FulfillmentInputStatus = "processing"
+	FulfillmentInputStatusShipped    FulfillmentInputStatus = "shipped"
+)
+
+// Valid indicates whether the value is a known member of the FulfillmentInputStatus enum.
+func (e FulfillmentInputStatus) Valid() bool {
+	switch e {
+	case FulfillmentInputStatusCancelled:
+		return true
+	case FulfillmentInputStatusDelivered:
+		return true
+	case FulfillmentInputStatusProcessing:
+		return true
+	case FulfillmentInputStatusShipped:
 		return true
 	default:
 		return false
@@ -124,6 +187,7 @@ func (e PaymentCompletionInputOutcome) Valid() bool {
 
 // Defines values for PaymentStatus.
 const (
+	PaymentStatusCancelled PaymentStatus = "cancelled"
 	PaymentStatusExpired   PaymentStatus = "expired"
 	PaymentStatusFailed    PaymentStatus = "failed"
 	PaymentStatusPending   PaymentStatus = "pending"
@@ -133,6 +197,8 @@ const (
 // Valid indicates whether the value is a known member of the PaymentStatus enum.
 func (e PaymentStatus) Valid() bool {
 	switch e {
+	case PaymentStatusCancelled:
+		return true
 	case PaymentStatusExpired:
 		return true
 	case PaymentStatusFailed:
@@ -232,6 +298,7 @@ func (e PurchaseItemCurrency) Valid() bool {
 
 // Defines values for PurchaseStatus.
 const (
+	PurchaseStatusCancelled      PurchaseStatus = "cancelled"
 	PurchaseStatusExpired        PurchaseStatus = "expired"
 	PurchaseStatusPaid           PurchaseStatus = "paid"
 	PurchaseStatusPaymentFailed  PurchaseStatus = "payment_failed"
@@ -241,6 +308,8 @@ const (
 // Valid indicates whether the value is a known member of the PurchaseStatus enum.
 func (e PurchaseStatus) Valid() bool {
 	switch e {
+	case PurchaseStatusCancelled:
+		return true
 	case PurchaseStatusExpired:
 		return true
 	case PurchaseStatusPaid:
@@ -256,19 +325,19 @@ func (e PurchaseStatus) Valid() bool {
 
 // Defines values for Role.
 const (
-	Admin  Role = "admin"
-	Buyer  Role = "buyer"
-	Seller Role = "seller"
+	RoleAdmin  Role = "admin"
+	RoleBuyer  Role = "buyer"
+	RoleSeller Role = "seller"
 )
 
 // Valid indicates whether the value is a known member of the Role enum.
 func (e Role) Valid() bool {
 	switch e {
-	case Admin:
+	case RoleAdmin:
 		return true
-	case Buyer:
+	case RoleBuyer:
 		return true
-	case Seller:
+	case RoleSeller:
 		return true
 	default:
 		return false
@@ -293,8 +362,11 @@ func (e SellerOrderCurrency) Valid() bool {
 // Defines values for SellerOrderStatus.
 const (
 	SellerOrderStatusCancelled      SellerOrderStatus = "cancelled"
+	SellerOrderStatusDelivered      SellerOrderStatus = "delivered"
 	SellerOrderStatusPaid           SellerOrderStatus = "paid"
 	SellerOrderStatusPendingPayment SellerOrderStatus = "pending_payment"
+	SellerOrderStatusProcessing     SellerOrderStatus = "processing"
+	SellerOrderStatusShipped        SellerOrderStatus = "shipped"
 )
 
 // Valid indicates whether the value is a known member of the SellerOrderStatus enum.
@@ -302,9 +374,15 @@ func (e SellerOrderStatus) Valid() bool {
 	switch e {
 	case SellerOrderStatusCancelled:
 		return true
+	case SellerOrderStatusDelivered:
+		return true
 	case SellerOrderStatusPaid:
 		return true
 	case SellerOrderStatusPendingPayment:
+		return true
+	case SellerOrderStatusProcessing:
+		return true
+	case SellerOrderStatusShipped:
 		return true
 	default:
 		return false
@@ -354,6 +432,42 @@ func (e VariantInputCurrency) Valid() bool {
 	default:
 		return false
 	}
+}
+
+// AdminOverview defines model for AdminOverview.
+type AdminOverview struct {
+	ActiveSellerOrders    int64                 `json:"activeSellerOrders"`
+	ApprovedStores        int64                 `json:"approvedStores"`
+	Currency              AdminOverviewCurrency `json:"currency"`
+	DeliveredOrders       int64                 `json:"deliveredOrders"`
+	GrossMerchandiseMinor int64                 `json:"grossMerchandiseMinor"`
+	PublishedProducts     int64                 `json:"publishedProducts"`
+	Purchases             int64                 `json:"purchases"`
+	Users                 int64                 `json:"users"`
+}
+
+// AdminOverviewCurrency defines model for AdminOverview.Currency.
+type AdminOverviewCurrency string
+
+// AuditEvent defines model for AuditEvent.
+type AuditEvent struct {
+	Action       string                 `json:"action"`
+	ActorId      *openapi_types.UUID    `json:"actorId,omitempty"`
+	ActorName    *string                `json:"actorName,omitempty"`
+	ActorRole    AuditEventActorRole    `json:"actorRole"`
+	CreatedAt    time.Time              `json:"createdAt"`
+	Data         map[string]interface{} `json:"data"`
+	Id           openapi_types.UUID     `json:"id"`
+	ResourceId   openapi_types.UUID     `json:"resourceId"`
+	ResourceType string                 `json:"resourceType"`
+}
+
+// AuditEventActorRole defines model for AuditEvent.ActorRole.
+type AuditEventActorRole string
+
+// CancellationInput defines model for CancellationInput.
+type CancellationInput struct {
+	Reason string `json:"reason"`
 }
 
 // Cart defines model for Cart.
@@ -412,6 +526,15 @@ type Category struct {
 type DemoLoginRequest struct {
 	Role Role `json:"role"`
 }
+
+// FulfillmentInput defines model for FulfillmentInput.
+type FulfillmentInput struct {
+	Reason *string                `json:"reason,omitempty"`
+	Status FulfillmentInputStatus `json:"status"`
+}
+
+// FulfillmentInputStatus defines model for FulfillmentInput.Status.
+type FulfillmentInputStatus string
 
 // Health defines model for Health.
 type Health struct {
@@ -601,22 +724,56 @@ type PurchaseItemCurrency string
 // PurchaseStatus defines model for PurchaseStatus.
 type PurchaseStatus string
 
+// Review defines model for Review.
+type Review struct {
+	Body           string             `json:"body"`
+	BuyerId        openapi_types.UUID `json:"buyerId"`
+	BuyerName      string             `json:"buyerName"`
+	CreatedAt      time.Time          `json:"createdAt"`
+	Id             openapi_types.UUID `json:"id"`
+	ProductId      openapi_types.UUID `json:"productId"`
+	PurchaseItemId openapi_types.UUID `json:"purchaseItemId"`
+	Rating         int                `json:"rating"`
+	Title          string             `json:"title"`
+	UpdatedAt      time.Time          `json:"updatedAt"`
+}
+
+// ReviewInput defines model for ReviewInput.
+type ReviewInput struct {
+	Body           string             `json:"body"`
+	PurchaseItemId openapi_types.UUID `json:"purchaseItemId"`
+	Rating         int                `json:"rating"`
+	Title          string             `json:"title"`
+}
+
+// ReviewSummary defines model for ReviewSummary.
+type ReviewSummary struct {
+	Average float64  `json:"average"`
+	Count   int      `json:"count"`
+	Items   []Review `json:"items"`
+}
+
 // Role defines model for Role.
 type Role string
 
 // SellerOrder defines model for SellerOrder.
 type SellerOrder struct {
-	CreatedAt     time.Time           `json:"createdAt"`
-	Currency      SellerOrderCurrency `json:"currency"`
-	Id            openapi_types.UUID  `json:"id"`
-	Items         []PurchaseItem      `json:"items"`
-	PurchaseId    openapi_types.UUID  `json:"purchaseId"`
-	Reference     string              `json:"reference"`
-	Status        SellerOrderStatus   `json:"status"`
-	StoreId       openapi_types.UUID  `json:"storeId"`
-	StoreName     string              `json:"storeName"`
-	SubtotalMinor int64               `json:"subtotalMinor"`
-	UpdatedAt     time.Time           `json:"updatedAt"`
+	CancellationReason string              `json:"cancellationReason"`
+	CancelledAt        *time.Time          `json:"cancelledAt,omitempty"`
+	CreatedAt          time.Time           `json:"createdAt"`
+	Currency           SellerOrderCurrency `json:"currency"`
+	DeliveredAt        *time.Time          `json:"deliveredAt,omitempty"`
+	Id                 openapi_types.UUID  `json:"id"`
+	Items              []PurchaseItem      `json:"items"`
+	ProcessingAt       *time.Time          `json:"processingAt,omitempty"`
+	PurchaseId         openapi_types.UUID  `json:"purchaseId"`
+	Reference          string              `json:"reference"`
+	ShippedAt          *time.Time          `json:"shippedAt,omitempty"`
+	Status             SellerOrderStatus   `json:"status"`
+	StoreId            openapi_types.UUID  `json:"storeId"`
+	StoreName          string              `json:"storeName"`
+	SubtotalMinor      int64               `json:"subtotalMinor"`
+	UpdatedAt          time.Time           `json:"updatedAt"`
 }
 
 // SellerOrderCurrency defines model for SellerOrder.Currency.
@@ -707,6 +864,9 @@ type MaxPrice = int64
 // MinPrice defines model for MinPrice.
 type MinPrice = int64
 
+// OrderId defines model for OrderId.
+type OrderId = openapi_types.UUID
+
 // Page defines model for Page.
 type Page = int
 
@@ -794,8 +954,17 @@ type SetCartItemJSONRequestBody = CartItemInput
 // ReceivePaymentWebhookJSONRequestBody defines body for ReceivePaymentWebhook for application/json ContentType.
 type ReceivePaymentWebhookJSONRequestBody = PaymentWebhookEvent
 
+// CancelPurchaseJSONRequestBody defines body for CancelPurchase for application/json ContentType.
+type CancelPurchaseJSONRequestBody = CancellationInput
+
 // CompleteDemoPaymentJSONRequestBody defines body for CompleteDemoPayment for application/json ContentType.
 type CompleteDemoPaymentJSONRequestBody = PaymentCompletionInput
+
+// CreateReviewJSONRequestBody defines body for CreateReview for application/json ContentType.
+type CreateReviewJSONRequestBody = ReviewInput
+
+// UpdateSellerOrderStatusJSONRequestBody defines body for UpdateSellerOrderStatus for application/json ContentType.
+type UpdateSellerOrderStatusJSONRequestBody = FulfillmentInput
 
 // CreateSellerProductJSONRequestBody defines body for CreateSellerProduct for application/json ContentType.
 type CreateSellerProductJSONRequestBody = ProductInput
@@ -823,83 +992,95 @@ type AdjustVariantInventoryJSONRequestBody = InventoryAdjustment
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

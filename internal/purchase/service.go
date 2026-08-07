@@ -25,6 +25,12 @@ type Repository interface {
 	HandlePaymentEvent(context.Context, PaymentEvent, time.Time) (Purchase, error)
 	ListNotifications(context.Context, string) ([]Notification, error)
 	ExpireReservations(context.Context, time.Time) (int, error)
+	UpdateSellerOrder(context.Context, string, string, string, string, time.Time) (SellerOrder, error)
+	CancelPurchase(context.Context, string, string, string, time.Time) (Purchase, error)
+	CreateReview(context.Context, string, ReviewInput, time.Time) (Review, error)
+	ReviewsByProductSlug(context.Context, string) (ReviewSummary, error)
+	AdminOverview(context.Context) (AdminOverview, error)
+	AuditEvents(context.Context) ([]AuditEvent, error)
 }
 
 type PaymentProvider interface {
@@ -206,6 +212,67 @@ func (s *Service) ExpireReservations(ctx context.Context) (int, error) {
 	return s.repository.ExpireReservations(ctx, s.now().UTC())
 }
 
+func (s *Service) UpdateSellerOrder(ctx context.Context, principal identity.Principal, orderID, status, reason string) (SellerOrder, error) {
+	if !principal.Require(identity.RoleSeller) {
+		return SellerOrder{}, domain.ErrForbidden
+	}
+	status = strings.ToLower(strings.TrimSpace(status))
+	reason = strings.TrimSpace(reason)
+	if _, err := uuid.Parse(orderID); err != nil || status != "processing" && status != "shipped" && status != "delivered" && status != "cancelled" || len(reason) > 500 {
+		return SellerOrder{}, domain.ErrInvalid
+	}
+	if status == "cancelled" && reason == "" {
+		return SellerOrder{}, domain.ErrInvalid
+	}
+	return s.repository.UpdateSellerOrder(ctx, principal.UserID, orderID, status, reason, s.now().UTC())
+}
+
+func (s *Service) CancelPurchase(ctx context.Context, principal identity.Principal, purchaseID, reason string) (Purchase, error) {
+	if !principal.Require(identity.RoleBuyer) {
+		return Purchase{}, domain.ErrForbidden
+	}
+	reason = strings.TrimSpace(reason)
+	if _, err := uuid.Parse(purchaseID); err != nil || len(reason) < 2 || len(reason) > 500 {
+		return Purchase{}, domain.ErrInvalid
+	}
+	return s.repository.CancelPurchase(ctx, principal.UserID, purchaseID, reason, s.now().UTC())
+}
+
+func (s *Service) CreateReview(ctx context.Context, principal identity.Principal, input ReviewInput) (Review, error) {
+	if !principal.Require(identity.RoleBuyer) {
+		return Review{}, domain.ErrForbidden
+	}
+	input.Title = strings.TrimSpace(input.Title)
+	input.Body = strings.TrimSpace(input.Body)
+	if _, err := uuid.Parse(input.PurchaseItemID); err != nil || input.Rating < 1 || input.Rating > 5 ||
+		len(input.Title) < 1 || len(input.Title) > 120 || len(input.Body) < 1 || len(input.Body) > 2000 {
+		return Review{}, domain.ErrInvalid
+	}
+	return s.repository.CreateReview(ctx, principal.UserID, input, s.now().UTC())
+}
+
+func (s *Service) Reviews(ctx context.Context, productSlug string) (ReviewSummary, error) {
+	productSlug = strings.TrimSpace(productSlug)
+	if productSlug == "" || len(productSlug) > 200 {
+		return ReviewSummary{}, domain.ErrInvalid
+	}
+	return s.repository.ReviewsByProductSlug(ctx, productSlug)
+}
+
+func (s *Service) AdminOverview(ctx context.Context, principal identity.Principal) (AdminOverview, error) {
+	if !principal.Require(identity.RoleAdmin) {
+		return AdminOverview{}, domain.ErrForbidden
+	}
+	return s.repository.AdminOverview(ctx)
+}
+
+func (s *Service) AuditEvents(ctx context.Context, principal identity.Principal) ([]AuditEvent, error) {
+	if !principal.Require(identity.RoleAdmin) {
+		return nil, domain.ErrForbidden
+	}
+	return s.repository.AuditEvents(ctx)
+}
+
 func IsTerminal(status string) bool {
-	return status == "paid" || status == "payment_failed" || status == "expired"
+	return status == "payment_failed" || status == "expired" || status == "cancelled"
 }

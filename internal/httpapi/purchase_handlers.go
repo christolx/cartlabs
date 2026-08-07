@@ -6,6 +6,7 @@ import (
 
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
+	"github.com/christolx/cartlabs/internal/purchase"
 )
 
 func (a *api) getCart(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -155,4 +156,102 @@ func (a *api) paymentWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (a *api) updateSellerOrder(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	if a.config.purchases == nil {
+		writeError(w, domain.ErrUnavailable)
+		return
+	}
+	var input struct {
+		Status string `json:"status"`
+		Reason string `json:"reason"`
+	}
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	result, err := a.config.purchases.UpdateSellerOrder(r.Context(), principal, r.PathValue("orderId"), input.Status, input.Reason)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (a *api) cancelPurchase(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	if a.config.purchases == nil {
+		writeError(w, domain.ErrUnavailable)
+		return
+	}
+	var input struct {
+		Reason string `json:"reason"`
+	}
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	result, err := a.config.purchases.CancelPurchase(r.Context(), principal, r.PathValue("purchaseId"), input.Reason)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (a *api) createReview(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	if a.config.purchases == nil {
+		writeError(w, domain.ErrUnavailable)
+		return
+	}
+	var input purchase.ReviewInput
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	result, err := a.config.purchases.CreateReview(r.Context(), principal, input)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
+}
+
+func (a *api) productReviews(w http.ResponseWriter, r *http.Request) {
+	if a.config.purchases == nil {
+		writeError(w, domain.ErrUnavailable)
+		return
+	}
+	result, err := a.config.purchases.Reviews(r.Context(), r.PathValue("slug"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (a *api) adminOverview(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	if a.config.purchases == nil {
+		writeError(w, domain.ErrUnavailable)
+		return
+	}
+	result, err := a.config.purchases.AdminOverview(r.Context(), principal)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (a *api) auditEvents(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	if a.config.purchases == nil {
+		writeError(w, domain.ErrUnavailable)
+		return
+	}
+	items, err := a.config.purchases.AuditEvents(r.Context(), principal)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }

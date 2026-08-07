@@ -478,7 +478,8 @@ func loadPurchase(ctx context.Context, db queryer, purchaseID string) (Purchase,
 func loadSellerOrders(ctx context.Context, db queryer, purchaseID, sellerID string) ([]SellerOrder, error) {
 	query := `
 		SELECT so.id::text,so.purchase_id::text,p.reference,so.store_id::text,s.name,so.status::text,so.currency,
-			so.subtotal_minor,so.created_at,so.updated_at
+			so.subtotal_minor,so.processing_at,so.shipped_at,so.delivered_at,so.cancelled_at,so.cancellation_reason,
+			so.created_at,so.updated_at
 		FROM seller_orders so JOIN purchases p ON p.id=so.purchase_id JOIN stores s ON s.id=so.store_id`
 	args := []any{}
 	if purchaseID != "" {
@@ -497,7 +498,8 @@ func loadSellerOrders(ctx context.Context, db queryer, purchaseID, sellerID stri
 	for rows.Next() {
 		var order SellerOrder
 		if err := rows.Scan(&order.ID, &order.PurchaseID, &order.Reference, &order.StoreID, &order.StoreName,
-			&order.Status, &order.Currency, &order.SubtotalMinor, &order.CreatedAt, &order.UpdatedAt); err != nil {
+			&order.Status, &order.Currency, &order.SubtotalMinor, &order.ProcessingAt, &order.ShippedAt,
+			&order.DeliveredAt, &order.CancelledAt, &order.CancellationReason, &order.CreatedAt, &order.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan seller order: %w", err)
 		}
 		orders = append(orders, order)

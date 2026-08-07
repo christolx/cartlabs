@@ -473,6 +473,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/purchases/{purchaseId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel purchase before fulfillment begins */
+        post: operations["cancelPurchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/seller/orders": {
         parameters: {
             query?: never;
@@ -482,6 +499,91 @@ export interface paths {
         };
         /** List orders belonging to seller store */
         get: operations["listSellerOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/orders/{orderId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Advance or cancel owned seller order */
+        patch: operations["updateSellerOrderStatus"];
+        trace?: never;
+    };
+    "/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review item from delivered seller order */
+        post: operations["createReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/catalog/products/{slug}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List verified delivered-purchase reviews */
+        get: operations["listProductReviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get marketplace operating totals */
+        get: operations["getAdminOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List newest fulfillment and trust audit events */
+        get: operations["listAuditEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -721,11 +823,11 @@ export interface components {
             updatedAt: string;
         };
         /** @enum {string} */
-        PurchaseStatus: "pending_payment" | "paid" | "payment_failed" | "expired";
+        PurchaseStatus: "pending_payment" | "paid" | "payment_failed" | "expired" | "cancelled";
         /** @enum {string} */
-        PaymentStatus: "pending" | "succeeded" | "failed" | "expired";
+        PaymentStatus: "pending" | "succeeded" | "failed" | "expired" | "cancelled";
         /** @enum {string} */
-        SellerOrderStatus: "pending_payment" | "paid" | "cancelled";
+        SellerOrderStatus: "pending_payment" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
         PurchaseItem: {
             /** Format: uuid */
             id: string;
@@ -762,6 +864,15 @@ export interface components {
             subtotalMinor: number;
             items: components["schemas"]["PurchaseItem"][];
             /** Format: date-time */
+            processingAt?: string;
+            /** Format: date-time */
+            shippedAt?: string;
+            /** Format: date-time */
+            deliveredAt?: string;
+            /** Format: date-time */
+            cancelledAt?: string;
+            cancellationReason: string;
+            /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
@@ -792,6 +903,77 @@ export interface components {
         PaymentCompletionInput: {
             /** @enum {string} */
             outcome: "succeeded" | "failed";
+        };
+        CancellationInput: {
+            reason: string;
+        };
+        FulfillmentInput: {
+            /** @enum {string} */
+            status: "processing" | "shipped" | "delivered" | "cancelled";
+            /** @default  */
+            reason: string;
+        };
+        ReviewInput: {
+            /** Format: uuid */
+            purchaseItemId: string;
+            rating: number;
+            title: string;
+            body: string;
+        };
+        Review: components["schemas"]["ReviewInput"] & {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            buyerId: string;
+            buyerName: string;
+            /** Format: uuid */
+            productId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ReviewSummary: {
+            /** Format: double */
+            average: number;
+            count: number;
+            items: components["schemas"]["Review"][];
+        };
+        AdminOverview: {
+            /** Format: int64 */
+            users: number;
+            /** Format: int64 */
+            approvedStores: number;
+            /** Format: int64 */
+            publishedProducts: number;
+            /** Format: int64 */
+            purchases: number;
+            /** Format: int64 */
+            activeSellerOrders: number;
+            /** Format: int64 */
+            deliveredOrders: number;
+            /** Format: int64 */
+            grossMerchandiseMinor: number;
+            /** @enum {string} */
+            currency: "IDR";
+        };
+        AuditEvent: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            actorId?: string;
+            actorName?: string;
+            /** @enum {string} */
+            actorRole: "buyer" | "seller" | "admin" | "system";
+            action: string;
+            resourceType: string;
+            /** Format: uuid */
+            resourceId: string;
+            data: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            createdAt: string;
         };
         PaymentWebhookEvent: {
             /** Format: uuid */
@@ -950,6 +1132,7 @@ export interface components {
         VariantId: string;
         StoreId: string;
         PurchaseId: string;
+        OrderId: string;
         IdempotencyKey: string;
         ProductSlug: string;
         Search: string;
@@ -1727,6 +1910,36 @@ export interface operations {
             503: components["responses"]["ServiceUnavailableProblem"];
         };
     };
+    cancelPurchase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                purchaseId: components["parameters"]["PurchaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancellationInput"];
+            };
+        };
+        responses: {
+            /** @description Cancelled purchase with restored inventory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Purchase"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
     listSellerOrders: {
         parameters: {
             query?: never;
@@ -1744,6 +1957,130 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: components["schemas"]["SellerOrder"][];
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateSellerOrderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: components["parameters"]["OrderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FulfillmentInput"];
+            };
+        };
+        responses: {
+            /** @description Updated seller order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SellerOrder"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    createReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewInput"];
+            };
+        };
+        responses: {
+            /** @description Verified-purchase review */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Review"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    listProductReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["ProductSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review summary and newest reviews */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSummary"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getAdminOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Marketplace overview */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit events newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["AuditEvent"][];
                     };
                 };
             };

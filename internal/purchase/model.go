@@ -50,17 +50,71 @@ type Purchase struct {
 }
 
 type SellerOrder struct {
-	ID            string         `json:"id"`
-	PurchaseID    string         `json:"purchaseId"`
-	Reference     string         `json:"reference"`
-	StoreID       string         `json:"storeId"`
-	StoreName     string         `json:"storeName"`
-	Status        string         `json:"status"`
-	Currency      string         `json:"currency"`
-	SubtotalMinor int64          `json:"subtotalMinor"`
-	Items         []PurchaseItem `json:"items"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
+	ID                 string         `json:"id"`
+	PurchaseID         string         `json:"purchaseId"`
+	Reference          string         `json:"reference"`
+	StoreID            string         `json:"storeId"`
+	StoreName          string         `json:"storeName"`
+	Status             string         `json:"status"`
+	Currency           string         `json:"currency"`
+	SubtotalMinor      int64          `json:"subtotalMinor"`
+	Items              []PurchaseItem `json:"items"`
+	ProcessingAt       *time.Time     `json:"processingAt,omitempty"`
+	ShippedAt          *time.Time     `json:"shippedAt,omitempty"`
+	DeliveredAt        *time.Time     `json:"deliveredAt,omitempty"`
+	CancelledAt        *time.Time     `json:"cancelledAt,omitempty"`
+	CancellationReason string         `json:"cancellationReason"`
+	CreatedAt          time.Time      `json:"createdAt"`
+	UpdatedAt          time.Time      `json:"updatedAt"`
+}
+
+type Review struct {
+	ID             string    `json:"id"`
+	BuyerID        string    `json:"buyerId"`
+	BuyerName      string    `json:"buyerName"`
+	PurchaseItemID string    `json:"purchaseItemId"`
+	ProductID      string    `json:"productId"`
+	Rating         int       `json:"rating"`
+	Title          string    `json:"title"`
+	Body           string    `json:"body"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
+type ReviewInput struct {
+	PurchaseItemID string `json:"purchaseItemId"`
+	Rating         int    `json:"rating"`
+	Title          string `json:"title"`
+	Body           string `json:"body"`
+}
+
+type ReviewSummary struct {
+	Average float64  `json:"average"`
+	Count   int      `json:"count"`
+	Items   []Review `json:"items"`
+}
+
+type AdminOverview struct {
+	Users                 int64  `json:"users"`
+	ApprovedStores        int64  `json:"approvedStores"`
+	PublishedProducts     int64  `json:"publishedProducts"`
+	Purchases             int64  `json:"purchases"`
+	ActiveSellerOrders    int64  `json:"activeSellerOrders"`
+	DeliveredOrders       int64  `json:"deliveredOrders"`
+	GrossMerchandiseMinor int64  `json:"grossMerchandiseMinor"`
+	Currency              string `json:"currency"`
+}
+
+type AuditEvent struct {
+	ID           string         `json:"id"`
+	ActorID      string         `json:"actorId,omitempty"`
+	ActorName    string         `json:"actorName,omitempty"`
+	ActorRole    string         `json:"actorRole"`
+	Action       string         `json:"action"`
+	ResourceType string         `json:"resourceType"`
+	ResourceID   string         `json:"resourceId"`
+	Data         map[string]any `json:"data"`
+	CreatedAt    time.Time      `json:"createdAt"`
 }
 
 type PurchaseItem struct {

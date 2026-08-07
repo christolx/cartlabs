@@ -1,7 +1,7 @@
 INSERT INTO platform_metadata (key, value, updated_at)
 VALUES (
     'demo_seed',
-    '{"version": 3, "accounts": ["buyer", "buyer2", "seller", "admin"]}'::jsonb,
+    '{"version": 4, "accounts": ["buyer", "buyer2", "buyer3", "seller", "admin"]}'::jsonb,
     now()
 )
 ON CONFLICT (key) DO UPDATE
@@ -15,7 +15,8 @@ VALUES
     ('01989f00-0000-7000-8000-000000000003', 'admin@demo.cartlabs.local', '$argon2id$v=19$m=65536,t=2,p=2$Dc5YGbStWBSDW1FlEUTakw$5LJWmV9gPuIrgqLXYWBmusWCPL+jArlcW9eFaccK+/g', 'Demo Admin', 'admin', 'active'),
     ('01989f00-0000-7000-8000-000000000004', 'merchant@demo.cartlabs.local', '$argon2id$v=19$m=65536,t=2,p=2$Dc5YGbStWBSDW1FlEUTakw$5LJWmV9gPuIrgqLXYWBmusWCPL+jArlcW9eFaccK+/g', 'Seed Merchant', 'seller', 'active'),
     ('01989f00-0000-7000-8000-000000000005', 'buyer2@demo.cartlabs.local', '$argon2id$v=19$m=65536,t=2,p=2$Dc5YGbStWBSDW1FlEUTakw$5LJWmV9gPuIrgqLXYWBmusWCPL+jArlcW9eFaccK+/g', 'Second Demo Buyer', 'buyer', 'active'),
-    ('01989f00-0000-7000-8000-000000000006', 'merchant2@demo.cartlabs.local', '$argon2id$v=19$m=65536,t=2,p=2$Dc5YGbStWBSDW1FlEUTakw$5LJWmV9gPuIrgqLXYWBmusWCPL+jArlcW9eFaccK+/g', 'Second Seed Merchant', 'seller', 'active')
+    ('01989f00-0000-7000-8000-000000000006', 'merchant2@demo.cartlabs.local', '$argon2id$v=19$m=65536,t=2,p=2$Dc5YGbStWBSDW1FlEUTakw$5LJWmV9gPuIrgqLXYWBmusWCPL+jArlcW9eFaccK+/g', 'Second Seed Merchant', 'seller', 'active'),
+    ('01989f00-0000-7000-8000-000000000007', 'buyer3@demo.cartlabs.local', '$argon2id$v=19$m=65536,t=2,p=2$Dc5YGbStWBSDW1FlEUTakw$5LJWmV9gPuIrgqLXYWBmusWCPL+jArlcW9eFaccK+/g', 'Fulfillment Demo Buyer', 'buyer', 'active')
 ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
     display_name = EXCLUDED.display_name,

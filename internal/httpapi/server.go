@@ -70,6 +70,12 @@ type PurchaseService interface {
 	ConfirmPayment(context.Context, identity.Principal, string, string) (purchase.Purchase, error)
 	HandleWebhook(context.Context, []byte, string) error
 	Notifications(context.Context, identity.Principal) ([]purchase.Notification, error)
+	UpdateSellerOrder(context.Context, identity.Principal, string, string, string) (purchase.SellerOrder, error)
+	CancelPurchase(context.Context, identity.Principal, string, string) (purchase.Purchase, error)
+	CreateReview(context.Context, identity.Principal, purchase.ReviewInput) (purchase.Review, error)
+	Reviews(context.Context, string) (purchase.ReviewSummary, error)
+	AdminOverview(context.Context, identity.Principal) (purchase.AdminOverview, error)
+	AuditEvents(context.Context, identity.Principal) ([]purchase.AuditEvent, error)
 }
 
 type Server struct {
@@ -161,6 +167,12 @@ func New(checker ReadinessChecker, logger *slog.Logger, options ...Option) *Serv
 	mux.HandleFunc("GET /api/v1/purchases/{purchaseId}", application.auth(application.getPurchase))
 	mux.HandleFunc("POST /api/v1/purchases/{purchaseId}/pay", application.auth(application.confirmPayment))
 	mux.HandleFunc("GET /api/v1/seller/orders", application.auth(application.sellerOrders))
+	mux.HandleFunc("PATCH /api/v1/seller/orders/{orderId}/status", application.auth(application.updateSellerOrder))
+	mux.HandleFunc("POST /api/v1/purchases/{purchaseId}/cancel", application.auth(application.cancelPurchase))
+	mux.HandleFunc("POST /api/v1/reviews", application.auth(application.createReview))
+	mux.HandleFunc("GET /api/v1/catalog/products/{slug}/reviews", application.productReviews)
+	mux.HandleFunc("GET /api/v1/admin/overview", application.auth(application.adminOverview))
+	mux.HandleFunc("GET /api/v1/admin/audit-events", application.auth(application.auditEvents))
 	mux.HandleFunc("GET /api/v1/notifications", application.auth(application.notifications))
 	mux.HandleFunc("POST /api/v1/payments/webhook", application.paymentWebhook)
 
