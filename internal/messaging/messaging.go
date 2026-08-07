@@ -146,8 +146,10 @@ func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string
 	if _, err := channel.QueueDeclare(queue, true, false, false, false, nil); err != nil {
 		return closeWith(fmt.Errorf("declare notification queue: %w", err))
 	}
-	if err := channel.QueueBind(queue, "purchase.#", exchange, false, nil); err != nil {
-		return closeWith(fmt.Errorf("bind notification queue: %w", err))
+	for _, routingKey := range []string{"purchase.#", "order.#"} {
+		if err := channel.QueueBind(queue, routingKey, exchange, false, nil); err != nil {
+			return closeWith(fmt.Errorf("bind notification queue: %w", err))
+		}
 	}
 	if err := channel.Qos(10, 0, false); err != nil {
 		return closeWith(fmt.Errorf("configure consumer QoS: %w", err))
@@ -243,6 +245,16 @@ func notificationCopy(eventType, reference string) (string, string, bool) {
 		return "Payment failed", reference + " was not paid; reserved inventory was released.", true
 	case "purchase.expired":
 		return "Reservation expired", reference + " expired; reserved inventory was released.", true
+	case "purchase.cancelled":
+		return "Purchase cancelled", reference + " was cancelled and eligible inventory was restored.", true
+	case "order.processing":
+		return "Order processing", reference + " is being prepared by the seller.", true
+	case "order.shipped":
+		return "Order shipped", reference + " has left the seller.", true
+	case "order.delivered":
+		return "Order delivered", reference + " was delivered and can now be reviewed.", true
+	case "order.cancelled":
+		return "Order cancelled", reference + " seller order was cancelled and inventory restored.", true
 	default:
 		return "", "", false
 	}
