@@ -145,3 +145,125 @@ func TestConcurrentCheckoutPreventsOversell(t *testing.T) {
 		t.Fatalf("released stock=%d", stock)
 	}
 }
+
+func TestFulfillmentCancellationAndVerifiedReviews(t *testing.T) {
+	databaseURL := os.Getenv("INTEGRATION_DATABASE_URL")
+	if databaseURL == "" {
+		t.Skip("INTEGRATION_DATABASE_URL is not set")
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	repository := NewPostgresRepository(pool)
+	now := time.Now().UTC()
+	buyerID := "01989f00-0000-7000-8000-000000000007"
+	firstSellerID := "01989f00-0000-7000-8000-000000000004"
+	secondSellerID := "01989f00-0000-7000-8000-000000000006"
+	firstVariantID := "01989f00-0000-7000-8000-000000000401"
+	secondVariantID := "01989f00-0000-7000-8000-000000000402"
+
+	if _, err := pool.Exec(ctx, `DELETE FROM cart_items WHERE cart_id IN (SELECT id FROM carts WHERE buyer_id=$1)`, buyerID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE product_variants SET stock=10 WHERE id=ANY($1::uuid[])`, []string{firstVariantID, secondVariantID}); err != nil {
+		t.Fatal(err)
+	}
+	for _, variantID := range []string{firstVariantID, secondVariantID} {
+		if _, err := repository.SetCartItem(ctx, buyerID, variantID, 1, now); err != nil {
+			t.Fatal(err)
+		}
+	}
+	purchase, created, err := repository.Checkout(ctx, buyerID, "fulfillment-integration-checkout", now, now.Add(15*time.Minute))
+	if err != nil || !created || len(purchase.SellerOrders) != 2 {
+		t.Fatalf("checkout=%#v created=%v err=%v", purchase, created, err)
+	}
+	purchase, err = repository.AttachPaymentIntent(ctx, purchase.ID, "fulfillment-integration-intent", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	event := PaymentEvent{ID: "fulfillment-integration-event", Type: "payment.succeeded", CreatedAt: now,
+		Data:    PaymentEventData{IntentID: purchase.PaymentIntentID, Reference: purchase.Reference, AmountMinor: purchase.TotalMinor, Currency: purchase.Currency},
+		Payload: []byte(`{"fulfillment":true}`)}
+	purchase, err = repository.HandlePaymentEvent(ctx, event, now)
+	if err != nil || purchase.Status != "paid" {
+		t.Fatalf("paid purchase=%#v err=%v", purchase, err)
+	}
+
+	ordersByStore := map[string]SellerOrder{}
+	for _, order := range purchase.SellerOrders {
+		ordersByStore[order.StoreID] = order
+	}
+	firstOrder := ordersByStore["01989f00-0000-7000-8000-000000000201"]
+	secondOrder := ordersByStore["01989f00-0000-7000-8000-000000000202"]
+	if firstOrder.ID == "" || secondOrder.ID == "" {
+		t.Fatalf("seller split missing: %#v", purchase.SellerOrders)
+	}
+	if _, err := repository.UpdateSellerOrder(ctx, secondSellerID, firstOrder.ID, "processing", "", now); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("wrong seller error=%v", err)
+	}
+	for _, status := range []string{"processing", "shipped", "delivered"} {
+		firstOrder, err = repository.UpdateSellerOrder(ctx, firstSellerID, firstOrder.ID, status, "", now)
+		if err != nil || firstOrder.Status != status {
+			t.Fatalf("transition %s order=%#v err=%v", status, firstOrder, err)
+		}
+	}
+	secondOrder, err = repository.UpdateSellerOrder(ctx, secondSellerID, secondOrder.ID, "cancelled", "seller cannot fulfill", now)
+	if err != nil || secondOrder.Status != "cancelled" {
+		t.Fatalf("cancelled order=%#v err=%v", secondOrder, err)
+	}
+	var firstStock, secondStock int
+	if err := pool.QueryRow(ctx, `SELECT stock FROM product_variants WHERE id=$1`, firstVariantID).Scan(&firstStock); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT stock FROM product_variants WHERE id=$1`, secondVariantID).Scan(&secondStock); err != nil {
+		t.Fatal(err)
+	}
+	if firstStock != 9 || secondStock != 10 {
+		t.Fatalf("delivered stock=%d cancelled stock=%d", firstStock, secondStock)
+	}
+
+	reviewInput := ReviewInput{PurchaseItemID: firstOrder.Items[0].ID, Rating: 5, Title: "Delivered safely", Body: "Verified purchase review."}
+	review, err := repository.CreateReview(ctx, buyerID, reviewInput, now)
+	if err != nil || review.Rating != 5 {
+		t.Fatalf("review=%#v err=%v", review, err)
+	}
+	if _, err := repository.CreateReview(ctx, buyerID, reviewInput, now); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("duplicate review error=%v", err)
+	}
+	if _, err := repository.CreateReview(ctx, buyerID, ReviewInput{PurchaseItemID: secondOrder.Items[0].ID, Rating: 4, Title: "No delivery", Body: "Must be rejected."}, now); !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("cancelled order review error=%v", err)
+	}
+	summary, err := repository.ReviewsByProductSlug(ctx, "handwoven-market-basket")
+	if err != nil || summary.Count != 1 || summary.Average != 5 {
+		t.Fatalf("review summary=%#v err=%v", summary, err)
+	}
+
+	if _, err := repository.SetCartItem(ctx, buyerID, firstVariantID, 1, now); err != nil {
+		t.Fatal(err)
+	}
+	pending, created, err := repository.Checkout(ctx, buyerID, "cancellation-integration-checkout", now, now.Add(15*time.Minute))
+	if err != nil || !created {
+		t.Fatalf("pending checkout=%#v created=%v err=%v", pending, created, err)
+	}
+	cancelled, err := repository.CancelPurchase(ctx, buyerID, pending.ID, "buyer changed mind", now)
+	if err != nil || cancelled.Status != "cancelled" || cancelled.PaymentStatus != "cancelled" {
+		t.Fatalf("cancelled purchase=%#v err=%v", cancelled, err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT stock FROM product_variants WHERE id=$1`, firstVariantID).Scan(&firstStock); err != nil {
+		t.Fatal(err)
+	}
+	if firstStock != 9 {
+		t.Fatalf("buyer cancellation stock=%d", firstStock)
+	}
+	overview, err := repository.AdminOverview(ctx)
+	if err != nil || overview.DeliveredOrders < 1 || overview.Purchases < 2 {
+		t.Fatalf("overview=%#v err=%v", overview, err)
+	}
+	audit, err := repository.AuditEvents(ctx)
+	if err != nil || len(audit) < 6 {
+		t.Fatalf("audit count=%d err=%v", len(audit), err)
+	}
+}

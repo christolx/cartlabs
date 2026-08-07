@@ -12,6 +12,11 @@ func TestNotificationCopy(t *testing.T) {
 		{"purchase.paid", "Payment confirmed", true},
 		{"purchase.payment_failed", "Payment failed", true},
 		{"purchase.expired", "Reservation expired", true},
+		{"purchase.cancelled", "Purchase cancelled", true},
+		{"order.processing", "Order processing", true},
+		{"order.shipped", "Order shipped", true},
+		{"order.delivered", "Order delivered", true},
+		{"order.cancelled", "Order cancelled", true},
 		{"product.updated", "", false},
 	}
 	for _, test := range tests {

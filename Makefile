@@ -73,7 +73,7 @@ test: ## Run backend tests and frontend type checking
 	pnpm web:typecheck
 
 e2e-api: ## Run black-box API workflow tests against a running API
-	$(HURL) --test --error-format long --retry 10 \
+	$(HURL) --test --jobs 1 --error-format long --retry 10 \
 		--variable base_url=$(E2E_API_URL) tests/e2e/api/*.hurl
 
 build: ## Build all runtime applications

@@ -55,6 +55,22 @@ func (f *fakeRepository) ListNotifications(context.Context, string) ([]Notificat
 	return nil, nil
 }
 func (f *fakeRepository) ExpireReservations(context.Context, time.Time) (int, error) { return 0, nil }
+func (f *fakeRepository) UpdateSellerOrder(context.Context, string, string, string, string, time.Time) (SellerOrder, error) {
+	return SellerOrder{}, nil
+}
+func (f *fakeRepository) CancelPurchase(context.Context, string, string, string, time.Time) (Purchase, error) {
+	return Purchase{}, nil
+}
+func (f *fakeRepository) CreateReview(context.Context, string, ReviewInput, time.Time) (Review, error) {
+	return Review{}, nil
+}
+func (f *fakeRepository) ReviewsByProductSlug(context.Context, string) (ReviewSummary, error) {
+	return ReviewSummary{}, nil
+}
+func (f *fakeRepository) AdminOverview(context.Context) (AdminOverview, error) {
+	return AdminOverview{}, nil
+}
+func (f *fakeRepository) AuditEvents(context.Context) ([]AuditEvent, error) { return nil, nil }
 
 type fakeProvider struct {
 	createResult PaymentIntent
@@ -154,5 +170,47 @@ func TestVerifyWebhookRejectsExpiredTimestamp(t *testing.T) {
 	signature := SignWebhook(secret, payload, signedAt)
 	if err := VerifyWebhookSignature(secret, payload, signature, signedAt.Add(6*time.Minute), 5*time.Minute); !errors.Is(err, ErrInvalidWebhookSignature) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestFulfillmentCommandsValidateRoleAndInput(t *testing.T) {
+	service := newTestService(t, &fakeRepository{}, nil, time.Now())
+	validID := "01989f00-0000-7000-8000-000000000701"
+	tests := []struct {
+		name string
+		run  func() error
+		want error
+	}{
+		{"seller order requires seller", func() error {
+			_, err := service.UpdateSellerOrder(context.Background(), identity.Principal{Role: identity.RoleBuyer}, validID, "processing", "")
+			return err
+		}, domain.ErrForbidden},
+		{"seller cancellation requires reason", func() error {
+			_, err := service.UpdateSellerOrder(context.Background(), identity.Principal{Role: identity.RoleSeller}, validID, "cancelled", " ")
+			return err
+		}, domain.ErrInvalid},
+		{"seller transition rejects unknown state", func() error {
+			_, err := service.UpdateSellerOrder(context.Background(), identity.Principal{Role: identity.RoleSeller}, validID, "refunded", "reason")
+			return err
+		}, domain.ErrInvalid},
+		{"purchase cancellation requires buyer", func() error {
+			_, err := service.CancelPurchase(context.Background(), identity.Principal{Role: identity.RoleSeller}, validID, "changed mind")
+			return err
+		}, domain.ErrForbidden},
+		{"review validates rating", func() error {
+			_, err := service.CreateReview(context.Background(), identity.Principal{Role: identity.RoleBuyer}, ReviewInput{PurchaseItemID: validID, Rating: 6, Title: "Title", Body: "Body"})
+			return err
+		}, domain.ErrInvalid},
+		{"overview requires admin", func() error {
+			_, err := service.AdminOverview(context.Background(), identity.Principal{Role: identity.RoleBuyer})
+			return err
+		}, domain.ErrForbidden},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.run(); !errors.Is(err, test.want) {
+				t.Fatalf("err=%v want=%v", err, test.want)
+			}
+		})
 	}
 }

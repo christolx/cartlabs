@@ -143,6 +143,11 @@ GET {{base_url}}/seller/orders
 Authorization: Bearer {{buyer_token}}
 HTTP 403
 
+GET {{base_url}}/catalog/products/handwoven-market-basket
+HTTP 200
+[Captures]
+basket_stock_after_success: jsonpath "$.variants[0].stock"
+
 POST {{base_url}}/auth/login
 Content-Type: application/json
 {
@@ -187,7 +192,7 @@ jsonpath "$.sellerOrders[0].status" == "cancelled"
 GET {{base_url}}/catalog/products/handwoven-market-basket
 HTTP 200
 [Asserts]
-jsonpath "$.variants[0].stock" == 17
+jsonpath "$.variants[0].stock" == {{basket_stock_after_success}}
 
 GET {{base_url}}/notifications
 Authorization: Bearer {{buyer_two_token}}
