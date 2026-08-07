@@ -6,7 +6,7 @@ async function proxy(request: Request, context: RouteContext<"/api/backend/[...p
   const source = new URL(request.url);
   const target = `${backendURL()}/${path.map(encodeURIComponent).join("/")}${source.search}`;
   const headers = new Headers();
-  for (const name of ["accept", "authorization", "content-type", "cookie"]) {
+  for (const name of ["accept", "authorization", "content-type", "cookie", "idempotency-key"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
@@ -26,4 +26,6 @@ async function proxy(request: Request, context: RouteContext<"/api/backend/[...p
 
 export const GET = proxy;
 export const POST = proxy;
+export const PUT = proxy;
 export const PATCH = proxy;
+export const DELETE = proxy;
