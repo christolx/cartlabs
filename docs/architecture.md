@@ -97,10 +97,11 @@ explicit interfaces. No module reads another module's tables directly.
 
 ## Payment Simulation
 
-`mock-payment` exposes intent creation and a small checkout UI. It can simulate
-success, failure, cancellation, duplicate callbacks, and delayed callbacks. Go API
-verifies webhook signature, deduplicates provider event ID, and applies explicit
-payment state transitions.
+`mock-payment` exposes authenticated intent creation and completion APIs. Demo UI
+can select success or failure. Provider signs raw webhook payload plus timestamp;
+Go API enforces signature freshness, verifies intent/reference/amount/currency,
+deduplicates provider event ID, and applies explicit payment state transitions.
+Failed callback delivery can be retried with same event ID.
 
 Provider integration sits behind an interface so a sandbox provider can replace
 the mock without changing checkout domain logic.
@@ -121,4 +122,3 @@ the mock without changing checkout domain logic.
 - Prometheus metrics and Grafana dashboards
 - Health, readiness, and startup probes
 - Local optional observability profile to control resource use
-

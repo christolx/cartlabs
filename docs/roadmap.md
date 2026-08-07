@@ -28,7 +28,7 @@ evidence from earlier work.
 
 ## 2 — Purchase Vertical Slice
 
-**Status:** Next
+**Status:** Complete
 
 - Multi-seller cart
 - Checkout totals and inventory reservation
@@ -39,6 +39,8 @@ evidence from earlier work.
 **Exit:** buyer completes a purchase spanning two sellers without overselling.
 
 ## 3 — Fulfillment and Trust
+
+**Status:** Next
 
 - Per-seller fulfillment lifecycle
 - Cancellation and inventory release

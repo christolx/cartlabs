@@ -31,16 +31,41 @@ Verified through:
 
 ## Milestone 2 — Purchase Vertical Slice
 
-**Status:** Next
+**Status:** Complete (2026-08-08)
 
 ### Work
 
-- [ ] Multi-seller cart
-- [ ] Checkout totals and inventory reservation
-- [ ] Parent purchase and seller orders
-- [ ] Mock payment intent, checkout UI, and signed webhook
-- [ ] Transactional outbox, RabbitMQ worker, and notifications
+- [x] Multi-seller cart
+- [x] Checkout totals and inventory reservation
+- [x] Parent purchase and seller orders
+- [x] Mock payment intent, checkout UI, and signed webhook
+- [x] Transactional outbox, RabbitMQ worker, and notifications
 
 ### Exit
 
 Buyer completes a purchase spanning two sellers without overselling.
+
+### Exit evidence
+
+Buyer adds approved products from two sellers. Checkout locks variants in stable
+order, snapshots prices and names, decrements inventory, and creates one parent
+purchase with two seller orders. Mock payment sends a signed webhook. API makes
+payment transition exactly once, worker publishes transactional outbox events,
+and buyer plus both sellers receive durable notifications.
+
+Verified through:
+
+- Unit tests for service authorization and idempotency, payment intent failure
+  cleanup, HMAC timestamp/signature validation, mock-provider delivery and retry,
+  notification event mapping, and production secret validation
+- PostgreSQL integration test proving concurrent checkout yields one success and
+  one conflict, webhook replay creates one payment event/outbox fact, and expired
+  reservations restore stock
+- Compose-backed Hurl workflow with 25 purchase requests and 43 total requests,
+  covering successful and failed payments, inventory restoration, RBAC, seller
+  orders, notifications, idempotent checkout, and forged webhook rejection
+- Browser workflow from two-seller cart through paid purchase and participating
+  seller order/notification; shared local image used by every product
+- Desktop/mobile and light/dark/reduced-motion visual checks
+- Axe checks with zero violations on buyer and seller workflows
+- `make check`
