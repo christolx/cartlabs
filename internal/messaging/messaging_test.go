@@ -1,6 +1,10 @@
 package messaging
 
-import "testing"
+import (
+	"testing"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+)
 
 func TestNotificationCopy(t *testing.T) {
 	tests := []struct {
@@ -26,5 +30,16 @@ func TestNotificationCopy(t *testing.T) {
 				t.Fatalf("title=%q body=%q valid=%v", title, body, valid)
 			}
 		})
+	}
+}
+
+func TestRetryCount(t *testing.T) {
+	for _, test := range []struct {
+		value any
+		want  int
+	}{{int32(2), 2}, {int64(3), 3}, {int(4), 4}, {"invalid", 0}, {nil, 0}} {
+		if got := retryCount(amqp.Table{"x-retry-count": test.value}); got != test.want {
+			t.Fatalf("retryCount(%T(%v))=%d want=%d", test.value, test.value, got, test.want)
+		}
 	}
 }

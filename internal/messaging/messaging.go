@@ -14,11 +14,22 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
 	DefaultExchange = "cartlabs.events"
-	DefaultQueue    = "cartlabs.notifications"
+	DefaultQueue    = "cartlabs.notifications.v2"
+	DeadExchange    = "cartlabs.dead"
+	DeadQueue       = "cartlabs.notifications.dead"
+	RetryExchange   = "cartlabs.retry"
+	RetryQueue      = "cartlabs.notifications.retry"
+	maxAttempts     = 5
+	maxDeliveries   = 3
 )
 
 type Event struct {
@@ -37,6 +48,8 @@ type Outbox struct{ pool *pgxpool.Pool }
 func NewOutbox(pool *pgxpool.Pool) *Outbox { return &Outbox{pool: pool} }
 
 func (o *Outbox) RelayOne(ctx context.Context, publisher Publisher, now time.Time) (bool, error) {
+	ctx, span := otel.Tracer("github.com/christolx/cartlabs/messaging").Start(ctx, "outbox.relay")
+	defer span.End()
 	tx, err := o.pool.Begin(ctx)
 	if err != nil {
 		return false, fmt.Errorf("begin outbox relay: %w", err)
@@ -44,10 +57,12 @@ func (o *Outbox) RelayOne(ctx context.Context, publisher Publisher, now time.Tim
 	defer func() { _ = tx.Rollback(ctx) }()
 	var event Event
 	var payload []byte
+	var attempts int
 	err = tx.QueryRow(ctx, `
-		SELECT id::text,event_type,occurred_at,payload FROM outbox_events
-		WHERE published_at IS NULL ORDER BY occurred_at,id FOR UPDATE SKIP LOCKED LIMIT 1`).
-		Scan(&event.ID, &event.Type, &event.OccurredAt, &payload)
+		SELECT id::text,event_type,occurred_at,payload,attempts FROM outbox_events
+		WHERE published_at IS NULL AND dead_lettered_at IS NULL AND next_attempt_at <= $1
+		ORDER BY next_attempt_at,occurred_at,id FOR UPDATE SKIP LOCKED LIMIT 1`, now).
+		Scan(&event.ID, &event.Type, &event.OccurredAt, &payload, &attempts)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
@@ -64,7 +79,11 @@ func (o *Outbox) RelayOne(ctx context.Context, publisher Publisher, now time.Tim
 		if len(message) > 1000 {
 			message = message[:1000]
 		}
-		if _, updateErr := tx.Exec(ctx, `UPDATE outbox_events SET attempts=attempts+1,last_error=$2 WHERE id=$1`, event.ID, message); updateErr != nil {
+		attempts++
+		delay := time.Second * time.Duration(1<<min(attempts, 6))
+		if _, updateErr := tx.Exec(ctx, `UPDATE outbox_events SET attempts=$2::integer,last_error=$3,next_attempt_at=$4,
+			dead_lettered_at=CASE WHEN $2::integer >= $5::integer THEN $6::timestamptz ELSE dead_lettered_at END WHERE id=$1`,
+			event.ID, attempts, message, now.Add(delay), maxAttempts, now); updateErr != nil {
 			return true, fmt.Errorf("record outbox failure: %w", updateErr)
 		}
 		if commitErr := tx.Commit(ctx); commitErr != nil {
@@ -80,6 +99,20 @@ func (o *Outbox) RelayOne(ctx context.Context, publisher Publisher, now time.Tim
 		return true, fmt.Errorf("commit outbox relay: %w", err)
 	}
 	return true, nil
+}
+
+func (o *Outbox) ReplayDeadLetters(ctx context.Context, limit int, now time.Time) (int64, error) {
+	if limit < 1 || limit > 1000 {
+		return 0, domain.ErrInvalid
+	}
+	result, err := o.pool.Exec(ctx, `WITH selected AS (
+		SELECT id FROM outbox_events WHERE dead_lettered_at IS NOT NULL ORDER BY dead_lettered_at,id LIMIT $1 FOR UPDATE SKIP LOCKED
+	) UPDATE outbox_events o SET attempts=0,last_error='',next_attempt_at=$2,dead_lettered_at=NULL
+	FROM selected WHERE o.id=selected.id`, limit, now)
+	if err != nil {
+		return 0, fmt.Errorf("replay outbox dead letters: %w", err)
+	}
+	return result.RowsAffected(), nil
 }
 
 type RabbitPublisher struct {
@@ -108,9 +141,14 @@ func NewRabbitPublisher(connection *amqp.Connection, exchange string) (*RabbitPu
 func (p *RabbitPublisher) Publish(ctx context.Context, routingKey string, body []byte) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	ctx, span := otel.Tracer("github.com/christolx/cartlabs/messaging").Start(ctx, "rabbitmq.publish "+routingKey,
+		trace.WithSpanKind(trace.SpanKindProducer), trace.WithAttributes(attribute.String("messaging.system", "rabbitmq"), attribute.String("messaging.destination.name", p.exchange)))
+	defer span.End()
 	if err := p.channel.PublishWithContext(ctx, p.exchange, routingKey, false, false, amqp.Publishing{
-		ContentType: "application/json", DeliveryMode: amqp.Persistent, Timestamp: time.Now().UTC(), Body: body,
+		ContentType: "application/json", DeliveryMode: amqp.Persistent, Timestamp: time.Now().UTC(), Body: body, Headers: injectTrace(ctx, nil),
 	}); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
 	select {
@@ -127,8 +165,9 @@ func (p *RabbitPublisher) Publish(ctx context.Context, routingKey string, body [
 func (p *RabbitPublisher) Close() error { return p.channel.Close() }
 
 type Consumer struct {
-	channel  *amqp.Channel
-	messages <-chan amqp.Delivery
+	channel       *amqp.Channel
+	messages      <-chan amqp.Delivery
+	confirmations <-chan amqp.Confirmation
 }
 
 func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string) (*Consumer, error) {
@@ -143,10 +182,32 @@ func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string
 	if err := channel.ExchangeDeclare(exchange, "topic", true, false, false, false, nil); err != nil {
 		return closeWith(fmt.Errorf("declare consumer exchange: %w", err))
 	}
-	if _, err := channel.QueueDeclare(queue, true, false, false, false, nil); err != nil {
+	if err := channel.ExchangeDeclare(DeadExchange, "direct", true, false, false, false, nil); err != nil {
+		return closeWith(fmt.Errorf("declare dead-letter exchange: %w", err))
+	}
+	if err := channel.ExchangeDeclare(RetryExchange, "direct", true, false, false, false, nil); err != nil {
+		return closeWith(fmt.Errorf("declare retry exchange: %w", err))
+	}
+	if _, err := channel.QueueDeclare(DeadQueue, true, false, false, false, nil); err != nil {
+		return closeWith(fmt.Errorf("declare dead-letter queue: %w", err))
+	}
+	if err := channel.QueueBind(DeadQueue, "notifications.failed", DeadExchange, false, nil); err != nil {
+		return closeWith(fmt.Errorf("bind dead-letter queue: %w", err))
+	}
+	if _, err := channel.QueueDeclare(RetryQueue, true, false, false, false, amqp.Table{
+		"x-message-ttl": int32(2000), "x-dead-letter-exchange": exchange,
+	}); err != nil {
+		return closeWith(fmt.Errorf("declare retry queue: %w", err))
+	}
+	if err := channel.QueueBind(RetryQueue, "notifications.retry", RetryExchange, false, nil); err != nil {
+		return closeWith(fmt.Errorf("bind retry queue: %w", err))
+	}
+	if _, err := channel.QueueDeclare(queue, true, false, false, false, amqp.Table{
+		"x-dead-letter-exchange": DeadExchange, "x-dead-letter-routing-key": "notifications.failed",
+	}); err != nil {
 		return closeWith(fmt.Errorf("declare notification queue: %w", err))
 	}
-	for _, routingKey := range []string{"purchase.#", "order.#"} {
+	for _, routingKey := range []string{"purchase.#", "order.#", "notifications.retry"} {
 		if err := channel.QueueBind(queue, routingKey, exchange, false, nil); err != nil {
 			return closeWith(fmt.Errorf("bind notification queue: %w", err))
 		}
@@ -154,18 +215,26 @@ func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string
 	if err := channel.Qos(10, 0, false); err != nil {
 		return closeWith(fmt.Errorf("configure consumer QoS: %w", err))
 	}
+	if err := channel.Confirm(false); err != nil {
+		return closeWith(fmt.Errorf("enable retry publisher confirms: %w", err))
+	}
+	confirmations := channel.NotifyPublish(make(chan amqp.Confirmation, 1))
 	messages, err := channel.Consume(queue, "cartlabs-worker", false, false, false, false, nil)
 	if err != nil {
 		return closeWith(fmt.Errorf("consume notification queue: %w", err))
 	}
-	return &Consumer{channel: channel, messages: messages}, nil
+	return &Consumer{channel: channel, messages: messages, confirmations: confirmations}, nil
 }
 
 type Handler interface {
 	Handle(context.Context, []byte) error
 }
 
-func (c *Consumer) Run(ctx context.Context, handler Handler, logger *slog.Logger) error {
+func (c *Consumer) Run(ctx context.Context, handler Handler, logger *slog.Logger, observers ...func(string)) error {
+	var observe func(string)
+	if len(observers) > 0 {
+		observe = observers[0]
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -174,21 +243,192 @@ func (c *Consumer) Run(ctx context.Context, handler Handler, logger *slog.Logger
 			if !ok {
 				return fmt.Errorf("notification delivery channel closed")
 			}
-			err := handler.Handle(ctx, delivery.Body)
+			deliveryCtx := extractTrace(ctx, delivery.Headers)
+			deliveryCtx, span := otel.Tracer("github.com/christolx/cartlabs/messaging").Start(deliveryCtx, "rabbitmq.consume "+delivery.RoutingKey,
+				trace.WithSpanKind(trace.SpanKindConsumer), trace.WithAttributes(attribute.String("messaging.system", "rabbitmq"), attribute.String("messaging.destination.name", delivery.RoutingKey)))
+			err := handler.Handle(deliveryCtx, delivery.Body)
 			if err == nil {
+				span.End()
 				if ackErr := delivery.Ack(false); ackErr != nil {
 					return fmt.Errorf("ack notification event: %w", ackErr)
 				}
+				observeResult(observe, "success")
 				continue
 			}
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			permanent := errors.Is(err, domain.ErrInvalid)
-			logger.ErrorContext(ctx, "notification event failed", "error", err, "requeue", !permanent)
-			if nackErr := delivery.Nack(false, !permanent); nackErr != nil {
+			attempts := retryCount(delivery.Headers)
+			if !permanent && attempts < maxDeliveries {
+				if retryErr := c.retry(deliveryCtx, delivery, attempts+1); retryErr != nil {
+					span.End()
+					if nackErr := delivery.Nack(false, true); nackErr != nil {
+						return fmt.Errorf("requeue notification after retry publish failure: %w", nackErr)
+					}
+					return fmt.Errorf("publish notification retry: %w", retryErr)
+				}
+				span.End()
+				if ackErr := delivery.Ack(false); ackErr != nil {
+					return fmt.Errorf("ack retried notification: %w", ackErr)
+				}
+				observeResult(observe, "retry")
+				continue
+			}
+			span.End()
+			logger.ErrorContext(deliveryCtx, "notification event dead-lettered", "error", err, "attempts", attempts)
+			if nackErr := delivery.Nack(false, false); nackErr != nil {
 				return fmt.Errorf("nack notification event: %w", nackErr)
 			}
+			observeResult(observe, "dead_letter")
 		}
 	}
 }
+
+func (c *Consumer) retry(ctx context.Context, delivery amqp.Delivery, attempts int) error {
+	headers := amqp.Table{}
+	for key, value := range delivery.Headers {
+		headers[key] = value
+	}
+	headers["x-retry-count"] = int32(attempts)
+	headers = injectTrace(ctx, headers)
+	if err := c.channel.PublishWithContext(ctx, RetryExchange, "notifications.retry", false, false, amqp.Publishing{
+		ContentType: delivery.ContentType, DeliveryMode: amqp.Persistent, Timestamp: time.Now().UTC(), Headers: headers, Body: delivery.Body,
+	}); err != nil {
+		return err
+	}
+	select {
+	case confirmation, ok := <-c.confirmations:
+		if !ok || !confirmation.Ack {
+			return fmt.Errorf("broker did not confirm retry")
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func retryCount(headers amqp.Table) int {
+	switch value := headers["x-retry-count"].(type) {
+	case int32:
+		return int(value)
+	case int64:
+		return int(value)
+	case int:
+		return value
+	default:
+		return 0
+	}
+}
+
+func observeResult(observe func(string), result string) {
+	if observe != nil {
+		observe(result)
+	}
+}
+
+func injectTrace(ctx context.Context, headers amqp.Table) amqp.Table {
+	if headers == nil {
+		headers = amqp.Table{}
+	}
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+	for key, value := range carrier {
+		headers[key] = value
+	}
+	return headers
+}
+
+func extractTrace(ctx context.Context, headers amqp.Table) context.Context {
+	carrier := propagation.MapCarrier{}
+	for key, value := range headers {
+		if text, ok := value.(string); ok {
+			carrier[key] = text
+		}
+	}
+	return otel.GetTextMapPropagator().Extract(ctx, carrier)
+}
+
+type DeadLetterReplayer struct {
+	channel       *amqp.Channel
+	confirmations <-chan amqp.Confirmation
+	exchange      string
+}
+
+func NewDeadLetterReplayer(connection *amqp.Connection, exchange string) (*DeadLetterReplayer, error) {
+	channel, err := connection.Channel()
+	if err != nil {
+		return nil, fmt.Errorf("open dead-letter replay channel: %w", err)
+	}
+	if err := channel.Confirm(false); err != nil {
+		_ = channel.Close()
+		return nil, fmt.Errorf("enable dead-letter replay confirms: %w", err)
+	}
+	if err := channel.ExchangeDeclare(exchange, "topic", true, false, false, false, nil); err != nil {
+		_ = channel.Close()
+		return nil, fmt.Errorf("declare replay exchange: %w", err)
+	}
+	if err := channel.ExchangeDeclare(DeadExchange, "direct", true, false, false, false, nil); err != nil {
+		_ = channel.Close()
+		return nil, fmt.Errorf("declare replay dead-letter exchange: %w", err)
+	}
+	if _, err := channel.QueueDeclare(DeadQueue, true, false, false, false, nil); err != nil {
+		_ = channel.Close()
+		return nil, fmt.Errorf("declare replay dead-letter queue: %w", err)
+	}
+	if err := channel.QueueBind(DeadQueue, "notifications.failed", DeadExchange, false, nil); err != nil {
+		_ = channel.Close()
+		return nil, fmt.Errorf("bind replay dead-letter queue: %w", err)
+	}
+	return &DeadLetterReplayer{channel: channel, confirmations: channel.NotifyPublish(make(chan amqp.Confirmation, 1)), exchange: exchange}, nil
+}
+
+func (r *DeadLetterReplayer) Replay(ctx context.Context, limit int) (int, error) {
+	if limit < 1 || limit > 1000 {
+		return 0, domain.ErrInvalid
+	}
+	replayed := 0
+	for replayed < limit {
+		delivery, ok, err := r.channel.Get(DeadQueue, false)
+		if err != nil {
+			return replayed, fmt.Errorf("get dead-letter notification: %w", err)
+		}
+		if !ok {
+			break
+		}
+		var event Event
+		if err := json.Unmarshal(delivery.Body, &event); err != nil || event.Type == "" {
+			if rejectErr := delivery.Reject(false); rejectErr != nil {
+				return replayed, fmt.Errorf("reject invalid dead letter: %w", rejectErr)
+			}
+			continue
+		}
+		headers := delivery.Headers
+		delete(headers, "x-retry-count")
+		if err := r.channel.PublishWithContext(ctx, r.exchange, event.Type, false, false, amqp.Publishing{
+			ContentType: "application/json", DeliveryMode: amqp.Persistent, Timestamp: time.Now().UTC(), Headers: injectTrace(ctx, headers), Body: delivery.Body,
+		}); err != nil {
+			_ = delivery.Nack(false, true)
+			return replayed, fmt.Errorf("republish dead-letter notification: %w", err)
+		}
+		select {
+		case confirmation, open := <-r.confirmations:
+			if !open || !confirmation.Ack {
+				_ = delivery.Nack(false, true)
+				return replayed, fmt.Errorf("broker did not confirm dead-letter replay")
+			}
+		case <-ctx.Done():
+			_ = delivery.Nack(false, true)
+			return replayed, ctx.Err()
+		}
+		if err := delivery.Ack(false); err != nil {
+			return replayed, fmt.Errorf("ack replayed dead letter: %w", err)
+		}
+		replayed++
+	}
+	return replayed, nil
+}
+
+func (r *DeadLetterReplayer) Close() error { return r.channel.Close() }
 
 func (c *Consumer) Close() error { return c.channel.Close() }
 
