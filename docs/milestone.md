@@ -69,3 +69,46 @@ Verified through:
 - Desktop/mobile and light/dark/reduced-motion visual checks
 - Axe checks with zero violations on buyer and seller workflows
 - `make check`
+
+## Milestone 3 — Fulfillment and Trust
+
+**Status:** Complete (2026-08-08)
+
+### Work
+
+- [x] Strict per-seller paid, processing, shipped, delivered, and cancelled lifecycle
+- [x] Buyer and seller cancellation with transactional inventory restoration
+- [x] One verified review per delivered purchase item
+- [x] Admin marketplace overview and unified immutable audit trail
+- [x] Fulfillment notifications through transactional outbox and RabbitMQ worker
+
+### Exit
+
+Complete buyer-seller-admin lifecycle works end to end.
+
+### Exit evidence
+
+Buyer pays for seller-owned inventory. Seller advances only valid state
+transitions through delivery, while another seller can independently cancel and
+restore its order stock. Buyer can review delivered items once, cannot review
+cancelled items, and public product page exposes aggregate plus verified review.
+Admin sees marketplace totals and catalog, moderation, fulfillment,
+cancellation, and review activity through one immutable audit ledger.
+
+Verified through:
+
+- Unit tests for fulfillment authorization/input validation and every new
+  notification event mapping
+- PostgreSQL integration test proving seller isolation, strict transitions,
+  partial cancellation stock restoration, review authorization/deduplication,
+  buyer cancellation restoration, overview totals, and audit persistence
+- Compose-backed Hurl workflow with 28 fulfillment/trust requests and 76 total
+  requests, including negative RBAC and ownership paths
+- Browser workflow spanning seller/store/product approval, buyer checkout and
+  payment, seller processing through delivery, buyer review, public review,
+  worker notifications, and admin overview/audit
+- Shared local placeholder image used across every demo product
+- Desktop/mobile and light/dark visual checks
+- Axe checks with zero violations and zero incomplete checks on product and admin
+  workflow targets
+- `make check`

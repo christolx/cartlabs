@@ -40,7 +40,7 @@ evidence from earlier work.
 
 ## 3 — Fulfillment and Trust
 
-**Status:** Next
+**Status:** Complete
 
 - Per-seller fulfillment lifecycle
 - Cancellation and inventory release
@@ -50,6 +50,8 @@ evidence from earlier work.
 **Exit:** complete buyer-seller-admin lifecycle works end to end.
 
 ## 4 — Operability
+
+**Status:** Next
 
 - Metrics, dashboards, traces, and structured logs
 - Retry, dead-letter, replay, and outage tests
