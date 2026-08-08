@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type HTTPPaymentProvider struct {
@@ -19,7 +21,7 @@ type HTTPPaymentProvider struct {
 
 func NewHTTPPaymentProvider(baseURL, apiKey string) *HTTPPaymentProvider {
 	return &HTTPPaymentProvider{baseURL: strings.TrimRight(baseURL, "/"), apiKey: apiKey,
-		client: &http.Client{Timeout: 10 * time.Second}}
+		client: &http.Client{Timeout: 10 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}}
 }
 
 func (p *HTTPPaymentProvider) CreateIntent(ctx context.Context, input PaymentIntentRequest) (PaymentIntent, error) {

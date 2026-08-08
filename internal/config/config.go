@@ -23,6 +23,9 @@ type Config struct {
 	PaymentWebhookSecret string
 	MockPaymentAPIKey    string
 	ShutdownTimeout      time.Duration
+	OTLPTraceEndpoint    string
+	TraceSampleRatio     float64
+	WorkerMetricsAddress string
 }
 
 func Load() (Config, error) {
@@ -40,8 +43,13 @@ func Load() (Config, error) {
 		PaymentWebhookSecret: envOr("PAYMENT_WEBHOOK_SECRET", "cartlabs-local-webhook-secret-change-me"),
 		MockPaymentAPIKey:    envOr("MOCK_PAYMENT_API_KEY", "cartlabs-local-payment-api-key"),
 		ShutdownTimeout:      10 * time.Second,
+		OTLPTraceEndpoint:    envOr("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
+		WorkerMetricsAddress: envOr("WORKER_METRICS_ADDR", ":9091"),
 	}
 	var err error
+	if cfg.TraceSampleRatio, err = envFloat("OTEL_TRACES_SAMPLER_ARG", 1); err != nil {
+		return Config{}, err
+	}
 	if cfg.DemoMode, err = envBool("DEMO_MODE", false); err != nil {
 		return Config{}, err
 	}
@@ -51,6 +59,9 @@ func Load() (Config, error) {
 
 	if cfg.DatabaseURL == "" || cfg.RedisAddress == "" || cfg.RabbitMQURL == "" {
 		return Config{}, fmt.Errorf("database, redis, and RabbitMQ configuration must be set")
+	}
+	if cfg.TraceSampleRatio <= 0 || cfg.TraceSampleRatio > 1 {
+		return Config{}, fmt.Errorf("OTEL_TRACES_SAMPLER_ARG must be greater than 0 and at most 1")
 	}
 	if len(cfg.AccessTokenSecret) < 32 {
 		return Config{}, fmt.Errorf("ACCESS_TOKEN_SECRET must contain at least 32 bytes")
@@ -70,6 +81,18 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func envFloat(key string, fallback float64) (float64, error) {
+	value, ok := os.LookupEnv(key)
+	if !ok {
+		return fallback, nil
+	}
+	parsed, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse %s: %w", key, err)
+	}
+	return parsed, nil
 }
 
 func envBool(key string, fallback bool) (bool, error) {

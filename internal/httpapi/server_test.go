@@ -7,11 +7,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
+	"github.com/christolx/cartlabs/internal/observability"
 )
 
 type fakeChecker struct {
@@ -70,6 +72,32 @@ func TestLiveness(t *testing.T) {
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+	}
+	if response.Header().Get("X-Request-ID") == "" || response.Header().Get("X-Content-Type-Options") != "nosniff" || response.Header().Get("X-Frame-Options") != "DENY" {
+		t.Fatalf("operability headers = %#v", response.Header())
+	}
+}
+
+func TestMutationRateLimit(t *testing.T) {
+	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)),
+		WithServices(fakeIdentity{}, nil, nil), WithAuthRateLimiter(fakeLimiter{allowed: false}))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewBufferString(`{}`))
+	request.Header.Set("Authorization", "Bearer access")
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, request)
+	if response.Code != http.StatusTooManyRequests {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+}
+
+func TestMetricsUseBoundedRouteLabels(t *testing.T) {
+	metrics := observability.NewHTTPMetrics("api")
+	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithMetrics(metrics))
+	server.Handler().ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api/v1/health/live", nil))
+	response := httptest.NewRecorder()
+	server.Handler().ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `route="/api/v1/health/live"`) {
+		t.Fatalf("metrics status=%d body=%s", response.Code, response.Body.String())
 	}
 }
 

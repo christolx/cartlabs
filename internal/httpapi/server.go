@@ -15,8 +15,14 @@ import (
 	"github.com/christolx/cartlabs/internal/catalog"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
+	"github.com/christolx/cartlabs/internal/observability"
 	"github.com/christolx/cartlabs/internal/purchase"
 	marketstore "github.com/christolx/cartlabs/internal/store"
+	"github.com/felixge/httpsnoop"
+	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type ReadinessChecker interface {
@@ -92,6 +98,7 @@ type serverConfig struct {
 	rateLimiter   RateLimiter
 	cookieName    string
 	cookiePath    string
+	metrics       *observability.HTTPMetrics
 }
 
 func WithAuthRateLimiter(limiter RateLimiter) Option {
@@ -110,6 +117,10 @@ func WithServices(identityService IdentityService, storeService StoreService, ca
 
 func WithPurchaseService(service PurchaseService) Option {
 	return func(config *serverConfig) { config.purchases = service }
+}
+
+func WithMetrics(metrics *observability.HTTPMetrics) Option {
+	return func(config *serverConfig) { config.metrics = metrics }
 }
 
 func WithRefreshCookie(secure bool, maxAge time.Duration) Option {
@@ -175,11 +186,33 @@ func New(checker ReadinessChecker, logger *slog.Logger, options ...Option) *Serv
 	mux.HandleFunc("GET /api/v1/admin/audit-events", application.auth(application.auditEvents))
 	mux.HandleFunc("GET /api/v1/notifications", application.auth(application.notifications))
 	mux.HandleFunc("POST /api/v1/payments/webhook", application.paymentWebhook)
+	if config.metrics != nil {
+		mux.Handle("GET /metrics", config.metrics.Handler())
+	}
 
-	return &Server{handler: requestLogger(logger, recoverPanic(logger, mux))}
+	var handler http.Handler = recoverPanic(logger, routeSpan(mux, mux))
+	handler = securityHeaders(handler)
+	handler = requestLogger(logger, handler)
+	if config.metrics != nil {
+		handler = config.metrics.Middleware("api", handler)
+	}
+	handler = requestID(handler)
+	handler = otelhttp.NewHandler(handler, "http.server", otelhttp.WithSpanNameFormatter(func(_ string, request *http.Request) string { return request.Method }))
+	return &Server{handler: handler}
 }
 
 func (s *Server) Handler() http.Handler { return s.handler }
+
+func routeSpan(mux *http.ServeMux, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, pattern := mux.Handler(r)
+		route := routeTemplate(pattern)
+		span := trace.SpanFromContext(r.Context())
+		span.SetName(r.Method + " " + route)
+		span.SetAttributes(attribute.String("http.route", route))
+		next.ServeHTTP(w, r)
+	})
+}
 
 type healthResponse struct {
 	Status       string            `json:"status"`
@@ -225,6 +258,11 @@ func (a *api) auth(next func(http.ResponseWriter, *http.Request, identity.Princi
 			writeError(w, err)
 			return
 		}
+		if err := a.checkMutationLimit(r, principal); err != nil {
+			writeError(w, err)
+			return
+		}
+		trace.SpanFromContext(r.Context()).SetAttributes(attribute.String("enduser.id", principal.UserID), attribute.String("enduser.role", string(principal.Role)))
 		next(w, r, principal)
 	}
 }
@@ -268,7 +306,7 @@ func writeError(w http.ResponseWriter, err error) {
 		writeProblem(w, http.StatusConflict, "resource state conflicts with request")
 	case errors.Is(err, domain.ErrRateLimited):
 		w.Header().Set("Retry-After", "60")
-		writeProblem(w, http.StatusTooManyRequests, "too many authentication attempts")
+		writeProblem(w, http.StatusTooManyRequests, "too many requests")
 	case errors.Is(err, domain.ErrUnavailable):
 		writeProblem(w, http.StatusServiceUnavailable, "service temporarily unavailable")
 	default:
@@ -285,6 +323,20 @@ func (a *api) checkAuthLimit(r *http.Request, subject string) error {
 		host = r.RemoteAddr
 	}
 	allowed, err := a.config.rateLimiter.Allow(r.Context(), identity.RateLimitKey(host, subject), 10, time.Minute)
+	if err != nil {
+		return domain.ErrUnavailable
+	}
+	if !allowed {
+		return domain.ErrRateLimited
+	}
+	return nil
+}
+
+func (a *api) checkMutationLimit(r *http.Request, principal identity.Principal) error {
+	if a.config.rateLimiter == nil || r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
+		return nil
+	}
+	allowed, err := a.config.rateLimiter.Allow(r.Context(), "mutation:"+principal.UserID, 120, time.Minute)
 	if err != nil {
 		return domain.ErrUnavailable
 	}
@@ -314,9 +366,50 @@ func (a *api) refreshCookie(r *http.Request) string {
 
 func requestLogger(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		started := time.Now()
+		captured := httpsnoop.CaptureMetrics(next, w, r)
+		spanContext := trace.SpanContextFromContext(r.Context())
+		route := routeTemplate(r.Pattern)
+		logger.InfoContext(r.Context(), "request handled", "method", r.Method, "route", route, "status", captured.Code,
+			"duration_ms", captured.Duration.Milliseconds(), "response_bytes", captured.Written,
+			"request_id", RequestID(r.Context()), "trace_id", spanContext.TraceID().String())
+	})
+}
+
+func routeTemplate(pattern string) string {
+	if pattern == "" {
+		return "unmatched"
+	}
+	if _, path, found := strings.Cut(pattern, " "); found {
+		return path
+	}
+	return pattern
+}
+
+type requestIDKey struct{}
+
+func requestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		value := strings.TrimSpace(r.Header.Get("X-Request-ID"))
+		if len(value) < 8 || len(value) > 128 || strings.ContainsAny(value, "\r\n\t ") {
+			value = uuid.NewString()
+		}
+		w.Header().Set("X-Request-ID", value)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), requestIDKey{}, value)))
+	})
+}
+
+func RequestID(ctx context.Context) string {
+	value, _ := ctx.Value(requestIDKey{}).(string)
+	return value
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
 		next.ServeHTTP(w, r)
-		logger.InfoContext(r.Context(), "request handled", "method", r.Method, "path", r.URL.Path, "duration_ms", time.Since(started).Milliseconds())
 	})
 }
 
@@ -324,7 +417,8 @@ func recoverPanic(logger *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				logger.ErrorContext(r.Context(), "request panic", "error", fmt.Sprint(recovered))
+				spanContext := trace.SpanContextFromContext(r.Context())
+				logger.ErrorContext(r.Context(), "request panic", "error", fmt.Sprint(recovered), "request_id", RequestID(r.Context()), "trace_id", spanContext.TraceID().String())
 				writeProblem(w, http.StatusInternalServerError, "internal server error")
 			}
 		}()

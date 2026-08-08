@@ -30,3 +30,12 @@ func TestLoadRejectsLocalPaymentSecretsOutsideLocalEnvironment(t *testing.T) {
 		t.Fatalf("Load() error = %v, want payment secret rejection", err)
 	}
 }
+
+func TestLoadRejectsInvalidTraceSampleRatio(t *testing.T) {
+	t.Setenv("APP_ENV", "test")
+	t.Setenv("OTEL_TRACES_SAMPLER_ARG", "1.5")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "OTEL_TRACES_SAMPLER_ARG") {
+		t.Fatalf("Load() error = %v, want trace sample rejection", err)
+	}
+}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/christolx/cartlabs/internal/purchase"
 	"github.com/google/uuid"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 type Config struct {
@@ -48,7 +49,7 @@ func New(cfg Config) (*Server, error) {
 		return nil, fmt.Errorf("payment webhook secret must contain at least 32 bytes")
 	}
 	if cfg.Client == nil {
-		cfg.Client = &http.Client{Timeout: 10 * time.Second}
+		cfg.Client = &http.Client{Timeout: 10 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}
 	}
 	if cfg.Now == nil {
 		cfg.Now = time.Now

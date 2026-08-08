@@ -13,6 +13,7 @@ import (
 	"github.com/christolx/cartlabs/internal/config"
 	"github.com/christolx/cartlabs/internal/httpapi"
 	"github.com/christolx/cartlabs/internal/identity"
+	"github.com/christolx/cartlabs/internal/observability"
 	"github.com/christolx/cartlabs/internal/platform"
 	"github.com/christolx/cartlabs/internal/purchase"
 	marketstore "github.com/christolx/cartlabs/internal/store"
@@ -25,6 +26,20 @@ func main() {
 		logger.Error("load configuration", "error", err)
 		os.Exit(1)
 	}
+	traceShutdown, err := observability.SetupTracing(context.Background(), observability.TraceConfig{
+		ServiceName: "cartlabs-api", Environment: cfg.Environment, Endpoint: cfg.OTLPTraceEndpoint, SampleRatio: cfg.TraceSampleRatio,
+	})
+	if err != nil {
+		logger.Error("configure tracing", "error", err)
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancel()
+		if err := traceShutdown(shutdownCtx); err != nil {
+			logger.Error("shutdown tracing", "error", err)
+		}
+	}()
 
 	startupCtx, startupCancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer startupCancel()
@@ -57,6 +72,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	metrics := observability.NewHTTPMetrics("api")
 	server := &http.Server{
 		Addr: cfg.APIAddress,
 		Handler: httpapi.New(dependencies, logger,
@@ -64,9 +80,13 @@ func main() {
 			httpapi.WithPurchaseService(purchaseService),
 			httpapi.WithAuthRateLimiter(identity.NewRedisRateLimiter(dependencies.Redis)),
 			httpapi.WithRefreshCookie(cfg.CookieSecure, cfg.RefreshTokenTTL),
+			httpapi.WithMetrics(metrics),
 		).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
 		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	serverErrors := make(chan error, 1)

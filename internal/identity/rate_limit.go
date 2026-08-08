@@ -31,7 +31,9 @@ func (l *RedisRateLimiter) Allow(ctx context.Context, key string, limit int, win
 	if limit < 1 || window <= 0 {
 		return false, fmt.Errorf("invalid rate limit configuration")
 	}
-	count, err := incrementWindow.Run(ctx, l.client, []string{"cartlabs:auth:" + key}, int(window.Seconds())).Int64()
+	operationCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	count, err := incrementWindow.Run(operationCtx, l.client, []string{"cartlabs:auth:" + key}, int(window.Seconds())).Int64()
 	if err != nil {
 		return false, fmt.Errorf("apply authentication rate limit: %w", err)
 	}
