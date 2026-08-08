@@ -39,6 +39,7 @@ jobs:
         run: git diff --exit-code
       - run: make lint
       - run: make test
+      - run: make security
       - run: make build
 
   api-e2e:
@@ -73,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [api, worker, mock-payment]
+        app: [api, worker, mock-payment, migrate, seed, reset, replay]
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -83,6 +84,15 @@ jobs:
           file: deploy/docker/go.Dockerfile
           build-args: APP=${{ matrix.app }}
           push: false
+          load: true
+          tags: cartlabs-${{ matrix.app }}:ci
+      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          scan-type: image
+          image-ref: cartlabs-${{ matrix.app }}:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
   web-container:
     runs-on: ubuntu-latest
@@ -94,6 +104,15 @@ jobs:
           context: .
           file: deploy/docker/web.Dockerfile
           push: false
+          load: true
+          tags: cartlabs-web:ci
+      - uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
+        with:
+          scan-type: image
+          image-ref: cartlabs-web:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
   security:
     runs-on: ubuntu-latest
