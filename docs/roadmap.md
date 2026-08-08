@@ -51,7 +51,7 @@ evidence from earlier work.
 
 ## 4 — Operability
 
-**Status:** Next
+**Status:** Complete
 
 - Metrics, dashboards, traces, and structured logs
 - Retry, dead-letter, replay, and outage tests
@@ -62,6 +62,8 @@ evidence from earlier work.
 **Exit:** common failures are observable, recoverable, and documented.
 
 ## 5 — k3s Demo Platform
+
+**Status:** Next
 
 - Helm chart and environment values
 - Terraform and Ansible for chosen platform

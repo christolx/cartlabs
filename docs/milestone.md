@@ -112,3 +112,51 @@ Verified through:
 - Axe checks with zero violations and zero incomplete checks on product and admin
   workflow targets
 - `make check`
+
+## Milestone 4 — Operability
+
+**Status:** Complete (2026-08-08)
+
+### Work
+
+- [x] Prometheus metrics and provisioned Grafana dashboard
+- [x] OpenTelemetry traces across HTTP, PostgreSQL, payment, outbox, and RabbitMQ
+- [x] Correlated structured logs with bounded routes and request/trace IDs
+- [x] Bounded retry, durable dead-letter queues, and operator replay command
+- [x] Dependency outage tests and reconnect/fail-fast behavior
+- [x] HTTP hardening, dependency scans, and runtime image scanning in CI
+- [x] Repeatable performance baseline with explicit failure thresholds
+- [x] Guarded daily demo reset and incident runbook
+
+### Exit
+
+Common failures are observable, recoverable, and documented.
+
+### Exit evidence
+
+Prometheus scrapes API and worker targets. Provisioned Grafana dashboard renders
+five live panels. Tempo receives correlated API, database, payment, outbox, and
+AMQP spans. JSON request logs carry request and trace IDs without raw SQL or
+credentials. RabbitMQ restart preserves purchase events and worker catch-up;
+Redis loss degrades readiness while existing JWT reads continue and new login
+fails fast; payment-provider loss returns 503 and restores reserved inventory.
+
+Verified through:
+
+- Unit suite for configuration, request hardening, bounded metric labels,
+  mutation limiting, retry counting, and all prior domain behavior
+- PostgreSQL/RabbitMQ integration tests proving outbox backoff/dead-letter/replay,
+  publisher-confirmed notification retries, dead-lettering, and replay
+- Compose-backed Hurl workflow with 70 API requests across all vertical slices
+- Automated real-service outage workflow across RabbitMQ, Redis, and payment
+  provider, including recovery assertions
+- `govulncheck` with zero reachable vulnerabilities, `pnpm audit` with zero
+  known vulnerabilities, and local Trivy scans with zero HIGH/CRITICAL findings
+  across six built runtime images; CI repository and full image-matrix gates
+- 15-second/20-client catalog baseline: 201,682 requests, 0 failures, 13,445.0
+  requests/second, 2.48 ms p95, and 3.28 ms p99
+- Agent-browser production review with no console/page errors, zero Axe
+  violations, 0.0 CLS, 48 ms FCP, and 13.5 ms TTFB; one indeterminate contrast
+  result caused by the hero image gradient
+- Guarded Compose reset and bounded SQL/RabbitMQ replay operator jobs
+- `make check`

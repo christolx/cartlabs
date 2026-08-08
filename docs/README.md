@@ -9,6 +9,7 @@ platform operations, not production-scale commerce.
 - [Product](./product.md) — users, scope, and marketplace behavior
 - [Architecture](./architecture.md) — system shape and technical boundaries
 - [Delivery](./delivery.md) — environments, CI/CD, testing, and operations
+- [Operability](./operability.md) — telemetry, recovery, limits, and runbooks
 - [Roadmap](./roadmap.md) — incremental implementation plan
 - [Decisions](./decisions.md) — accepted and pending architecture decisions
 
@@ -19,4 +20,3 @@ platform operations, not production-scale commerce.
 3. Treat local deployment, observability, security, and testing as product work.
 4. Prefer reproducible demos over long-lived mutable demo data.
 5. Document important trade-offs through short architecture decisions.
-
