@@ -1,0 +1,3 @@
+# Install on demo host with repository checked out at /opt/cartlabs.
+# Runs at 03:00 UTC; reset command refuses production environments.
+0 3 * * * cd /opt/cartlabs && /usr/bin/docker compose -f deploy/compose/compose.yml --profile ops run --rm reset >> /var/log/cartlabs-reset.log 2>&1

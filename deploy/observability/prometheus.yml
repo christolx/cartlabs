@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: cartlabs-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8080"]
+  - job_name: cartlabs-worker
+    metrics_path: /
+    static_configs:
+      - targets: ["worker:9091"]

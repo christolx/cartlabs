@@ -87,6 +87,8 @@ services:
       PAYMENT_WEBHOOK_URL: http://api:8080/api/v1/payments/webhook
       PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-cartlabs-local-webhook-secret-change-me}
       MOCK_PAYMENT_API_KEY: ${MOCK_PAYMENT_API_KEY:-cartlabs-local-payment-api-key}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER_ARG: "1"
     ports:
       - "8080:8080"
     depends_on:
@@ -98,6 +100,8 @@ services:
         condition: service_healthy
       mock-payment:
         condition: service_healthy
+      tempo:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health/live"]
       interval: 5s
@@ -117,6 +121,11 @@ services:
       DATABASE_URL: postgres://cartlabs:cartlabs@postgres:5432/cartlabs?sslmode=disable
       REDIS_ADDR: redis:6379
       RABBITMQ_URL: amqp://cartlabs:cartlabs@rabbitmq:5672/
+      WORKER_METRICS_ADDR: :9091
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER_ARG: "1"
+    ports:
+      - "9091:9091"
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,6 +133,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      tempo:
+        condition: service_started
     restart: unless-stopped
 
   mock-payment:
@@ -137,6 +148,8 @@ services:
       MOCK_PAYMENT_ADDR: :8081
       PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-cartlabs-local-webhook-secret-change-me}
       MOCK_PAYMENT_API_KEY: ${MOCK_PAYMENT_API_KEY:-cartlabs-local-payment-api-key}
+      APP_ENV: local
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
     ports:
       - "8081:8081"
     healthcheck:
@@ -145,6 +158,96 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+
+  prometheus:
+    profiles: ["full"]
+    image: prom/prometheus:v3.5.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_started
+    restart: unless-stopped
+
+  tempo:
+    profiles: ["full"]
+    image: grafana/tempo:2.8.2
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ../observability/tempo.yml:/etc/tempo.yml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"
+    restart: unless-stopped
+
+  grafana:
+    profiles: ["full"]
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-cartlabs-local-only}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - tempo
+    restart: unless-stopped
+
+  reset:
+    profiles: ["ops"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        APP: reset
+    environment:
+      APP_ENV: demo
+      DATABASE_URL: postgres://cartlabs:cartlabs@postgres:5432/cartlabs?sslmode=disable
+      ACCESS_TOKEN_SECRET: cartlabs-demo-reset-access-secret-not-for-production
+      PAYMENT_WEBHOOK_SECRET: cartlabs-demo-reset-webhook-secret-not-for-production
+      MOCK_PAYMENT_API_KEY: cartlabs-demo-reset-api-key-not-for-production
+    working_dir: /workspace
+    volumes:
+      - ../../migrations:/workspace/migrations:ro
+      - ../../seeds:/workspace/seeds:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  replay:
+    profiles: ["ops"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        APP: replay
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgres://cartlabs:cartlabs@postgres:5432/cartlabs?sslmode=disable
+      REDIS_ADDR: redis:6379
+      RABBITMQ_URL: amqp://cartlabs:cartlabs@rabbitmq:5672/
+      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-cartlabs-local-webhook-secret-change-me}
+      MOCK_PAYMENT_API_KEY: ${MOCK_PAYMENT_API_KEY:-cartlabs-local-payment-api-key}
+      REPLAY_LIMIT: ${REPLAY_LIMIT:-100}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   web:
     profiles: ["full"]
@@ -166,3 +269,6 @@ volumes:
   redis-data:
   rabbitmq-data:
   minio-data:
+  prometheus-data:
+  tempo-data:
+  grafana-data:
