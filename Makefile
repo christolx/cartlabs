@@ -9,7 +9,7 @@ HURL ?= hurl
 
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev \
 	compose-up compose-full compose-down compose-logs migrate seed reset \
-	generate fmt lint test e2e-api build check clean
+	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset clean
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -55,6 +55,12 @@ seed: ## Apply deterministic demo seed
 reset: ## Rebuild local/demo database from migrations and seed
 	@set -a; [ ! -f .env ] || . ./.env; set +a; go run ./apps/reset
 
+demo-reset: ## Run recoverable demo reset job through Compose
+	$(COMPOSE) -f $(COMPOSE_FILE) --profile ops run --rm reset
+
+replay: ## Replay bounded SQL and RabbitMQ dead letters
+	$(COMPOSE) -f $(COMPOSE_FILE) --profile ops run --rm replay
+
 generate: ## Generate Go and TypeScript code from OpenAPI
 	go tool oapi-codegen -config api/openapi/oapi-codegen.yaml api/openapi/openapi.yaml
 	pnpm openapi:generate:ts
@@ -76,9 +82,19 @@ e2e-api: ## Run black-box API workflow tests against a running API
 	$(HURL) --test --jobs 1 --error-format long --retry 10 \
 		--variable base_url=$(E2E_API_URL) tests/e2e/api/*.hurl
 
+outage-test: ## Exercise Redis, RabbitMQ, and payment-provider recovery
+	bash tests/operations/outage.sh
+
+performance: ## Run repeatable public catalog performance baseline
+	go run ./tests/performance -url '$(E2E_API_URL)/catalog/products?pageSize=24' -duration 15s -concurrency 20 -max-p95 250ms
+
 build: ## Build all runtime applications
 	go build ./apps/...
 	pnpm web:build
+
+security: ## Scan Go and frontend dependency vulnerabilities
+	go tool govulncheck ./...
+	pnpm audit --audit-level high
 
 check: generate lint test build ## Run full local verification
 	@git diff --exit-code -- internal/contract/openapi.gen.go apps/web/src/lib/api/schema.d.ts
