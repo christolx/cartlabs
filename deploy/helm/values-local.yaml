@@ -1,0 +1,17 @@
+global:
+  imageRegistry: ""
+  imageTag: local
+  imagePullPolicy: Never
+  domain: cartlabs.localhost
+  environment: local
+
+ingress:
+  enabled: true
+  tls:
+    enabled: false
+
+backup:
+  enabled: false
+
+networkPolicy:
+  enabled: true

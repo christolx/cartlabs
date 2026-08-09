@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["global", "images", "ingress", "postgresql", "redis", "rabbitmq"],
+  "properties": {
+    "global": {
+      "type": "object",
+      "required": ["imageTag", "domain", "existingSecret"],
+      "properties": {
+        "imageRegistry": { "type": "string" },
+        "imageTag": { "type": "string", "pattern": "^(local|sha-[a-f0-9]{7,40}|v[0-9]+\\.[0-9]+\\.[0-9]+)$" },
+        "imagePullPolicy": { "enum": ["Always", "IfNotPresent", "Never"] },
+        "domain": { "type": "string", "minLength": 1 },
+        "existingSecret": { "type": "string", "minLength": 1 }
+      }
+    },
+    "backup": {
+      "type": "object",
+      "properties": {
+        "schedule": { "type": "string", "minLength": 1 },
+        "retention": { "type": "string", "pattern": "^[0-9]+[dh]$" }
+      }
+    }
+  }
+}

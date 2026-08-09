@@ -16,7 +16,10 @@ RUN apk add --no-cache ca-certificates \
     && addgroup -S cartlabs \
     && adduser -S -G cartlabs cartlabs
 
+WORKDIR /app
 COPY --from=build /out/app /usr/local/bin/app
+COPY --chown=cartlabs:cartlabs migrations ./migrations
+COPY --chown=cartlabs:cartlabs seeds ./seeds
 
 USER cartlabs
 ENTRYPOINT ["/usr/local/bin/app"]

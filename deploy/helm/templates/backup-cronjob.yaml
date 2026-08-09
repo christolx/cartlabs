@@ -1,0 +1,76 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "cartlabs.fullname" . }}-backup
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 900
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            {{- include "cartlabs.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: Never
+          serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            seccompProfile: { type: RuntimeDefault }
+          initContainers:
+            - name: pg-dump
+              image: {{ .Values.backup.postgresImage }}
+              command:
+                - sh
+                - -ec
+                - |
+                  until pg_isready -d "$DATABASE_URL"; do sleep 2; done
+                  pg_dump "$DATABASE_URL" --format=custom --file="/backup/cartlabs-$(date -u +%Y%m%dT%H%M%SZ).dump"
+              envFrom:
+                - secretRef: { name: {{ .Values.global.existingSecret }} }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+                - { name: tmp, mountPath: /tmp }
+          containers:
+            - name: upload
+              image: {{ .Values.backup.clientImage }}
+              command:
+                - sh
+                - -ec
+                - |
+                  mc alias set target "$BACKUP_S3_ENDPOINT" "$BACKUP_S3_ACCESS_KEY" "$BACKUP_S3_SECRET_KEY"
+                  mc cp /backup/*.dump "target/$BACKUP_S3_BUCKET/{{ .Values.backup.prefix }}/"
+                  mc rm --recursive --force --older-than {{ .Values.backup.retention }} "target/$BACKUP_S3_BUCKET/{{ .Values.backup.prefix }}/"
+              envFrom:
+                - secretRef: { name: {{ .Values.global.existingSecret }} }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+                readOnlyRootFilesystem: true
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+                - { name: config, mountPath: /.mc }
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - { name: backup, emptyDir: {} }
+            - { name: config, emptyDir: {} }
+            - { name: tmp, emptyDir: {} }
+{{- end }}

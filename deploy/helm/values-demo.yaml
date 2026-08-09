@@ -1,0 +1,20 @@
+global:
+  environment: demo
+  imageRegistry: ghcr.io/christolx
+  imageTag: sha-0000000
+  domain: demo.cartlabs.example.com
+  imagePullSecrets:
+    - name: ghcr-pull
+
+ingress:
+  enabled: true
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt-prod
+
+backup:
+  enabled: true
+
+demoReset:
+  enabled: true
+  suspend: true

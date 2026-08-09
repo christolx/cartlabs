@@ -1,0 +1,103 @@
+{{- $fullname := include "cartlabs.fullname" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-rabbitmq
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rabbitmq
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "cartlabs.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: rabbitmq
+  ports:
+    - { name: amqp, port: 5672, targetPort: amqp }
+    - { name: management, port: 15672, targetPort: management }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullname }}-rabbitmq
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: rabbitmq
+spec:
+  serviceName: {{ $fullname }}-rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: rabbitmq
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: rabbitmq
+      annotations:
+        cartlabs.io/secret-revision: {{ .Values.global.secretRevision | quote }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        - name: repair-cookie-permissions
+          image: {{ .Values.rabbitmq.image }}
+          command:
+            - sh
+            - -ec
+            - test ! -f /var/lib/rabbitmq/.erlang.cookie || chmod 600 /var/lib/rabbitmq/.erlang.cookie
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/rabbitmq }
+      containers:
+        - name: rabbitmq
+          image: {{ .Values.rabbitmq.image }}
+          ports:
+            - { name: amqp, containerPort: 5672 }
+            - { name: management, containerPort: 15672 }
+          env:
+            - { name: RABBITMQ_DEFAULT_USER, value: {{ .Values.rabbitmq.username | quote }} }
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.existingSecret }}, key: RABBITMQ_DEFAULT_PASS } }
+          readinessProbe:
+            tcpSocket: { port: amqp }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket: { port: amqp }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources: {{ toYaml .Values.rabbitmq.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/rabbitmq }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.global.storageClass }}
+        storageClassName: {{ .Values.global.storageClass }}
+        {{- end }}
+        resources:
+          requests: { storage: {{ .Values.rabbitmq.storage }} }

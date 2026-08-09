@@ -1,0 +1,11 @@
+Cartlabs release {{ .Release.Name }} deployed.
+
+{{- if .Values.ingress.enabled }}
+Public URL: {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.global.domain }}
+Readiness: {{ ternary "https" "http" .Values.ingress.tls.enabled }}://{{ .Values.global.domain }}/api/v1/health/ready
+{{- else }}
+Ingress disabled for this release.
+{{- end }}
+
+Run chart smoke test:
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}

@@ -1,0 +1,315 @@
+{{- $fullname := include "cartlabs.fullname" . -}}
+{{- $secret := .Values.global.existingSecret -}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-api
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.replicas.api }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+      annotations:
+        cartlabs.io/secret-revision: {{ .Values.global.secretRevision | quote }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-postgresql
+          image: {{ .Values.postgresql.image }}
+          command: ["sh", "-ec", "until pg_isready -d \"$DATABASE_URL\"; do sleep 2; done"]
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+        - name: migrate
+          image: {{ include "cartlabs.image" (list . .Values.images.migrate) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+      containers:
+        - name: api
+          image: {{ include "cartlabs.image" (list . .Values.images.api) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+            - { name: API_ADDR, value: ":8080" }
+            - { name: REDIS_ADDR, value: {{ printf "%s-redis:6379" $fullname | quote }} }
+            - { name: PAYMENT_PROVIDER_URL, value: {{ printf "http://%s-mock-payment:8081" $fullname | quote }} }
+            - { name: PAYMENT_WEBHOOK_URL, value: {{ printf "http://%s-api:8080/api/v1/payments/webhook" $fullname | quote }} }
+            - { name: DEMO_MODE, value: {{ .Values.demoMode | quote }} }
+            - { name: COOKIE_SECURE, value: {{ .Values.ingress.tls.enabled | quote }} }
+            - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ .Values.observability.otlpTraceEndpoint | quote }} }
+            - { name: OTEL_TRACES_SAMPLER_ARG, value: {{ .Values.observability.traceSampleRatio | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          startupProbe:
+            httpGet: { path: /api/v1/health/live, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /api/v1/health/ready, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /api/v1/health/live, port: http }
+            periodSeconds: 10
+          resources: {{ toYaml .Values.resources.api | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-worker
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.replicas.worker }}
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      annotations:
+        cartlabs.io/secret-revision: {{ .Values.global.secretRevision | quote }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9091"
+    spec:
+      serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-postgresql
+          image: {{ .Values.postgresql.image }}
+          command: ["sh", "-ec", "until pg_isready -d \"$DATABASE_URL\"; do sleep 2; done"]
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+        - name: migrate
+          image: {{ include "cartlabs.image" (list . .Values.images.migrate) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+      containers:
+        - name: worker
+          image: {{ include "cartlabs.image" (list . .Values.images.worker) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 9091 }
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+            - { name: REDIS_ADDR, value: {{ printf "%s-redis:6379" $fullname | quote }} }
+            - { name: WORKER_METRICS_ADDR, value: ":9091" }
+            - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ .Values.observability.otlpTraceEndpoint | quote }} }
+            - { name: OTEL_TRACES_SAMPLER_ARG, value: {{ .Values.observability.traceSampleRatio | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          startupProbe:
+            httpGet: { path: /, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            periodSeconds: 10
+          resources: {{ toYaml .Values.resources.worker | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-mock-payment
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mock-payment
+spec:
+  replicas: {{ .Values.replicas.mockPayment }}
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: mock-payment
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: mock-payment
+      annotations:
+        cartlabs.io/secret-revision: {{ .Values.global.secretRevision | quote }}
+    spec:
+      serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: mock-payment
+          image: {{ include "cartlabs.image" (list . .Values.images.mockPayment) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 8081 }
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+            - { name: MOCK_PAYMENT_ADDR, value: ":8081" }
+            - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ .Values.observability.otlpTraceEndpoint | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          startupProbe:
+            httpGet: { path: /health/live, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /health/live, port: http }
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+          resources: {{ toYaml .Values.resources.mockPayment | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-web
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.replicas.web }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+    spec:
+      serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: web
+          image: {{ include "cartlabs.image" (list . .Values.images.web) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: http, containerPort: 3000 }
+          env:
+            - { name: API_INTERNAL_URL, value: {{ printf "http://%s-api:8080/api/v1" $fullname | quote }} }
+            - { name: NEXT_PUBLIC_API_URL, value: {{ printf "%s://%s/api/v1" (ternary "https" "http" .Values.ingress.tls.enabled) .Values.global.domain | quote }} }
+          startupProbe:
+            httpGet: { path: /, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /, port: http }
+          livenessProbe:
+            httpGet: { path: /, port: http }
+          resources: {{ toYaml .Values.resources.web | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: next-cache, mountPath: /app/apps/web/.next/cache }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}

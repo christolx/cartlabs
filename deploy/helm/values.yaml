@@ -1,0 +1,96 @@
+global:
+  imageRegistry: ghcr.io/christolx
+  imageTag: local
+  imagePullPolicy: IfNotPresent
+  imagePullSecrets: []
+  environment: demo
+  domain: cartlabs.example.com
+  existingSecret: cartlabs-secrets
+  secretRevision: local
+  storageClass: ""
+
+images:
+  api: cartlabs-api
+  worker: cartlabs-worker
+  web: cartlabs-web
+  mockPayment: cartlabs-mock-payment
+  migrate: cartlabs-migrate
+  seed: cartlabs-seed
+  reset: cartlabs-reset
+
+replicas:
+  api: 1
+  web: 1
+  worker: 1
+  mockPayment: 1
+
+demoMode: true
+
+resources:
+  api:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+  web:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 750m, memory: 384Mi }
+  worker:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { cpu: 300m, memory: 192Mi }
+  mockPayment:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 96Mi }
+
+ingress:
+  enabled: true
+  className: traefik
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt-prod
+    secretName: cartlabs-tls
+
+observability:
+  otlpTraceEndpoint: ""
+  traceSampleRatio: "0.1"
+
+postgresql:
+  image: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+  database: cartlabs
+  username: cartlabs
+  storage: 8Gi
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+redis:
+  image: redis@sha256:978f0e01593e65eed801f2402944efcd936d43b5027e4908a7897baf88ed6241
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+rabbitmq:
+  image: rabbitmq@sha256:cd624335f752f704e768239ea21501e5771ca13b3b278520da5ad1076eb86e55
+  username: cartlabs
+  storage: 4Gi
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+backup:
+  enabled: false
+  schedule: "17 2 * * *"
+  retention: 168h
+  prefix: cartlabs
+  postgresImage: postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+  clientImage: quay.io/minio/mc@sha256:a7fe349ef4bd8521fb8497f55c6042871b2ae640607cf99d9bede5e9bdf11727
+
+demoReset:
+  enabled: true
+  schedule: "0 3 * * *"
+  suspend: true
+
+networkPolicy:
+  enabled: true
+
+serviceAccount:
+  create: true
+  name: ""
