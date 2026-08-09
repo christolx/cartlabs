@@ -26,6 +26,11 @@ type Config struct {
 	OTLPTraceEndpoint    string
 	TraceSampleRatio     float64
 	WorkerMetricsAddress string
+	SearchGRPCAddress    string
+	SearchServerAddress  string
+	SearchMetricsAddress string
+	SearchDatabaseURL    string
+	SearchServiceToken   string
 }
 
 func Load() (Config, error) {
@@ -45,6 +50,11 @@ func Load() (Config, error) {
 		ShutdownTimeout:      10 * time.Second,
 		OTLPTraceEndpoint:    envOr("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""),
 		WorkerMetricsAddress: envOr("WORKER_METRICS_ADDR", ":9091"),
+		SearchGRPCAddress:    envOr("SEARCH_GRPC_ADDR", ""),
+		SearchServerAddress:  envOr("SEARCH_GRPC_SERVER_ADDR", ":9092"),
+		SearchMetricsAddress: envOr("SEARCH_METRICS_ADDR", ":9093"),
+		SearchDatabaseURL:    envOr("SEARCH_DATABASE_URL", "postgres://cartlabs:cartlabs@localhost:5432/cartlabs_search?sslmode=disable"),
+		SearchServiceToken:   envOr("SEARCH_SERVICE_TOKEN", "cartlabs-local-search-token-change-me"),
 	}
 	var err error
 	if cfg.TraceSampleRatio, err = envFloat("OTEL_TRACES_SAMPLER_ARG", 1); err != nil {
@@ -72,12 +82,21 @@ func Load() (Config, error) {
 	if len(cfg.MockPaymentAPIKey) < 24 {
 		return Config{}, fmt.Errorf("MOCK_PAYMENT_API_KEY must contain at least 24 bytes")
 	}
+	if len(cfg.SearchServiceToken) < 32 {
+		return Config{}, fmt.Errorf("SEARCH_SERVICE_TOKEN must contain at least 32 bytes")
+	}
+	if cfg.SearchDatabaseURL == "" || cfg.SearchServerAddress == "" || cfg.SearchMetricsAddress == "" {
+		return Config{}, fmt.Errorf("search database and listener configuration must be set")
+	}
 	if cfg.Environment != "local" && cfg.Environment != "test" && cfg.AccessTokenSecret == "cartlabs-local-access-token-secret-change-me" {
 		return Config{}, fmt.Errorf("ACCESS_TOKEN_SECRET must be set outside local environment")
 	}
 	if cfg.Environment != "local" && cfg.Environment != "test" &&
 		(cfg.PaymentWebhookSecret == "cartlabs-local-webhook-secret-change-me" || cfg.MockPaymentAPIKey == "cartlabs-local-payment-api-key") {
 		return Config{}, fmt.Errorf("payment secrets must be set outside local environment")
+	}
+	if cfg.Environment != "local" && cfg.Environment != "test" && cfg.SearchServiceToken == "cartlabs-local-search-token-change-me" {
+		return Config{}, fmt.Errorf("SEARCH_SERVICE_TOKEN must be set outside local environment")
 	}
 
 	return cfg, nil

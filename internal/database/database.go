@@ -26,6 +26,42 @@ func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
+// EnsureDatabase creates target database through PostgreSQL maintenance database.
+// It is idempotent and intentionally rejects system databases.
+func EnsureDatabase(ctx context.Context, databaseURL string) error {
+	config, err := pgx.ParseConfig(databaseURL)
+	if err != nil {
+		return fmt.Errorf("parse PostgreSQL URL: %w", err)
+	}
+	databaseName := config.Database
+	if databaseName == "" || databaseName == "postgres" || strings.HasPrefix(databaseName, "template") {
+		return fmt.Errorf("refuse unsafe database name %q", databaseName)
+	}
+	config.Database = "postgres"
+	connection, err := pgx.ConnectConfig(ctx, config)
+	if err != nil {
+		return fmt.Errorf("connect PostgreSQL maintenance database: %w", err)
+	}
+	defer connection.Close(ctx)
+	if _, err := connection.Exec(ctx, "SELECT pg_advisory_lock($1)", int64(482020)); err != nil {
+		return fmt.Errorf("lock database creation: %w", err)
+	}
+	defer func() {
+		_, _ = connection.Exec(context.WithoutCancel(ctx), "SELECT pg_advisory_unlock($1)", int64(482020))
+	}()
+	var exists bool
+	if err := connection.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname=$1)", databaseName).Scan(&exists); err != nil {
+		return fmt.Errorf("inspect database: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if _, err := connection.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{databaseName}.Sanitize()); err != nil {
+		return fmt.Errorf("create database %q: %w", databaseName, err)
+	}
+	return nil
+}
+
 func Migrate(ctx context.Context, pool *pgxpool.Pool, directory string) error {
 	conn, err := pool.Acquire(ctx)
 	if err != nil {

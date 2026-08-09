@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package cartlabs.search.v1;
+
+option go_package = "github.com/christolx/cartlabs/internal/contract/searchv1";
+
+import "google/protobuf/timestamp.proto";
+
+service SearchService {
+  rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse);
+  rpc UpsertProduct(UpsertProductRequest) returns (UpsertProductResponse);
+  rpc PruneProducts(PruneProductsRequest) returns (PruneProductsResponse);
+}
+
+message SearchProductsRequest {
+  string query = 1;
+  uint32 limit = 2;
+}
+
+message SearchProductsResponse {
+  repeated string product_ids = 1;
+  bool truncated = 2;
+}
+
+message UpsertProductRequest {
+  string event_id = 1;
+  SearchDocument document = 2;
+}
+
+message SearchDocument {
+  string product_id = 1;
+  string name = 2;
+  string description = 3;
+  string category_slug = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message UpsertProductResponse {
+  bool applied = 1;
+}
+
+message PruneProductsRequest {
+  repeated string keep_product_ids = 1;
+  google.protobuf.Timestamp source_snapshot_started_at = 2;
+}
+
+message PruneProductsResponse {
+  uint64 deleted = 1;
+}
