@@ -1,0 +1,38 @@
+name: demo reset
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    runs-on: [self-hosted, linux, x64, cartlabs-demo]
+    environment: demo
+    env:
+      RESET_JOB: cartlabs-reset-${{ github.run_id }}
+    concurrency:
+      group: cartlabs-demo-mutation
+      cancel-in-progress: false
+    steps:
+      - uses: azure/setup-kubectl@v4
+        with: { version: v1.36.3 }
+      - name: Configure cluster credentials
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+        run: |
+          install -d -m 0700 "$RUNNER_TEMP/kube"
+          printf '%s' "$KUBE_CONFIG_B64" | base64 --decode > "$RUNNER_TEMP/kube/config"
+          chmod 0600 "$RUNNER_TEMP/kube/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+      - name: Run serialized reset from release CronJob
+        run: |
+          kubectl -n cartlabs create job "$RESET_JOB" --from=cronjob/cartlabs-reset
+          kubectl -n cartlabs wait --for=condition=Complete "job/$RESET_JOB" --timeout=6m
+      - if: always()
+        run: |
+          kubectl -n cartlabs logs "job/$RESET_JOB" --all-containers=true || true
+          kubectl -n cartlabs delete "job/$RESET_JOB" --ignore-not-found=true

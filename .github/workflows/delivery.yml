@@ -1,0 +1,146 @@
+name: delivery
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy immutable SHA images to demo
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: delivery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { app: api, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=api" }
+          - { app: worker, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=worker" }
+          - { app: mock-payment, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=mock-payment" }
+          - { app: migrate, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=migrate" }
+          - { app: seed, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=seed" }
+          - { app: reset, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=reset" }
+          - { app: replay, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=replay" }
+          - { app: web, dockerfile: deploy/docker/web.Dockerfile, build_args: "" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/cartlabs-${{ matrix.app }}
+          tags: |
+            type=sha,format=long,prefix=sha-
+            type=semver,pattern={{version}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: ${{ matrix.build_args }}
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  deploy:
+    needs: publish
+    if: >-
+      (github.event_name == 'push' && contains(fromJSON('["refs/heads/main","refs/heads/master"]'), github.ref)) ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy)
+    runs-on: [self-hosted, linux, x64, cartlabs-demo]
+    permissions:
+      contents: read
+    environment: demo
+    concurrency:
+      group: cartlabs-demo-mutation
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: v4.2.3 }
+      - uses: azure/setup-kubectl@v4
+        with: { version: v1.36.3 }
+      - name: Configure cluster credentials
+        env:
+          KUBE_CONFIG_B64: ${{ secrets.KUBE_CONFIG_B64 }}
+        run: |
+          install -d -m 0700 "$RUNNER_TEMP/kube"
+          printf '%s' "$KUBE_CONFIG_B64" | base64 --decode > "$RUNNER_TEMP/kube/config"
+          chmod 0600 "$RUNNER_TEMP/kube/config"
+          echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
+      - name: Reconcile pull and application secrets
+        env:
+          GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
+          MOCK_PAYMENT_API_KEY: ${{ secrets.MOCK_PAYMENT_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+          RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          BACKUP_S3_ACCESS_KEY: ${{ secrets.BACKUP_S3_ACCESS_KEY }}
+          BACKUP_S3_SECRET_KEY: ${{ secrets.BACKUP_S3_SECRET_KEY }}
+          BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+        run: |
+          kubectl create namespace cartlabs --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n cartlabs create secret docker-registry ghcr-pull \
+            --docker-server=ghcr.io --docker-username="$GHCR_USERNAME" --docker-password="$GHCR_PULL_TOKEN" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n cartlabs create secret generic cartlabs-secrets \
+            --from-literal=ACCESS_TOKEN_SECRET="$ACCESS_TOKEN_SECRET" \
+            --from-literal=PAYMENT_WEBHOOK_SECRET="$PAYMENT_WEBHOOK_SECRET" \
+            --from-literal=MOCK_PAYMENT_API_KEY="$MOCK_PAYMENT_API_KEY" \
+            --from-literal=DATABASE_URL="$DATABASE_URL" \
+            --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            --from-literal=RABBITMQ_URL="$RABBITMQ_URL" \
+            --from-literal=RABBITMQ_DEFAULT_PASS="$RABBITMQ_DEFAULT_PASS" \
+            --from-literal=BACKUP_S3_ENDPOINT="$BACKUP_S3_ENDPOINT" \
+            --from-literal=BACKUP_S3_ACCESS_KEY="$BACKUP_S3_ACCESS_KEY" \
+            --from-literal=BACKUP_S3_SECRET_KEY="$BACKUP_S3_SECRET_KEY" \
+            --from-literal=BACKUP_S3_BUCKET="$BACKUP_S3_BUCKET" \
+            --dry-run=client -o yaml | kubectl apply -f -
+      - name: Deploy immutable release
+        env:
+          DEMO_HOST: ${{ vars.DEMO_HOST }}
+        run: |
+          helm upgrade --install cartlabs deploy/helm \
+            --namespace cartlabs \
+            --values deploy/helm/values-demo.yaml \
+            --set-string global.imageRegistry="ghcr.io/${GITHUB_REPOSITORY_OWNER}" \
+            --set-string global.imageTag="sha-${GITHUB_SHA}" \
+            --set-string global.domain="$DEMO_HOST" \
+            --set-string global.secretRevision="$GITHUB_RUN_ID" \
+            --rollback-on-failure --wait --timeout 12m
+          helm test cartlabs --namespace cartlabs --timeout 3m
+      - name: Run external smoke workflow
+        env:
+          DEMO_HOST: ${{ vars.DEMO_HOST }}
+        run: bash tests/deployment/smoke.sh "https://$DEMO_HOST"
+      - if: failure()
+        run: |
+          kubectl -n cartlabs get pods,jobs,ingress
+          kubectl -n cartlabs get events --sort-by=.lastTimestamp | tail -100
