@@ -9,8 +9,10 @@ platform operations, not production-scale commerce.
 - [Product](./product.md) — users, scope, and marketplace behavior
 - [Architecture](./architecture.md) — system shape and technical boundaries
 - [Delivery](./delivery.md) — environments, CI/CD, testing, and operations
+- [Demo platform](./platform.md) — provisioning, deployment, rollback, and recovery
 - [Operability](./operability.md) — telemetry, recovery, limits, and runbooks
 - [Roadmap](./roadmap.md) — incremental implementation plan
+- [Milestones](./milestone.md) — completed work and exit evidence
 - [Decisions](./decisions.md) — accepted and pending architecture decisions
 
 ## Principles

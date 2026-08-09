@@ -8,9 +8,9 @@
 | CI | Compose or service containers | Automated verification |
 | Demo | k3s + Helm | Portfolio deployment and operations practice |
 
-Infrastructure platform remains intentionally undecided until application MVP is
-stable. Terraform provisions infrastructure; Ansible configures hosts and k3s.
-Helm packages application workloads.
+Terraform provisions one Hetzner Cloud demo host; Ansible configures pinned k3s,
+host hardening, Traefik, and cert-manager. Helm packages application workloads.
+See [Demo platform](./platform.md) for the accepted topology and runbook.
 
 ## Repository Shape
 
@@ -66,7 +66,7 @@ Release tags add semantic-version tags. Avoid mutable `latest` in deployments.
 - **Unit:** domain state transitions and pure business rules
 - **Integration:** PostgreSQL repositories, Redis, RabbitMQ, and payment webhooks
 - **Contract:** OpenAPI request/response behavior and event schemas
-- **End-to-end:** Hurl API vertical slices; Playwright buyer, seller, and admin journeys
+- **End-to-end:** Hurl API vertical slices; agent-browser buyer, seller, and admin journeys
 - **Security:** authorization matrix, webhook replay, rate limits, dependency scan
 - **Resilience:** duplicate events, worker restart, dependency outage, retry behavior
 
@@ -96,8 +96,8 @@ deterministic end-to-end suite for CI speed.
 
 ## Recommended Supporting Tools
 
-- S3-compatible object storage such as MinIO for local product media
+- S3-compatible object storage such as MinIO for local backup testing
 - OpenTelemetry Collector, Prometheus, Grafana, and optionally Loki/Tempo
 - Trivy for images and IaC; Dependabot or Renovate for dependencies
-- Hurl for black-box API slice workflows; Playwright for browser flows
+- Hurl for black-box API slice workflows; agent-browser and Axe for browser flows
 - `golangci-lint`, TypeScript ESLint, and OpenAPI linting

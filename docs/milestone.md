@@ -160,3 +160,51 @@ Verified through:
   result caused by the hero image gradient
 - Guarded Compose reset and bounded SQL/RabbitMQ replay operator jobs
 - `make check`
+
+## Milestone 5 — k3s Demo Platform
+
+**Status:** Complete (2026-08-08)
+
+### Work
+
+- [x] Reproducible Helm chart with local and demo values
+- [x] Terraform-provisioned Hetzner host and restricted provider firewall
+- [x] Ansible-configured pinned k3s, hardening, snapshots, and cert-manager
+- [x] GHCR full-SHA image publishing with SBOM and provenance
+- [x] Protected GitHub environment deployment and serialized demo reset
+- [x] TLS ingress, secret reconciliation, probes, and namespace network policy
+- [x] External S3-compatible PostgreSQL backup and documented restore workflow
+- [x] In-cluster Helm test, external smoke test, and platform validation gates
+
+### Exit
+
+Reproducible k3s demo deployment from documented workflow.
+
+### Exit evidence
+
+Current chart installed from scratch and upgraded repeatedly on k3s
+`v1.36.3+k3s1`. Migration and deterministic seed hooks completed, seven runtime
+workloads became ready, Helm tests passed, and ingress served the application.
+Reset recreated deterministic state. Daily backup uploaded a 57.73 KiB custom
+PostgreSQL dump to an ephemeral S3-compatible target; restore into an isolated
+database recovered both seeded products.
+
+Verified through:
+
+- Helm lint and strict kubeconform validation: 23 local and 24 demo resources
+  valid against Kubernetes 1.36 schemas
+- Terraform 1.15.8 format, initialization, and validation with locked Hetzner
+  provider 1.68.0
+- ansible-core 2.21.2 syntax check and ansible-lint 26.6.0 production profile
+  with zero warnings or failures
+- actionlint 1.7.12 and ShellCheck 0.11.0 with zero findings
+- Trivy Helm, Dockerfile, and Terraform scan with zero HIGH/CRITICAL findings
+- Trivy scans across all eight published runtime images with zero
+  HIGH/CRITICAL findings
+- Fresh namespace install, migration, seed, readiness, and Helm smoke test
+- Upgrade, reset CronJob, backup CronJob, isolated restore, and external smoke
+  workflow against real k3s
+- Hurl suite with 70/70 successful requests across every marketplace slice
+- Agent-browser desktop/mobile review with zero page errors, zero Axe
+  violations, 0.0 CLS, 40 ms FCP, and 10.3 ms TTFB
+- `make platform-check` and `make check`

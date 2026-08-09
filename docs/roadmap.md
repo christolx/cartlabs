@@ -63,7 +63,7 @@ evidence from earlier work.
 
 ## 5 — k3s Demo Platform
 
-**Status:** Next
+**Status:** Complete (2026-08-08)
 
 - Helm chart and environment values
 - Terraform and Ansible for chosen platform
@@ -73,6 +73,8 @@ evidence from earlier work.
 **Exit:** reproducible k3s demo deployment from documented workflow.
 
 ## 6 — Microservice Learning Track
+
+**Status:** Next
 
 - Measure and select one meaningful extraction boundary
 - Define protobuf contract and ownership
