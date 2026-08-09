@@ -91,6 +91,9 @@ func (r *PostgresRepository) Create(ctx context.Context, sellerID string, value 
 	if err := insertAudit(ctx, tx, actorID, "product.created", "product", created.ID, created.CreatedAt); err != nil {
 		return Product{}, err
 	}
+	if err := insertSearchOutbox(ctx, tx, created); err != nil {
+		return Product{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return Product{}, fmt.Errorf("commit create product: %w", err)
 	}
@@ -114,6 +117,9 @@ func (r *PostgresRepository) Update(ctx context.Context, value Product, sellerID
 		return Product{}, mapWriteError(err)
 	}
 	if err := insertAudit(ctx, tx, actorID, "product.updated", "product", updated.ID, updated.UpdatedAt); err != nil {
+		return Product{}, err
+	}
+	if err := insertSearchOutbox(ctx, tx, updated); err != nil {
 		return Product{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -286,16 +292,25 @@ func (r *PostgresRepository) Moderate(ctx context.Context, productID, status, no
 }
 
 func (r *PostgresRepository) ListPublic(ctx context.Context, filters Filters) (Page, error) {
+	return r.listPublic(ctx, filters, nil, false)
+}
+
+func (r *PostgresRepository) ListPublicCandidates(ctx context.Context, filters Filters, candidates []string) (Page, error) {
+	return r.listPublic(ctx, filters, candidates, true)
+}
+
+func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, candidates []string, candidateSearch bool) (Page, error) {
 	search, category := nullableText(filters.Search), nullableText(filters.CategorySlug)
 	var total int
 	err := r.pool.QueryRow(ctx, `
 		SELECT count(*) FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id
 		JOIN LATERAL (SELECT min(price_minor) min_price,bool_or(stock>0) in_stock FROM product_variants WHERE product_id=p.id AND active) prices ON prices.min_price IS NOT NULL
 		WHERE p.status='published' AND p.moderation_status='approved' AND s.status='approved'
-		AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%')
+		AND ((NOT $6::boolean AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%'))
+			OR ($6::boolean AND p.id=ANY($7::uuid[])))
 		AND ($2::text IS NULL OR c.slug=$2) AND ($3::bigint IS NULL OR prices.min_price >= $3)
 		AND ($4::bigint IS NULL OR prices.min_price <= $4) AND (NOT $5 OR prices.in_stock)`,
-		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock).Scan(&total)
+		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, candidateSearch, candidates).Scan(&total)
 	if err != nil {
 		return Page{}, fmt.Errorf("count public products: %w", err)
 	}
@@ -305,11 +320,12 @@ func (r *PostgresRepository) ListPublic(ctx context.Context, filters Filters) (P
 		FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id
 		JOIN LATERAL (SELECT min(price_minor) min_price,min(currency) currency,bool_or(stock>0) in_stock FROM product_variants WHERE product_id=p.id AND active) prices ON prices.min_price IS NOT NULL
 		WHERE p.status='published' AND p.moderation_status='approved' AND s.status='approved'
-		AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%')
+		AND ((NOT $6::boolean AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%'))
+			OR ($6::boolean AND p.id=ANY($7::uuid[])))
 		AND ($2::text IS NULL OR c.slug=$2) AND ($3::bigint IS NULL OR prices.min_price >= $3)
 		AND ($4::bigint IS NULL OR prices.min_price <= $4) AND (NOT $5 OR prices.in_stock)
-		ORDER BY p.updated_at DESC,p.id DESC LIMIT $6 OFFSET $7`,
-		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, filters.PageSize, (filters.Page-1)*filters.PageSize)
+		ORDER BY p.updated_at DESC,p.id DESC LIMIT $8 OFFSET $9`,
+		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, candidateSearch, candidates, filters.PageSize, (filters.Page-1)*filters.PageSize)
 	if err != nil {
 		return Page{}, fmt.Errorf("list public products: %w", err)
 	}
@@ -324,6 +340,26 @@ func (r *PostgresRepository) ListPublic(ctx context.Context, filters Filters) (P
 		items = append(items, item)
 	}
 	return Page{Items: items, Page: filters.Page, PageSize: filters.PageSize, Total: total}, rows.Err()
+}
+
+func insertSearchOutbox(ctx context.Context, tx pgx.Tx, product Product) error {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return fmt.Errorf("generate search event ID: %w", err)
+	}
+	payload, err := json.Marshal(map[string]any{
+		"productId": product.ID, "name": product.Name, "description": product.Description,
+		"categorySlug": product.Category.Slug, "updatedAt": product.UpdatedAt,
+	})
+	if err != nil {
+		return fmt.Errorf("encode search event: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO outbox_events (id,aggregate_type,aggregate_id,event_type,payload,occurred_at)
+		VALUES ($1,'catalog',$2,'catalog.search.upsert.v1',$3,$4)`, id.String(), product.ID, payload, product.UpdatedAt); err != nil {
+		return fmt.Errorf("insert search event: %w", err)
+	}
+	return nil
 }
 
 func nullableText(value string) any {

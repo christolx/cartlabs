@@ -15,22 +15,24 @@ import (
 )
 
 type HTTPMetrics struct {
-	registry *prometheus.Registry
-	requests *prometheus.CounterVec
-	duration *prometheus.HistogramVec
-	inflight prometheus.Gauge
+	registry             *prometheus.Registry
+	requests             *prometheus.CounterVec
+	duration             *prometheus.HistogramVec
+	inflight             prometheus.Gauge
+	CatalogSearchResults *prometheus.CounterVec
 }
 
 func NewHTTPMetrics(service string) *HTTPMetrics {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	metrics := &HTTPMetrics{
-		registry: registry,
-		requests: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "cartlabs_http_requests_total", Help: "HTTP requests completed."}, []string{"service", "method", "route", "status"}),
-		duration: prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "cartlabs_http_request_duration_seconds", Help: "HTTP request duration.", Buckets: prometheus.DefBuckets}, []string{"service", "method", "route"}),
-		inflight: prometheus.NewGauge(prometheus.GaugeOpts{Name: "cartlabs_http_requests_in_flight", Help: "HTTP requests currently in flight.", ConstLabels: prometheus.Labels{"service": service}}),
+		registry:             registry,
+		requests:             prometheus.NewCounterVec(prometheus.CounterOpts{Name: "cartlabs_http_requests_total", Help: "HTTP requests completed."}, []string{"service", "method", "route", "status"}),
+		duration:             prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "cartlabs_http_request_duration_seconds", Help: "HTTP request duration.", Buckets: prometheus.DefBuckets}, []string{"service", "method", "route"}),
+		inflight:             prometheus.NewGauge(prometheus.GaugeOpts{Name: "cartlabs_http_requests_in_flight", Help: "HTTP requests currently in flight.", ConstLabels: prometheus.Labels{"service": service}}),
+		CatalogSearchResults: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "cartlabs_catalog_search_total", Help: "Catalog searches by service or compatibility fallback."}, []string{"result"}),
 	}
-	registry.MustRegister(metrics.requests, metrics.duration, metrics.inflight)
+	registry.MustRegister(metrics.requests, metrics.duration, metrics.inflight, metrics.CatalogSearchResults)
 	return metrics
 }
 
@@ -87,6 +89,7 @@ type WorkerMetrics struct {
 	Registry            *prometheus.Registry
 	OutboxRelays        *prometheus.CounterVec
 	NotificationResults *prometheus.CounterVec
+	SearchResults       *prometheus.CounterVec
 	ExpiredReservations prometheus.Counter
 }
 
@@ -97,9 +100,10 @@ func NewWorkerMetrics() *WorkerMetrics {
 		Registry:            registry,
 		OutboxRelays:        prometheus.NewCounterVec(prometheus.CounterOpts{Name: "cartlabs_outbox_relay_total", Help: "Outbox relay attempts by result."}, []string{"result"}),
 		NotificationResults: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "cartlabs_notification_delivery_total", Help: "Notification consumer deliveries by result."}, []string{"result"}),
+		SearchResults:       prometheus.NewCounterVec(prometheus.CounterOpts{Name: "cartlabs_search_delivery_total", Help: "Search index consumer deliveries by result."}, []string{"result"}),
 		ExpiredReservations: prometheus.NewCounter(prometheus.CounterOpts{Name: "cartlabs_reservations_expired_total", Help: "Expired checkout reservations."}),
 	}
-	registry.MustRegister(metrics.OutboxRelays, metrics.NotificationResults, metrics.ExpiredReservations)
+	registry.MustRegister(metrics.OutboxRelays, metrics.NotificationResults, metrics.SearchResults, metrics.ExpiredReservations)
 	return metrics
 }
 

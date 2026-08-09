@@ -28,16 +28,37 @@ type Repository interface {
 	ListForAdmin(context.Context) ([]Product, error)
 	Moderate(context.Context, string, string, string, string, time.Time) (Product, error)
 	ListPublic(context.Context, Filters) (Page, error)
+	ListPublicCandidates(context.Context, Filters, []string) (Page, error)
 	FindPublic(context.Context, string) (Product, error)
 }
 
 type Service struct {
 	repository Repository
 	now        func() time.Time
+	search     CandidateSearcher
+	observe    func(string)
 }
 
-func NewService(repository Repository) *Service {
-	return &Service{repository: repository, now: time.Now}
+type CandidateSearcher interface {
+	Search(context.Context, string, int) ([]string, error)
+}
+
+type Option func(*Service)
+
+func WithCandidateSearcher(search CandidateSearcher) Option {
+	return func(service *Service) { service.search = search }
+}
+
+func WithSearchObserver(observe func(string)) Option {
+	return func(service *Service) { service.observe = observe }
+}
+
+func NewService(repository Repository, options ...Option) *Service {
+	service := &Service{repository: repository, now: time.Now}
+	for _, option := range options {
+		option(service)
+	}
+	return service
 }
 
 func (s *Service) Categories(ctx context.Context) ([]Category, error) {
@@ -171,6 +192,18 @@ func (s *Service) ListPublic(ctx context.Context, filters Filters) (Page, error)
 		filters.MinPrice != nil && *filters.MinPrice < 0 || filters.MaxPrice != nil && *filters.MaxPrice < 0 ||
 		filters.MinPrice != nil && filters.MaxPrice != nil && *filters.MinPrice > *filters.MaxPrice {
 		return Page{}, domain.ErrInvalid
+	}
+	if filters.Search != "" && s.search != nil {
+		ids, err := s.search.Search(ctx, filters.Search, 2000)
+		if err == nil {
+			if s.observe != nil {
+				s.observe("service")
+			}
+			return s.repository.ListPublicCandidates(ctx, filters, ids)
+		}
+		if s.observe != nil {
+			s.observe("fallback")
+		}
 	}
 	return s.repository.ListPublic(ctx, filters)
 }

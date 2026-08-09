@@ -16,6 +16,7 @@ import (
 	"github.com/christolx/cartlabs/internal/observability"
 	"github.com/christolx/cartlabs/internal/platform"
 	"github.com/christolx/cartlabs/internal/purchase"
+	searchservice "github.com/christolx/cartlabs/internal/search"
 	marketstore "github.com/christolx/cartlabs/internal/store"
 )
 
@@ -60,7 +61,24 @@ func main() {
 		os.Exit(1)
 	}
 	storeService := marketstore.NewService(marketstore.NewPostgresRepository(dependencies.Postgres))
-	catalogService := catalog.NewService(catalog.NewPostgresRepository(dependencies.Postgres))
+	metrics := observability.NewHTTPMetrics("api")
+	catalogOptions := []catalog.Option{catalog.WithSearchObserver(func(result string) {
+		metrics.CatalogSearchResults.WithLabelValues(result).Inc()
+		if result == "fallback" {
+			logger.Warn("catalog search compatibility fallback")
+		}
+	})}
+	var searchClient *searchservice.Client
+	if cfg.SearchGRPCAddress != "" {
+		searchClient, err = searchservice.NewClient(cfg.SearchGRPCAddress, cfg.SearchServiceToken)
+		if err != nil {
+			logger.Error("configure search client", "error", err)
+			os.Exit(1)
+		}
+		defer searchClient.Close()
+		catalogOptions = append(catalogOptions, catalog.WithCandidateSearcher(searchClient))
+	}
+	catalogService := catalog.NewService(catalog.NewPostgresRepository(dependencies.Postgres), catalogOptions...)
 	purchaseService, err := purchase.NewService(
 		purchase.NewPostgresRepository(dependencies.Postgres),
 		purchase.NewHTTPPaymentProvider(cfg.PaymentProviderURL, cfg.MockPaymentAPIKey),
@@ -72,7 +90,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	metrics := observability.NewHTTPMetrics("api")
 	server := &http.Server{
 		Addr: cfg.APIAddress,
 		Handler: httpapi.New(dependencies, logger,
