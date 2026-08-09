@@ -9,7 +9,8 @@ HURL ?= hurl
 
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev \
 	compose-up compose-full compose-down compose-logs migrate seed reset \
-	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset clean
+	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset \
+	helm-check infra-check platform-check deployment-smoke clean
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -95,6 +96,27 @@ build: ## Build all runtime applications
 security: ## Scan Go and frontend dependency vulnerabilities
 	go tool govulncheck ./...
 	pnpm audit --audit-level high
+
+helm-check: ## Lint and render the k3s Helm chart
+	helm lint deploy/helm --values deploy/helm/values-local.yaml
+	helm lint deploy/helm --values deploy/helm/values-demo.yaml
+	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-local.yaml | \
+		kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas
+	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-demo.yaml | \
+		kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas
+
+infra-check: ## Format and validate Terraform and Ansible
+	terraform -chdir=infra/terraform fmt -check -recursive
+	terraform -chdir=infra/terraform init -backend=false
+	terraform -chdir=infra/terraform validate
+	cd infra/ansible && ansible-lint playbook.yml
+	cd infra/ansible && ansible-playbook -i inventory.example.yml playbook.yml --syntax-check \
+		-e cert_manager_email=operator@example.com -e demo_domain=demo.cartlabs.example.com
+
+platform-check: helm-check infra-check ## Validate deployment and infrastructure assets
+
+deployment-smoke: ## Smoke-test an already deployed demo URL
+	bash tests/deployment/smoke.sh "$${DEMO_URL:?set DEMO_URL}"
 
 check: generate lint test build ## Run full local verification
 	@git diff --exit-code -- internal/contract/openapi.gen.go apps/web/src/lib/api/schema.d.ts
