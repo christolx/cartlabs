@@ -1,0 +1,26 @@
+[Unit]
+Description=Cartlabs GitHub Actions deployment runner
+After=network-online.target k3s.service
+Wants=network-online.target
+Requires=k3s.service
+
+[Service]
+Type=simple
+User={{ github_runner_user }}
+Group={{ github_runner_user }}
+WorkingDirectory={{ github_runner_install_dir }}
+ExecStart={{ github_runner_install_dir }}/bin/runsvc.sh
+Restart=always
+RestartSec=10s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths={{ github_runner_install_dir }} /var/lib/{{ github_runner_user }}
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

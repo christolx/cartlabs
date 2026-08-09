@@ -1,0 +1,9 @@
+write-kubeconfig-mode: "0600"
+tls-san:
+  - "{{ k3s_tls_san }}"
+secrets-encryption: true
+cluster-init: true
+etcd-snapshot-schedule-cron: "{{ k3s_snapshot_schedule }}"
+etcd-snapshot-retention: {{ k3s_snapshot_retention }}
+node-label:
+  - "cartlabs.io/environment=demo"

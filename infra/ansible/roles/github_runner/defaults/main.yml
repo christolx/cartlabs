@@ -1,0 +1,9 @@
+---
+github_runner_version: "2.336.0"
+github_runner_archive_sha256: "04cf0be1aff4c3ec3554466c39124ca250e3effd8873bb7e8d68535aa9505d5d"
+github_runner_repository_url: "https://github.com/christolx/cartlabs"
+github_runner_registration_token: "{{ lookup('ansible.builtin.env', 'GITHUB_RUNNER_REGISTRATION_TOKEN') }}"
+github_runner_name: "cartlabs-demo"
+github_runner_labels: "cartlabs-demo"
+github_runner_user: "cartlabs-runner"
+github_runner_install_dir: "/opt/cartlabs-actions-runner"

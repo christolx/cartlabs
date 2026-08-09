@@ -1,0 +1,6 @@
+---
+- name: Restart GitHub runner
+  ansible.builtin.systemd_service:
+    name: cartlabs-actions-runner
+    state: restarted
+    daemon_reload: true

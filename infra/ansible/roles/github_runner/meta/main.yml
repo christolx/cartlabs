@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  role_name: github_runner
+  author: cartlabs
+  description: Pinned unprivileged GitHub Actions deployment runner
+  license: MIT
+  min_ansible_version: "2.19"
+  platforms:
+    - name: Ubuntu
+      versions: [noble]
+dependencies: []

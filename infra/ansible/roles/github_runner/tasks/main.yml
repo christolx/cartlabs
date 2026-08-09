@@ -1,0 +1,126 @@
+---
+- name: Install GitHub runner dependencies
+  ansible.builtin.apt:
+    name:
+      - libicu74
+      - libkrb5-3
+      - libssl3
+      - zlib1g
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create unprivileged GitHub runner user
+  ansible.builtin.user:
+    name: "{{ github_runner_user }}"
+    home: "/var/lib/{{ github_runner_user }}"
+    shell: /bin/bash
+    create_home: true
+    system: true
+
+- name: Create GitHub runner installation directory
+  ansible.builtin.file:
+    path: "{{ github_runner_install_dir }}"
+    state: directory
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0750"
+
+- name: Inspect existing GitHub runner registration
+  ansible.builtin.stat:
+    path: "{{ github_runner_install_dir }}/.runner"
+  register: github_runner_registration
+
+- name: Inspect installed GitHub runner version
+  ansible.builtin.stat:
+    path: "{{ github_runner_install_dir }}/.cartlabs-version-{{ github_runner_version }}"
+  register: github_runner_version_marker
+
+- name: Inspect GitHub runner service
+  ansible.builtin.stat:
+    path: /etc/systemd/system/cartlabs-actions-runner.service
+  register: github_runner_service
+
+- name: Require registration inputs for first install
+  ansible.builtin.assert:
+    that:
+      - github_runner_repository_url is match('^https://github.com/[^/]+/[^/]+$')
+      - github_runner_registration_token | length > 20
+    fail_msg: >-
+      Export a current GITHUB_RUNNER_REGISTRATION_TOKEN and set the repository
+      URL before first runner installation.
+  when: not github_runner_registration.stat.exists
+  no_log: true
+
+- name: Download pinned GitHub runner archive
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/actions/runner/releases/download/v{{ github_runner_version }}/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz
+    dest: "/tmp/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    checksum: "sha256:{{ github_runner_archive_sha256 }}"
+    mode: "0644"
+
+- name: Stop GitHub runner before binary update
+  ansible.builtin.systemd_service:
+    name: cartlabs-actions-runner
+    state: stopped
+  when:
+    - github_runner_service.stat.exists
+    - not github_runner_version_marker.stat.exists
+
+- name: Extract pinned GitHub runner
+  ansible.builtin.unarchive:
+    src: "/tmp/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    dest: "{{ github_runner_install_dir }}"
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    remote_src: true
+  when: not github_runner_version_marker.stat.exists
+
+- name: Record installed GitHub runner version
+  ansible.builtin.copy:
+    dest: "{{ github_runner_install_dir }}/.cartlabs-version-{{ github_runner_version }}"
+    content: "{{ github_runner_version }}\n"
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0640"
+
+- name: Register dedicated deployment runner
+  become: true
+  become_user: "{{ github_runner_user }}"
+  ansible.builtin.command:
+    argv:
+      - ./config.sh
+      - --unattended
+      - --url
+      - "{{ github_runner_repository_url }}"
+      - --token
+      - "{{ github_runner_registration_token }}"
+      - --name
+      - "{{ github_runner_name }}"
+      - --labels
+      - "{{ github_runner_labels }}"
+      - --work
+      - _work
+      - --disableupdate
+      - --replace
+    chdir: "{{ github_runner_install_dir }}"
+  when: not github_runner_registration.stat.exists
+  changed_when: true
+  no_log: true
+
+- name: Install hardened GitHub runner service
+  ansible.builtin.template:
+    src: cartlabs-actions-runner.service.j2
+    dest: /etc/systemd/system/cartlabs-actions-runner.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart GitHub runner
+
+- name: Start GitHub runner service
+  ansible.builtin.systemd_service:
+    name: cartlabs-actions-runner
+    enabled: true
+    state: started
+    daemon_reload: true

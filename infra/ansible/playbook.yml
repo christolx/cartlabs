@@ -1,0 +1,21 @@
+---
+- name: Configure Cartlabs k3s demo host
+  hosts: k3s
+  become: true
+  gather_facts: true
+  serial: 1
+  vars:
+    k3s_tls_san: "{{ ansible_host }}"
+  pre_tasks:
+    - name: Validate operator inputs
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == "Ubuntu"
+          - ansible_distribution_version is version('24.04', '>=')
+          - cert_manager_email | length > 3
+          - demo_domain | length > 3
+        fail_msg: "Ubuntu 24.04+, cert_manager_email, and demo_domain are required."
+  roles:
+    - role: k3s
+    - role: github_runner
+      when: github_runner_enabled | default(false) | bool

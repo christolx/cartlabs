@@ -1,0 +1,7 @@
+---
+k3s_version: v1.36.3+k3s1
+k3s_cert_manager_version: v1.21.1
+cert_manager_email: operator@example.com
+demo_domain: demo.cartlabs.example.com
+github_runner_enabled: false
+github_runner_repository_url: https://github.com/christolx/cartlabs
