@@ -11,9 +11,19 @@ import (
 )
 
 type fakeRepository struct {
-	product Product
-	variant Variant
-	filters Filters
+	product    Product
+	variant    Variant
+	filters    Filters
+	candidates []string
+}
+
+type fakeCandidateSearcher struct {
+	ids []string
+	err error
+}
+
+func (f fakeCandidateSearcher) Search(context.Context, string, int) ([]string, error) {
+	return f.ids, f.err
 }
 
 func (f *fakeRepository) Categories(context.Context) ([]Category, error) {
@@ -63,6 +73,11 @@ func (f *fakeRepository) ListPublic(_ context.Context, filters Filters) (Page, e
 	f.filters = filters
 	return Page{Items: []Summary{}, Page: filters.Page, PageSize: filters.PageSize}, nil
 }
+func (f *fakeRepository) ListPublicCandidates(_ context.Context, filters Filters, candidates []string) (Page, error) {
+	f.filters = filters
+	f.candidates = candidates
+	return Page{Items: []Summary{}, Page: filters.Page, PageSize: filters.PageSize}, nil
+}
 func (f *fakeRepository) FindPublic(context.Context, string) (Product, error) { return f.product, nil }
 
 func TestCatalogSellerOwnershipAndValidation(t *testing.T) {
@@ -99,5 +114,28 @@ func TestCatalogFiltersRejectInvalidRange(t *testing.T) {
 	min, max := int64(200), int64(100)
 	if _, err := service.ListPublic(context.Background(), Filters{Page: 1, PageSize: 20, MinPrice: &min, MaxPrice: &max}); !errors.Is(err, domain.ErrInvalid) {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestCatalogSearchUsesCandidatesAndFallsBack(t *testing.T) {
+	repository := &fakeRepository{}
+	results := []string{}
+	service := NewService(repository, WithCandidateSearcher(fakeCandidateSearcher{ids: []string{"01989f00-0000-7000-8000-000000000201"}}),
+		WithSearchObserver(func(result string) { results = append(results, result) }))
+	if _, err := service.ListPublic(context.Background(), Filters{Search: "basket", Page: 1, PageSize: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if len(repository.candidates) != 1 || results[0] != "service" {
+		t.Fatalf("candidates=%v results=%v", repository.candidates, results)
+	}
+
+	repository.candidates = nil
+	service = NewService(repository, WithCandidateSearcher(fakeCandidateSearcher{err: errors.New("search unavailable")}),
+		WithSearchObserver(func(result string) { results = append(results, result) }))
+	if _, err := service.ListPublic(context.Background(), Filters{Search: "basket", Page: 1, PageSize: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if repository.filters.Search != "basket" || results[len(results)-1] != "fallback" {
+		t.Fatalf("filters=%#v results=%v", repository.filters, results)
 	}
 }

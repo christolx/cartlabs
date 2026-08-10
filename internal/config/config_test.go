@@ -39,3 +39,12 @@ func TestLoadRejectsInvalidTraceSampleRatio(t *testing.T) {
 		t.Fatalf("Load() error = %v, want trace sample rejection", err)
 	}
 }
+
+func TestLoadRejectsShortSearchServiceToken(t *testing.T) {
+	t.Setenv("APP_ENV", "test")
+	t.Setenv("SEARCH_SERVICE_TOKEN", "short")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "SEARCH_SERVICE_TOKEN") {
+		t.Fatalf("Load() error = %v, want search token rejection", err)
+	}
+}
