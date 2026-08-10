@@ -51,6 +51,7 @@ spec:
               imagePullPolicy: {{ .Values.global.imagePullPolicy }}
               env:
                 - { name: APP_ENV, value: demo }
+                - { name: SEARCH_GRPC_ADDR, value: {{ printf "%s-search:9092" (include "cartlabs.fullname" .) | quote }} }
               envFrom:
                 - secretRef: { name: {{ .Values.global.existingSecret }} }
               securityContext:

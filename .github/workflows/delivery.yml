@@ -35,6 +35,9 @@ jobs:
           - { app: seed, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=seed" }
           - { app: reset, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=reset" }
           - { app: replay, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=replay" }
+          - { app: search, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=search" }
+          - { app: search-migrate, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=search-migrate" }
+          - { app: search-reindex, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=search-reindex" }
           - { app: web, dockerfile: deploy/docker/web.Dockerfile, build_args: "" }
     steps:
       - uses: actions/checkout@v4
@@ -101,6 +104,8 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
           RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+          SEARCH_DATABASE_URL: ${{ secrets.SEARCH_DATABASE_URL }}
+          SEARCH_SERVICE_TOKEN: ${{ secrets.SEARCH_SERVICE_TOKEN }}
           BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
           BACKUP_S3_ACCESS_KEY: ${{ secrets.BACKUP_S3_ACCESS_KEY }}
           BACKUP_S3_SECRET_KEY: ${{ secrets.BACKUP_S3_SECRET_KEY }}
@@ -118,6 +123,8 @@ jobs:
             --from-literal=POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
             --from-literal=RABBITMQ_URL="$RABBITMQ_URL" \
             --from-literal=RABBITMQ_DEFAULT_PASS="$RABBITMQ_DEFAULT_PASS" \
+            --from-literal=SEARCH_DATABASE_URL="$SEARCH_DATABASE_URL" \
+            --from-literal=SEARCH_SERVICE_TOKEN="$SEARCH_SERVICE_TOKEN" \
             --from-literal=BACKUP_S3_ENDPOINT="$BACKUP_S3_ENDPOINT" \
             --from-literal=BACKUP_S3_ACCESS_KEY="$BACKUP_S3_ACCESS_KEY" \
             --from-literal=BACKUP_S3_SECRET_KEY="$BACKUP_S3_SECRET_KEY" \

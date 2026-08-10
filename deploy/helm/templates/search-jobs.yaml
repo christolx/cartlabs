@@ -1,0 +1,50 @@
+{{- $fullname := include "cartlabs.fullname" . -}}
+{{- range $name, $job := dict "search-migrate" (dict "image" .Values.images.searchMigrate "weight" "-4" "hooks" "post-install,pre-upgrade") "search-reindex" (dict "image" .Values.images.searchReindex "weight" "5" "hooks" "post-install,post-upgrade") }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}-{{ $name }}
+  labels:
+    {{- include "cartlabs.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+  annotations:
+    helm.sh/hook: {{ $job.hooks }}
+    helm.sh/hook-weight: {{ $job.weight | quote }}
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 8
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $name }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "cartlabs.serviceAccountName" $ }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      {{- with $.Values.global.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $name }}
+          image: {{ include "cartlabs.image" (list $ $job.image) }}
+          imagePullPolicy: {{ $.Values.global.imagePullPolicy }}
+          env:
+            - { name: APP_ENV, value: {{ $.Values.global.environment | quote }} }
+            - { name: SEARCH_GRPC_ADDR, value: {{ printf "%s-search:9092" $fullname | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $.Values.global.existingSecret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+{{- end }}

@@ -1,7 +1,7 @@
 # Cartlabs Helm chart
 
 This chart packages the complete demo stack for a single-node k3s cluster:
-API, worker, web, mock payment provider, PostgreSQL, Redis, RabbitMQ, database
+API, worker, search gRPC service, web, mock payment provider, PostgreSQL, Redis, RabbitMQ, database
 hooks, reset and backup CronJobs, ingress, network policies, and smoke tests.
 
 ## Secret contract
@@ -18,6 +18,8 @@ default name is `cartlabs-secrets`.
 | `POSTGRES_PASSWORD` | Initializes the bundled PostgreSQL user |
 | `RABBITMQ_URL` | AMQP connection URL |
 | `RABBITMQ_DEFAULT_PASS` | Initializes the bundled RabbitMQ user |
+| `SEARCH_DATABASE_URL` | Independent search-owned PostgreSQL database URL |
+| `SEARCH_SERVICE_TOKEN` | Authenticates internal search gRPC calls |
 | `BACKUP_S3_ENDPOINT` | S3-compatible backup endpoint |
 | `BACKUP_S3_ACCESS_KEY` | Backup access key |
 | `BACKUP_S3_SECRET_KEY` | Backup secret key |
@@ -48,6 +50,8 @@ Import every `cartlabs-*:local` image into the local cluster before installing.
 ## Lifecycle
 
 - API and worker wait for PostgreSQL, run idempotent migrations, then start.
+- Search owns a separate database, runs its own migration, and receives catalog events through RabbitMQ.
+- Search reindex hook repairs initial state and drift after install or upgrade.
 - A Helm migration hook runs after install and before each upgrade.
 - Deterministic seed runs after first install only.
 - Reset CronJob is suspended; serialized GitHub workflow creates manual jobs.

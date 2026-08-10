@@ -89,6 +89,8 @@ services:
       MOCK_PAYMENT_API_KEY: ${MOCK_PAYMENT_API_KEY:-cartlabs-local-payment-api-key}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
       OTEL_TRACES_SAMPLER_ARG: "1"
+      SEARCH_GRPC_ADDR: search:9092
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
     ports:
       - "8080:8080"
     depends_on:
@@ -102,6 +104,8 @@ services:
         condition: service_healthy
       tempo:
         condition: service_started
+      search:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/v1/health/live"]
       interval: 5s
@@ -124,6 +128,8 @@ services:
       WORKER_METRICS_ADDR: :9091
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
       OTEL_TRACES_SAMPLER_ARG: "1"
+      SEARCH_GRPC_ADDR: search:9092
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
     ports:
       - "9091:9091"
     depends_on:
@@ -135,7 +141,69 @@ services:
         condition: service_healthy
       tempo:
         condition: service_started
+      search:
+        condition: service_healthy
     restart: unless-stopped
+
+  search-migrate:
+    profiles: ["full", "ops"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        APP: search-migrate
+    environment:
+      APP_ENV: local
+      SEARCH_DATABASE_URL: postgres://cartlabs:cartlabs@postgres:5432/cartlabs_search?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  search:
+    profiles: ["full"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        APP: search
+    environment:
+      APP_ENV: local
+      SEARCH_GRPC_SERVER_ADDR: :9092
+      SEARCH_METRICS_ADDR: :9093
+      SEARCH_DATABASE_URL: postgres://cartlabs:cartlabs@postgres:5432/cartlabs_search?sslmode=disable
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://tempo:4318/v1/traces
+      OTEL_TRACES_SAMPLER_ARG: "1"
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    depends_on:
+      search-migrate:
+        condition: service_completed_successfully
+      tempo:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9093/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  search-reindex:
+    profiles: ["ops"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/go.Dockerfile
+      args:
+        APP: search-reindex
+    environment:
+      APP_ENV: local
+      DATABASE_URL: postgres://cartlabs:cartlabs@postgres:5432/cartlabs?sslmode=disable
+      SEARCH_GRPC_ADDR: search:9092
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   mock-payment:
     profiles: ["full"]
@@ -173,6 +241,8 @@ services:
         condition: service_healthy
       worker:
         condition: service_started
+      search:
+        condition: service_healthy
     restart: unless-stopped
 
   tempo:
@@ -218,12 +288,16 @@ services:
       ACCESS_TOKEN_SECRET: cartlabs-demo-reset-access-secret-not-for-production
       PAYMENT_WEBHOOK_SECRET: cartlabs-demo-reset-webhook-secret-not-for-production
       MOCK_PAYMENT_API_KEY: cartlabs-demo-reset-api-key-not-for-production
+      SEARCH_GRPC_ADDR: search:9092
+      SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
     working_dir: /workspace
     volumes:
       - ../../migrations:/workspace/migrations:ro
       - ../../seeds:/workspace/seeds:ro
     depends_on:
       postgres:
+        condition: service_healthy
+      search:
         condition: service_healthy
 
   replay:

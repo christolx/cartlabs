@@ -17,3 +17,18 @@ spec:
       port: {{ $port }}
       targetPort: http
 {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cartlabs.fullname" . }}-search
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: search
+spec:
+  selector:
+    {{- include "cartlabs.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: search
+  ports:
+    - { name: grpc, port: 9092, targetPort: grpc }
+    - { name: metrics, port: 9093, targetPort: metrics }

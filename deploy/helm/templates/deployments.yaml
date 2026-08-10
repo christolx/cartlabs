@@ -75,6 +75,7 @@ spec:
             - { name: COOKIE_SECURE, value: {{ .Values.ingress.tls.enabled | quote }} }
             - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ .Values.observability.otlpTraceEndpoint | quote }} }
             - { name: OTEL_TRACES_SAMPLER_ARG, value: {{ .Values.observability.traceSampleRatio | quote }} }
+            - { name: SEARCH_GRPC_ADDR, value: {{ printf "%s-search:9092" $fullname | quote }} }
           envFrom:
             - secretRef: { name: {{ $secret }} }
           startupProbe:
@@ -165,6 +166,7 @@ spec:
             - { name: WORKER_METRICS_ADDR, value: ":9091" }
             - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ .Values.observability.otlpTraceEndpoint | quote }} }
             - { name: OTEL_TRACES_SAMPLER_ARG, value: {{ .Values.observability.traceSampleRatio | quote }} }
+            - { name: SEARCH_GRPC_ADDR, value: {{ printf "%s-search:9092" $fullname | quote }} }
           envFrom:
             - secretRef: { name: {{ $secret }} }
           startupProbe:
@@ -178,6 +180,91 @@ spec:
             httpGet: { path: /, port: http }
             periodSeconds: 10
           resources: {{ toYaml .Values.resources.worker | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-search
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: search
+spec:
+  replicas: {{ .Values.replicas.search }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: search
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: search
+      annotations:
+        cartlabs.io/secret-revision: {{ .Values.global.secretRevision | quote }}
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "9093"
+    spec:
+      serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile: { type: RuntimeDefault }
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: search-migrate
+          image: {{ include "cartlabs.image" (list . .Values.images.searchMigrate) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+      containers:
+        - name: search
+          image: {{ include "cartlabs.image" (list . .Values.images.search) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          ports:
+            - { name: grpc, containerPort: 9092 }
+            - { name: metrics, containerPort: 9093 }
+          env:
+            - { name: APP_ENV, value: {{ .Values.global.environment | quote }} }
+            - { name: SEARCH_GRPC_SERVER_ADDR, value: ":9092" }
+            - { name: SEARCH_METRICS_ADDR, value: ":9093" }
+            - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ .Values.observability.otlpTraceEndpoint | quote }} }
+            - { name: OTEL_TRACES_SAMPLER_ARG, value: {{ .Values.observability.traceSampleRatio | quote }} }
+          envFrom:
+            - secretRef: { name: {{ $secret }} }
+          startupProbe:
+            httpGet: { path: /health/ready, port: metrics }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: /health/ready, port: metrics }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health/live, port: metrics }
+            periodSeconds: 10
+          resources: {{ toYaml .Values.resources.search | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: { drop: ["ALL"] }

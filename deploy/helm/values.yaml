@@ -17,12 +17,16 @@ images:
   migrate: cartlabs-migrate
   seed: cartlabs-seed
   reset: cartlabs-reset
+  search: cartlabs-search
+  searchMigrate: cartlabs-search-migrate
+  searchReindex: cartlabs-search-reindex
 
 replicas:
   api: 1
   web: 1
   worker: 1
   mockPayment: 1
+  search: 1
 
 demoMode: true
 
@@ -39,6 +43,9 @@ resources:
   mockPayment:
     requests: { cpu: 10m, memory: 32Mi }
     limits: { cpu: 200m, memory: 96Mi }
+  search:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { cpu: 300m, memory: 192Mi }
 
 ingress:
   enabled: true

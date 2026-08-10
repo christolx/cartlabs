@@ -8,6 +8,7 @@ import (
 
 	"github.com/christolx/cartlabs/internal/config"
 	"github.com/christolx/cartlabs/internal/database"
+	searchservice "github.com/christolx/cartlabs/internal/search"
 )
 
 func main() {
@@ -30,6 +31,20 @@ func main() {
 	if err := database.Reset(ctx, pool, cfg.Environment, "migrations", "seeds/demo.sql"); err != nil {
 		logger.Error("reset database", "error", err)
 		os.Exit(1)
+	}
+	if cfg.SearchGRPCAddress != "" {
+		client, err := searchservice.NewClient(cfg.SearchGRPCAddress, cfg.SearchServiceToken)
+		if err != nil {
+			logger.Error("configure reset search client", "error", err)
+			os.Exit(1)
+		}
+		defer client.Close()
+		count, deleted, err := searchservice.Reindex(ctx, pool, client)
+		if err != nil {
+			logger.Error("reindex reset search", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("search reindex complete", "documents", count, "pruned", deleted)
 	}
 	logger.Info("database reset complete", "environment", cfg.Environment)
 }

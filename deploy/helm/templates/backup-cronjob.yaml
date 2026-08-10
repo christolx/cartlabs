@@ -39,7 +39,10 @@ spec:
                 - -ec
                 - |
                   until pg_isready -d "$DATABASE_URL"; do sleep 2; done
-                  pg_dump "$DATABASE_URL" --format=custom --file="/backup/cartlabs-$(date -u +%Y%m%dT%H%M%SZ).dump"
+                  until pg_isready -d "$SEARCH_DATABASE_URL"; do sleep 2; done
+                  timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+                  pg_dump "$DATABASE_URL" --format=custom --file="/backup/cartlabs-$timestamp.dump"
+                  pg_dump "$SEARCH_DATABASE_URL" --format=custom --file="/backup/cartlabs-search-$timestamp.dump"
               envFrom:
                 - secretRef: { name: {{ .Values.global.existingSecret }} }
               securityContext:
