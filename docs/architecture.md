@@ -2,22 +2,24 @@
 
 ## System Shape
 
-Start with an extraction-ready modular monolith. Future phases may split selected
-modules into gRPC services on k3s.
+System keeps transactional marketplace core modular while extracting text search
+as one measured learning boundary.
 
 ```text
 Browser
   |
   v
-Next.js web ---> Go REST API ---> PostgreSQL
-                    |   |
-                    |   +----------> Redis
-                    v
-                 RabbitMQ ---> Go worker
-                    ^
-                    |
-              mock-payment
-                 webhook
+Next.js web ---> Go REST API ---> catalog PostgreSQL
+                    |   |               |
+                    |   +--> Redis      +--> transactional outbox
+                    |                         |
+                    |                         v
+                    +-- gRPC --> search <-- worker <-- RabbitMQ
+                                  |
+                                  v
+                           search PostgreSQL
+
+mock-payment -- signed webhook --> Go REST API
 ```
 
 ## Deployables
@@ -27,8 +29,10 @@ Next.js web ---> Go REST API ---> PostgreSQL
 | `web` | Next.js and TypeScript user interface |
 | `api` | Go REST API and marketplace domain logic |
 | `worker` | Go consumers for asynchronous jobs and events |
+| `search` | Internal text candidate retrieval and projection ownership |
 | `mock-payment` | External-gateway simulation and signed webhooks |
-| PostgreSQL | Source of truth |
+| Catalog PostgreSQL | Marketplace source of truth |
+| Search PostgreSQL | Independently migrated text projection |
 | RabbitMQ | Durable async jobs and domain-event delivery |
 | Redis | Cache, rate limits, and short-lived coordination state |
 
@@ -67,12 +71,13 @@ explicit interfaces. No module reads another module's tables directly.
 - Failed messages use bounded retries and dead-letter queues.
 - Events describe completed facts; commands request work.
 
-### Future Services
+### Internal services
 
 - Browser continues using REST at platform edge.
-- Extracted internal services communicate through protobuf/gRPC.
+- Search communicates through protobuf/gRPC and a versioned catalog event.
+- Search returns candidates; catalog remains final visibility and commerce authority.
 - Module interfaces and event ownership guide extraction boundaries.
-- Extraction happens only after profiling or learning goals justify it.
+- Further extraction happens only after profiling or learning goals justify it.
 
 ## Data Rules
 

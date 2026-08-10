@@ -84,6 +84,7 @@ Set environment variable `DEMO_HOST` and these environment secrets:
 - `ACCESS_TOKEN_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `MOCK_PAYMENT_API_KEY`
 - `DATABASE_URL`, `POSTGRES_PASSWORD`
 - `RABBITMQ_URL`, `RABBITMQ_DEFAULT_PASS`
+- `SEARCH_DATABASE_URL`, `SEARCH_SERVICE_TOKEN`
 - `BACKUP_S3_ENDPOINT`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`,
   `BACKUP_S3_BUCKET`
 
@@ -94,7 +95,7 @@ then dispatch delivery; `global.secretRevision` rolls affected Pods.
 
 ## Delivery and verification
 
-Default-branch delivery builds eight runtime images independently, publishes
+Default-branch delivery builds eleven runtime images independently, publishes
 full-SHA tags with SBOM and provenance, and deploys the exact SHA through Helm.
 Deployment and reset share `cartlabs-demo-mutation` concurrency, preventing
 migrations and destructive demo resets from overlapping.
@@ -129,8 +130,9 @@ a failed release.
 
 ## Backup and restore
 
-Backup CronJob runs at 02:17 UTC, waits for PostgreSQL, creates a custom-format
-dump, uploads it under `cartlabs/`, and deletes objects older than 168 hours.
+Backup CronJob runs at 02:17 UTC, waits for PostgreSQL, creates custom-format
+dumps for main and search-owned databases, uploads them under `cartlabs/`, and
+deletes objects older than 168 hours.
 External S3 storage must enable encryption, versioning, and restricted
 credentials. Hetzner whole-server backups and five twice-daily embedded-etcd
 snapshots complement database dumps; neither replaces them.
@@ -148,9 +150,10 @@ Restore procedure for demo incidents:
 
 1. Disable delivery and reset dispatch; take one final backup when possible.
 2. Download selected dump from external storage and verify object size/date.
-3. Scale API and worker Deployments to zero, leaving PostgreSQL running.
-4. Terminate sessions, drop and recreate `cartlabs`, then run `pg_restore
-   --no-owner --no-privileges` as the `cartlabs` user.
+3. Scale API, worker, and search Deployments to zero, leaving PostgreSQL running.
+4. Terminate sessions, drop and recreate `cartlabs` and `cartlabs_search`, then
+   restore matching dumps with `pg_restore --no-owner --no-privileges` as the
+   `cartlabs` user. If search dump is unavailable, migrate it and run reindex.
 5. Run table-count and migration-version checks before scaling workloads up.
 6. Wait for readiness, run Helm and external smoke tests, then re-enable jobs.
 7. Record selected object, timestamps, commands, and verification in incident

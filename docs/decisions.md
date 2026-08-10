@@ -34,13 +34,13 @@
 | Privileged actions | Append-only audit log | Makes seller and admin changes traceable |
 | Demo recovery | Daily migration-and-seed reset | Restores predictable state after public use |
 | Email | No email flow or local email tooling | Keeps project focused on marketplace core |
+| First extraction | Search candidate retrieval over gRPC | Eventual read projection teaches service boundaries without splitting commerce transactions |
 
 ## Pending
 
 Decide these when their roadmap phase begins:
 
-- search evolution from PostgreSQL to dedicated engine
-- first microservice extraction candidate
+- search engine evolution after ranking or scale evidence
 
 ## Decision Record Template
 

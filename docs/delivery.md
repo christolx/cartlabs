@@ -20,11 +20,15 @@ apps/
   api/
   worker/
   mock-payment/
+  search/
+  search-migrate/
+  search-reindex/
   migrate/
   seed/
   reset/
 api/
   openapi/
+  proto/
 deploy/
   compose/
   helm/

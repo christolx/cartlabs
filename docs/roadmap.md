@@ -74,7 +74,7 @@ evidence from earlier work.
 
 ## 6 — Microservice Learning Track
 
-**Status:** Next
+**Status:** Complete (2026-08-08)
 
 - Measure and select one meaningful extraction boundary
 - Define protobuf contract and ownership

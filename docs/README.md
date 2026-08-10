@@ -11,6 +11,7 @@ platform operations, not production-scale commerce.
 - [Delivery](./delivery.md) — environments, CI/CD, testing, and operations
 - [Demo platform](./platform.md) — provisioning, deployment, rollback, and recovery
 - [Operability](./operability.md) — telemetry, recovery, limits, and runbooks
+- [Search service](./search-service.md) — ownership, failure behavior, migration, and rollback
 - [Roadmap](./roadmap.md) — incremental implementation plan
 - [Milestones](./milestone.md) — completed work and exit evidence
 - [Decisions](./decisions.md) — accepted and pending architecture decisions

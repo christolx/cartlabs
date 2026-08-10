@@ -208,3 +208,56 @@ Verified through:
 - Agent-browser desktop/mobile review with zero page errors, zero Axe
   violations, 0.0 CLS, 40 ms FCP, and 10.3 ms TTFB
 - `make platform-check` and `make check`
+
+## Milestone 6 — Microservice Learning Track
+
+**Status:** Complete (2026-08-08)
+
+### Work
+
+- [x] Measured and selected text search as low-risk eventual-read boundary
+- [x] Versioned protobuf/gRPC contract with dedicated service authentication
+- [x] Independent search database, migrations, repository, and telemetry
+- [x] Transactional catalog events with RabbitMQ retry/dead-letter delivery
+- [x] Catalog-authoritative candidate filtering and compatible SQL fallback
+- [x] Cutoff-safe initial reindex, drift repair, stale pruning, and rollback path
+- [x] Compose, Helm, GHCR delivery, probes, metrics, and network policy
+
+### Exit
+
+One extracted service demonstrates justified ownership and failure handling,
+without splitting order or payment consistency boundaries.
+
+### Exit evidence
+
+Search selection used existing catalog measurement: 13,445 requests/second and
+2.48 ms p95 showed no performance emergency. Extraction serves explicit learning
+goals: protobuf, gRPC, independent persistence, event replication, idempotency,
+out-of-order handling, telemetry, failure fallback, and migration operations.
+
+Real Compose workflow created a catalog product and observed its transactional
+`catalog.search.upsert.v1` outbox row published, worker delivery metric succeed,
+and independently owned search row appear. Catalog authority kept indexed draft
+and moderation-pending product hidden, then exposed it only after approval with
+current price, stock, category, and shared local image. Stopping search returned
+the same product result through SQL fallback in 765 ms, incremented fallback
+telemetry, and recovered without data loss. Reindex aligned three search rows to
+three source products and pruned one stale row safely.
+
+Verified through:
+
+- Unit tests for RPC validation/authentication, candidate/fallback selection,
+  malformed event rejection, transport failure propagation, and existing domains
+- PostgreSQL integration tests proving atomic product/outbox creation, event
+  idempotency, rejection of older document versions, stale pruning, and
+  protection of writes newer than reindex cutoff
+- Automated Compose outage test comparing baseline, fallback, and recovered
+  catalog response exactly
+- Compose-backed Hurl suite with 71/71 successful marketplace requests while
+  API, worker, and search service ran together
+- 10-second/20-client service-backed text-search baseline: 74,611 requests, zero
+  failures, 7,460.6 requests/second, 4.27 ms p95, and 5.31 ms p99
+- Helm lint and strict Kubernetes 1.36 schema validation across 28 local and 29 demo resources
+- Full container build and live health/metrics checks for search, API, and worker
+- Trivy repository/Helm and three new runtime-image scans with zero HIGH/CRITICAL findings
+- `make microservice-test`, `make search-outage`, `make platform-check`, and `make check`
