@@ -14,6 +14,7 @@ import (
 	"github.com/christolx/cartlabs/internal/observability"
 	"github.com/christolx/cartlabs/internal/platform"
 	"github.com/christolx/cartlabs/internal/purchase"
+	searchservice "github.com/christolx/cartlabs/internal/search"
 )
 
 func main() {
@@ -62,6 +63,22 @@ func main() {
 		os.Exit(1)
 	}
 	defer consumer.Close()
+	var searchConsumer *messaging.Consumer
+	var searchClient *searchservice.Client
+	if cfg.SearchGRPCAddress != "" {
+		searchClient, err = searchservice.NewClient(cfg.SearchGRPCAddress, cfg.SearchServiceToken)
+		if err != nil {
+			logger.Error("configure search client", "error", err)
+			os.Exit(1)
+		}
+		defer searchClient.Close()
+		searchConsumer, err = messaging.NewSearchConsumer(dependencies.RabbitMQ, messaging.DefaultExchange)
+		if err != nil {
+			logger.Error("configure search consumer", "error", err)
+			os.Exit(1)
+		}
+		defer searchConsumer.Close()
+	}
 	outbox := messaging.NewOutbox(dependencies.Postgres)
 	notifications := messaging.NewNotificationHandler(dependencies.Postgres)
 	metrics := observability.NewWorkerMetrics()
@@ -84,12 +101,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	consumerErrors := make(chan error, 1)
+	consumerErrors := make(chan error, 2)
 	go func() {
 		consumerErrors <- consumer.Run(stopCtx, notifications, logger, func(result string) {
 			metrics.NotificationResults.WithLabelValues(result).Inc()
 		})
 	}()
+	if searchConsumer != nil {
+		handler := searchservice.NewSyncHandler(searchClient)
+		go func() {
+			consumerErrors <- searchConsumer.Run(stopCtx, handler, logger, func(result string) {
+				metrics.SearchResults.WithLabelValues(result).Inc()
+			})
+		}()
+	}
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 	logger.Info("worker ready", "environment", cfg.Environment)

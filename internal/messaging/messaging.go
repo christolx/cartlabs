@@ -22,14 +22,17 @@ import (
 )
 
 const (
-	DefaultExchange = "cartlabs.events"
-	DefaultQueue    = "cartlabs.notifications.v2"
-	DeadExchange    = "cartlabs.dead"
-	DeadQueue       = "cartlabs.notifications.dead"
-	RetryExchange   = "cartlabs.retry"
-	RetryQueue      = "cartlabs.notifications.retry"
-	maxAttempts     = 5
-	maxDeliveries   = 3
+	DefaultExchange  = "cartlabs.events"
+	DefaultQueue     = "cartlabs.notifications.v2"
+	DeadExchange     = "cartlabs.dead"
+	DeadQueue        = "cartlabs.notifications.dead"
+	RetryExchange    = "cartlabs.retry"
+	RetryQueue       = "cartlabs.notifications.retry"
+	SearchQueue      = "cartlabs.search.v1"
+	SearchDeadQueue  = "cartlabs.search.dead"
+	SearchRetryQueue = "cartlabs.search.retry"
+	maxAttempts      = 5
+	maxDeliveries    = 3
 )
 
 type Event struct {
@@ -168,9 +171,37 @@ type Consumer struct {
 	channel       *amqp.Channel
 	messages      <-chan amqp.Delivery
 	confirmations <-chan amqp.Confirmation
+	retryExchange string
+	retryKey      string
+	name          string
+}
+
+type ConsumerConfig struct {
+	Exchange      string
+	Queue         string
+	Consumer      string
+	Bindings      []string
+	RetryExchange string
+	RetryQueue    string
+	RetryKey      string
+	DeadExchange  string
+	DeadQueue     string
+	DeadKey       string
 }
 
 func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string) (*Consumer, error) {
+	return NewConsumer(connection, ConsumerConfig{Exchange: exchange, Queue: queue, Consumer: "cartlabs-worker-notifications",
+		Bindings: []string{"purchase.#", "order.#", "notifications.retry"}, RetryExchange: RetryExchange,
+		RetryQueue: RetryQueue, RetryKey: "notifications.retry", DeadExchange: DeadExchange, DeadQueue: DeadQueue, DeadKey: "notifications.failed"})
+}
+
+func NewSearchConsumer(connection *amqp.Connection, exchange string) (*Consumer, error) {
+	return NewConsumer(connection, ConsumerConfig{Exchange: exchange, Queue: SearchQueue, Consumer: "cartlabs-worker-search",
+		Bindings: []string{"catalog.search.#", "search.retry"}, RetryExchange: RetryExchange,
+		RetryQueue: SearchRetryQueue, RetryKey: "search.retry", DeadExchange: DeadExchange, DeadQueue: SearchDeadQueue, DeadKey: "search.failed"})
+}
+
+func NewConsumer(connection *amqp.Connection, cfg ConsumerConfig) (*Consumer, error) {
 	channel, err := connection.Channel()
 	if err != nil {
 		return nil, fmt.Errorf("open consumer channel: %w", err)
@@ -179,37 +210,37 @@ func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string
 		_ = channel.Close()
 		return nil, err
 	}
-	if err := channel.ExchangeDeclare(exchange, "topic", true, false, false, false, nil); err != nil {
+	if err := channel.ExchangeDeclare(cfg.Exchange, "topic", true, false, false, false, nil); err != nil {
 		return closeWith(fmt.Errorf("declare consumer exchange: %w", err))
 	}
-	if err := channel.ExchangeDeclare(DeadExchange, "direct", true, false, false, false, nil); err != nil {
+	if err := channel.ExchangeDeclare(cfg.DeadExchange, "direct", true, false, false, false, nil); err != nil {
 		return closeWith(fmt.Errorf("declare dead-letter exchange: %w", err))
 	}
-	if err := channel.ExchangeDeclare(RetryExchange, "direct", true, false, false, false, nil); err != nil {
+	if err := channel.ExchangeDeclare(cfg.RetryExchange, "direct", true, false, false, false, nil); err != nil {
 		return closeWith(fmt.Errorf("declare retry exchange: %w", err))
 	}
-	if _, err := channel.QueueDeclare(DeadQueue, true, false, false, false, nil); err != nil {
+	if _, err := channel.QueueDeclare(cfg.DeadQueue, true, false, false, false, nil); err != nil {
 		return closeWith(fmt.Errorf("declare dead-letter queue: %w", err))
 	}
-	if err := channel.QueueBind(DeadQueue, "notifications.failed", DeadExchange, false, nil); err != nil {
+	if err := channel.QueueBind(cfg.DeadQueue, cfg.DeadKey, cfg.DeadExchange, false, nil); err != nil {
 		return closeWith(fmt.Errorf("bind dead-letter queue: %w", err))
 	}
-	if _, err := channel.QueueDeclare(RetryQueue, true, false, false, false, amqp.Table{
-		"x-message-ttl": int32(2000), "x-dead-letter-exchange": exchange,
+	if _, err := channel.QueueDeclare(cfg.RetryQueue, true, false, false, false, amqp.Table{
+		"x-message-ttl": int32(2000), "x-dead-letter-exchange": cfg.Exchange,
 	}); err != nil {
 		return closeWith(fmt.Errorf("declare retry queue: %w", err))
 	}
-	if err := channel.QueueBind(RetryQueue, "notifications.retry", RetryExchange, false, nil); err != nil {
+	if err := channel.QueueBind(cfg.RetryQueue, cfg.RetryKey, cfg.RetryExchange, false, nil); err != nil {
 		return closeWith(fmt.Errorf("bind retry queue: %w", err))
 	}
-	if _, err := channel.QueueDeclare(queue, true, false, false, false, amqp.Table{
-		"x-dead-letter-exchange": DeadExchange, "x-dead-letter-routing-key": "notifications.failed",
+	if _, err := channel.QueueDeclare(cfg.Queue, true, false, false, false, amqp.Table{
+		"x-dead-letter-exchange": cfg.DeadExchange, "x-dead-letter-routing-key": cfg.DeadKey,
 	}); err != nil {
-		return closeWith(fmt.Errorf("declare notification queue: %w", err))
+		return closeWith(fmt.Errorf("declare %s queue: %w", cfg.Consumer, err))
 	}
-	for _, routingKey := range []string{"purchase.#", "order.#", "notifications.retry"} {
-		if err := channel.QueueBind(queue, routingKey, exchange, false, nil); err != nil {
-			return closeWith(fmt.Errorf("bind notification queue: %w", err))
+	for _, routingKey := range cfg.Bindings {
+		if err := channel.QueueBind(cfg.Queue, routingKey, cfg.Exchange, false, nil); err != nil {
+			return closeWith(fmt.Errorf("bind %s queue: %w", cfg.Consumer, err))
 		}
 	}
 	if err := channel.Qos(10, 0, false); err != nil {
@@ -219,11 +250,12 @@ func NewNotificationConsumer(connection *amqp.Connection, exchange, queue string
 		return closeWith(fmt.Errorf("enable retry publisher confirms: %w", err))
 	}
 	confirmations := channel.NotifyPublish(make(chan amqp.Confirmation, 1))
-	messages, err := channel.Consume(queue, "cartlabs-worker", false, false, false, false, nil)
+	messages, err := channel.Consume(cfg.Queue, cfg.Consumer, false, false, false, false, nil)
 	if err != nil {
 		return closeWith(fmt.Errorf("consume notification queue: %w", err))
 	}
-	return &Consumer{channel: channel, messages: messages, confirmations: confirmations}, nil
+	return &Consumer{channel: channel, messages: messages, confirmations: confirmations,
+		retryExchange: cfg.RetryExchange, retryKey: cfg.RetryKey, name: cfg.Consumer}, nil
 }
 
 type Handler interface {
@@ -241,7 +273,7 @@ func (c *Consumer) Run(ctx context.Context, handler Handler, logger *slog.Logger
 			return nil
 		case delivery, ok := <-c.messages:
 			if !ok {
-				return fmt.Errorf("notification delivery channel closed")
+				return fmt.Errorf("%s delivery channel closed", c.name)
 			}
 			deliveryCtx := extractTrace(ctx, delivery.Headers)
 			deliveryCtx, span := otel.Tracer("github.com/christolx/cartlabs/messaging").Start(deliveryCtx, "rabbitmq.consume "+delivery.RoutingKey,
@@ -250,7 +282,7 @@ func (c *Consumer) Run(ctx context.Context, handler Handler, logger *slog.Logger
 			if err == nil {
 				span.End()
 				if ackErr := delivery.Ack(false); ackErr != nil {
-					return fmt.Errorf("ack notification event: %w", ackErr)
+					return fmt.Errorf("ack %s event: %w", c.name, ackErr)
 				}
 				observeResult(observe, "success")
 				continue
@@ -263,21 +295,21 @@ func (c *Consumer) Run(ctx context.Context, handler Handler, logger *slog.Logger
 				if retryErr := c.retry(deliveryCtx, delivery, attempts+1); retryErr != nil {
 					span.End()
 					if nackErr := delivery.Nack(false, true); nackErr != nil {
-						return fmt.Errorf("requeue notification after retry publish failure: %w", nackErr)
+						return fmt.Errorf("requeue %s after retry publish failure: %w", c.name, nackErr)
 					}
-					return fmt.Errorf("publish notification retry: %w", retryErr)
+					return fmt.Errorf("publish %s retry: %w", c.name, retryErr)
 				}
 				span.End()
 				if ackErr := delivery.Ack(false); ackErr != nil {
-					return fmt.Errorf("ack retried notification: %w", ackErr)
+					return fmt.Errorf("ack retried %s event: %w", c.name, ackErr)
 				}
 				observeResult(observe, "retry")
 				continue
 			}
 			span.End()
-			logger.ErrorContext(deliveryCtx, "notification event dead-lettered", "error", err, "attempts", attempts)
+			logger.ErrorContext(deliveryCtx, "consumer event dead-lettered", "consumer", c.name, "error", err, "attempts", attempts)
 			if nackErr := delivery.Nack(false, false); nackErr != nil {
-				return fmt.Errorf("nack notification event: %w", nackErr)
+				return fmt.Errorf("nack %s event: %w", c.name, nackErr)
 			}
 			observeResult(observe, "dead_letter")
 		}
@@ -291,7 +323,7 @@ func (c *Consumer) retry(ctx context.Context, delivery amqp.Delivery, attempts i
 	}
 	headers["x-retry-count"] = int32(attempts)
 	headers = injectTrace(ctx, headers)
-	if err := c.channel.PublishWithContext(ctx, RetryExchange, "notifications.retry", false, false, amqp.Publishing{
+	if err := c.channel.PublishWithContext(ctx, c.retryExchange, c.retryKey, false, false, amqp.Publishing{
 		ContentType: delivery.ContentType, DeliveryMode: amqp.Persistent, Timestamp: time.Now().UTC(), Headers: headers, Body: delivery.Body,
 	}); err != nil {
 		return err
