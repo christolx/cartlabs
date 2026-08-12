@@ -4,9 +4,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/christolx/cartlabs/internal/contract"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
-	"github.com/christolx/cartlabs/internal/purchase"
 )
 
 func (a *api) getCart(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -19,7 +19,12 @@ func (a *api) getCart(w http.ResponseWriter, r *http.Request, principal identity
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractCart(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) setCartItem(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -27,9 +32,7 @@ func (a *api) setCartItem(w http.ResponseWriter, r *http.Request, principal iden
 		writeError(w, domain.ErrUnavailable)
 		return
 	}
-	var input struct {
-		Quantity int `json:"quantity"`
-	}
+	var input contract.CartItemInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
@@ -39,7 +42,12 @@ func (a *api) setCartItem(w http.ResponseWriter, r *http.Request, principal iden
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractCart(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) removeCartItem(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -52,7 +60,12 @@ func (a *api) removeCartItem(w http.ResponseWriter, r *http.Request, principal i
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractCart(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) checkout(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -65,7 +78,12 @@ func (a *api) checkout(w http.ResponseWriter, r *http.Request, principal identit
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, result)
+	response, err := toContractPurchase(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (a *api) listPurchases(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -78,7 +96,12 @@ func (a *api) listPurchases(w http.ResponseWriter, r *http.Request, principal id
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response, err := toContractPurchases(items)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.Purchase]{Items: response})
 }
 
 func (a *api) getPurchase(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -91,7 +114,12 @@ func (a *api) getPurchase(w http.ResponseWriter, r *http.Request, principal iden
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractPurchase(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) sellerOrders(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -104,7 +132,12 @@ func (a *api) sellerOrders(w http.ResponseWriter, r *http.Request, principal ide
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response, err := toContractSellerOrders(items)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.SellerOrder]{Items: response})
 }
 
 func (a *api) confirmPayment(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -112,19 +145,22 @@ func (a *api) confirmPayment(w http.ResponseWriter, r *http.Request, principal i
 		writeError(w, domain.ErrUnavailable)
 		return
 	}
-	var input struct {
-		Outcome string `json:"outcome"`
-	}
+	var input contract.PaymentCompletionInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	result, err := a.config.purchases.ConfirmPayment(r.Context(), principal, r.PathValue("purchaseId"), input.Outcome)
+	result, err := a.config.purchases.ConfirmPayment(r.Context(), principal, r.PathValue("purchaseId"), string(input.Outcome))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractPurchase(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) notifications(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -137,7 +173,12 @@ func (a *api) notifications(w http.ResponseWriter, r *http.Request, principal id
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response, err := toContractNotifications(items)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.Notification]{Items: response})
 }
 
 func (a *api) paymentWebhook(w http.ResponseWriter, r *http.Request) {
@@ -163,20 +204,26 @@ func (a *api) updateSellerOrder(w http.ResponseWriter, r *http.Request, principa
 		writeError(w, domain.ErrUnavailable)
 		return
 	}
-	var input struct {
-		Status string `json:"status"`
-		Reason string `json:"reason"`
-	}
+	var input contract.FulfillmentInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	result, err := a.config.purchases.UpdateSellerOrder(r.Context(), principal, r.PathValue("orderId"), input.Status, input.Reason)
+	reason := ""
+	if input.Reason != nil {
+		reason = *input.Reason
+	}
+	result, err := a.config.purchases.UpdateSellerOrder(r.Context(), principal, r.PathValue("orderId"), string(input.Status), reason)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractSellerOrder(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) cancelPurchase(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -184,9 +231,7 @@ func (a *api) cancelPurchase(w http.ResponseWriter, r *http.Request, principal i
 		writeError(w, domain.ErrUnavailable)
 		return
 	}
-	var input struct {
-		Reason string `json:"reason"`
-	}
+	var input contract.CancellationInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
@@ -196,7 +241,12 @@ func (a *api) cancelPurchase(w http.ResponseWriter, r *http.Request, principal i
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractPurchase(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) createReview(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -204,17 +254,22 @@ func (a *api) createReview(w http.ResponseWriter, r *http.Request, principal ide
 		writeError(w, domain.ErrUnavailable)
 		return
 	}
-	var input purchase.ReviewInput
+	var input contract.ReviewInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	result, err := a.config.purchases.CreateReview(r.Context(), principal, input)
+	result, err := a.config.purchases.CreateReview(r.Context(), principal, toDomainReviewInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, result)
+	response, err := toContractReview(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (a *api) productReviews(w http.ResponseWriter, r *http.Request) {
@@ -227,7 +282,12 @@ func (a *api) productReviews(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractReviewSummary(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) adminOverview(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -240,7 +300,12 @@ func (a *api) adminOverview(w http.ResponseWriter, r *http.Request, principal id
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	response, err := toContractAdminOverview(result)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) auditEvents(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -253,5 +318,10 @@ func (a *api) auditEvents(w http.ResponseWriter, r *http.Request, principal iden
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response, err := toContractAuditEvents(items)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.AuditEvent]{Items: response})
 }

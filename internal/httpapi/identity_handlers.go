@@ -3,6 +3,7 @@ package httpapi
 import (
 	"net/http"
 
+	"github.com/christolx/cartlabs/internal/contract"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
 )
@@ -12,25 +13,27 @@ func (a *api) login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, domain.ErrNotFound)
 		return
 	}
-	var input struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var input contract.LoginRequest
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	if err := a.checkAuthLimit(r, input.Email); err != nil {
+	if err := a.checkAuthLimit(r, string(input.Email)); err != nil {
 		writeError(w, err)
 		return
 	}
-	session, refresh, err := a.config.identity.Login(r.Context(), input.Email, input.Password)
+	session, refresh, err := a.config.identity.Login(r.Context(), string(input.Email), input.Password)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractSession(session)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 	a.setRefreshCookie(w, refresh)
-	writeJSON(w, http.StatusOK, session)
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) demoLogin(w http.ResponseWriter, r *http.Request) {
@@ -38,24 +41,32 @@ func (a *api) demoLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, domain.ErrNotFound)
 		return
 	}
-	var input struct {
-		Role identity.Role `json:"role"`
-	}
+	var input contract.DemoLoginRequest
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	if err := a.checkAuthLimit(r, string(input.Role)); err != nil {
+	role, err := toDomainRole(input.Role)
+	if err != nil {
+		writeError(w, domain.ErrInvalid)
+		return
+	}
+	if err := a.checkAuthLimit(r, string(role)); err != nil {
 		writeError(w, err)
 		return
 	}
-	session, refresh, err := a.config.identity.DemoLogin(r.Context(), input.Role)
+	session, refresh, err := a.config.identity.DemoLogin(r.Context(), role)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractSession(session)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 	a.setRefreshCookie(w, refresh)
-	writeJSON(w, http.StatusOK, session)
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) refresh(w http.ResponseWriter, r *http.Request) {
@@ -69,8 +80,13 @@ func (a *api) refresh(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	response, err := toContractSession(session)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
 	a.setRefreshCookie(w, refresh)
-	writeJSON(w, http.StatusOK, session)
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) logout(w http.ResponseWriter, r *http.Request) {
@@ -90,5 +106,10 @@ func (a *api) currentUser(w http.ResponseWriter, r *http.Request, principal iden
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, user)
+	response, err := toContractUser(user)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }

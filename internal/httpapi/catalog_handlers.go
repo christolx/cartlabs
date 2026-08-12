@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/christolx/cartlabs/internal/catalog"
+	"github.com/christolx/cartlabs/internal/contract"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
 )
@@ -19,7 +20,12 @@ func (a *api) categories(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response, err := toContractCategories(items)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.Category]{Items: response})
 }
 
 func (a *api) catalogProducts(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +39,12 @@ func (a *api) catalogProducts(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, page)
+	response, err := toContractProductPage(page)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func parseFilters(r *http.Request) (catalog.Filters, error) {
@@ -84,7 +95,12 @@ func (a *api) catalogProduct(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) sellerProducts(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -93,63 +109,88 @@ func (a *api) sellerProducts(w http.ResponseWriter, r *http.Request, principal i
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	response, err := toContractProducts(items)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.ProductDetail]{Items: response})
 }
 
 func (a *api) createProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input catalog.ProductInput
+	var input contract.ProductInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.catalog.Create(r.Context(), principal, input)
+	value, err := a.config.catalog.Create(r.Context(), principal, toDomainProductInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, value)
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (a *api) updateProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input catalog.ProductInput
+	var input contract.ProductInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.catalog.Update(r.Context(), principal, r.PathValue("productId"), input)
+	value, err := a.config.catalog.Update(r.Context(), principal, r.PathValue("productId"), toDomainProductInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) createVariant(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input catalog.VariantInput
+	var input contract.VariantInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.catalog.AddVariant(r.Context(), principal, r.PathValue("productId"), input)
+	value, err := a.config.catalog.AddVariant(r.Context(), principal, r.PathValue("productId"), toDomainVariantInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, value)
+	response, err := toContractVariant(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (a *api) createImage(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input catalog.ImageInput
+	var input contract.ImageInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.catalog.AddImage(r.Context(), principal, r.PathValue("productId"), input)
+	value, err := a.config.catalog.AddImage(r.Context(), principal, r.PathValue("productId"), toDomainImageInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, value)
+	response, err := toContractProductImage(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (a *api) publishProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -158,14 +199,16 @@ func (a *api) publishProduct(w http.ResponseWriter, r *http.Request, principal i
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) adjustInventory(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input struct {
-		Delta  int    `json:"delta"`
-		Reason string `json:"reason"`
-	}
+	var input contract.InventoryAdjustment
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
@@ -175,7 +218,12 @@ func (a *api) adjustInventory(w http.ResponseWriter, r *http.Request, principal 
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	response, err := toContractVariant(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) adminProducts(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -184,22 +232,29 @@ func (a *api) adminProducts(w http.ResponseWriter, r *http.Request, principal id
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
-}
-
-func (a *api) moderateProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input struct {
-		Status string `json:"status"`
-		Note   string `json:"note"`
-	}
-	if err := decodeJSON(w, r, &input); err != nil {
-		writeError(w, err)
-		return
-	}
-	value, err := a.config.catalog.Moderate(r.Context(), principal, r.PathValue("productId"), input.Status, input.Note)
+	response, err := toContractProducts(items)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	writeJSON(w, http.StatusOK, itemsResponse[contract.ProductDetail]{Items: response})
+}
+
+func (a *api) moderateProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	var input contract.ModerationInput
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	value, err := a.config.catalog.Moderate(r.Context(), principal, r.PathValue("productId"), string(input.Status), input.Note)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }

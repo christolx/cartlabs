@@ -678,11 +678,14 @@ export interface components {
             slug: string;
             description: string;
         };
-        Store: components["schemas"]["StoreInput"] & {
+        Store: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             sellerId: string;
+            name: string;
+            slug: string;
+            description: string;
             status: components["schemas"]["ModerationStatus"];
             moderationNote: string;
             /** Format: date-time */
@@ -715,9 +718,19 @@ export interface components {
             currency: "IDR";
             stock: number;
         };
-        Variant: components["schemas"]["VariantInput"] & {
+        Variant: {
             /** Format: uuid */
             id: string;
+            sku: string;
+            name: string;
+            attributes: {
+                [key: string]: string;
+            };
+            /** Format: int64 */
+            priceMinor: number;
+            /** @enum {string} */
+            currency: "IDR";
+            stock: number;
             active: boolean;
         };
         ImageInput: {
@@ -726,9 +739,13 @@ export interface components {
             altText: string;
             position: number;
         };
-        ProductImage: components["schemas"]["ImageInput"] & {
+        ProductImage: {
             /** Format: uuid */
             id: string;
+            /** Format: uri-reference */
+            url: string;
+            altText: string;
+            position: number;
         };
         ProductSummary: {
             /** Format: uuid */
@@ -920,14 +937,19 @@ export interface components {
             title: string;
             body: string;
         };
-        Review: components["schemas"]["ReviewInput"] & {
+        Review: {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
             buyerId: string;
             buyerName: string;
             /** Format: uuid */
+            purchaseItemId: string;
+            /** Format: uuid */
             productId: string;
+            rating: number;
+            title: string;
+            body: string;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */

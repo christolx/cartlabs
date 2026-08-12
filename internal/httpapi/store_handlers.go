@@ -3,9 +3,9 @@ package httpapi
 import (
 	"net/http"
 
+	"github.com/christolx/cartlabs/internal/contract"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
-	marketstore "github.com/christolx/cartlabs/internal/store"
 )
 
 func (a *api) getStore(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -18,35 +18,50 @@ func (a *api) getStore(w http.ResponseWriter, r *http.Request, principal identit
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	response, err := toContractStore(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) createStore(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input marketstore.Input
+	var input contract.StoreInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.stores.Create(r.Context(), principal, input)
+	value, err := a.config.stores.Create(r.Context(), principal, toDomainStoreInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, value)
+	response, err := toContractStore(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, response)
 }
 
 func (a *api) updateStore(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input marketstore.Input
+	var input contract.StoreInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.stores.Update(r.Context(), principal, input)
+	value, err := a.config.stores.Update(r.Context(), principal, toDomainStoreInput(input))
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	response, err := toContractStore(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) adminStores(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
@@ -55,22 +70,29 @@ func (a *api) adminStores(w http.ResponseWriter, r *http.Request, principal iden
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": values})
-}
-
-func (a *api) moderateStore(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input struct {
-		Status string `json:"status"`
-		Note   string `json:"note"`
-	}
-	if err := decodeJSON(w, r, &input); err != nil {
-		writeError(w, err)
-		return
-	}
-	value, err := a.config.stores.Moderate(r.Context(), principal, r.PathValue("storeId"), input.Status, input.Note)
+	items, err := toContractStores(values)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, value)
+	writeJSON(w, http.StatusOK, itemsResponse[contract.Store]{Items: items})
+}
+
+func (a *api) moderateStore(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	var input contract.ModerationInput
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	value, err := a.config.stores.Moderate(r.Context(), principal, r.PathValue("storeId"), string(input.Status), input.Note)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractStore(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/christolx/cartlabs/internal/catalog"
+	"github.com/christolx/cartlabs/internal/contract"
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/christolx/cartlabs/internal/identity"
 	"github.com/christolx/cartlabs/internal/observability"
@@ -190,7 +191,8 @@ func New(checker ReadinessChecker, logger *slog.Logger, options ...Option) *Serv
 		mux.Handle("GET /metrics", config.metrics.Handler())
 	}
 
-	var handler http.Handler = recoverPanic(logger, routeSpan(mux, mux))
+	validatedMux := validateOpenAPIRequests(newOpenAPIRouter(), mux)
+	var handler http.Handler = recoverPanic(logger, routeSpan(mux, validatedMux))
 	handler = securityHeaders(handler)
 	handler = requestLogger(logger, handler)
 	if config.metrics != nil {
@@ -214,20 +216,8 @@ func routeSpan(mux *http.ServeMux, next http.Handler) http.Handler {
 	})
 }
 
-type healthResponse struct {
-	Status       string            `json:"status"`
-	Dependencies map[string]string `json:"dependencies,omitempty"`
-}
-
-type problem struct {
-	Type   string `json:"type"`
-	Title  string `json:"title"`
-	Status int    `json:"status"`
-	Detail string `json:"detail,omitempty"`
-}
-
 func (a *api) liveness(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, healthResponse{Status: "ok"})
+	writeJSON(w, http.StatusOK, contractHealth(contract.Ok, nil))
 }
 
 func (a *api) readiness(w http.ResponseWriter, r *http.Request) {
@@ -235,10 +225,10 @@ func (a *api) readiness(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	dependencies, ready := a.checker.Check(ctx)
 	if !ready {
-		writeJSON(w, http.StatusServiceUnavailable, healthResponse{Status: "degraded", Dependencies: dependencies})
+		writeJSON(w, http.StatusServiceUnavailable, contractHealth(contract.Degraded, dependencies))
 		return
 	}
-	writeJSON(w, http.StatusOK, healthResponse{Status: "ok", Dependencies: dependencies})
+	writeJSON(w, http.StatusOK, contractHealth(contract.Ok, dependencies))
 }
 
 func (a *api) auth(next func(http.ResponseWriter, *http.Request, identity.Principal)) http.HandlerFunc {
@@ -289,7 +279,7 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 func writeProblem(w http.ResponseWriter, status int, detail string) {
 	w.Header().Set("Content-Type", "application/problem+json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(problem{Type: "about:blank", Title: http.StatusText(status), Status: status, Detail: detail})
+	_ = json.NewEncoder(w).Encode(contractProblem(status, detail))
 }
 
 func writeError(w http.ResponseWriter, err error) {

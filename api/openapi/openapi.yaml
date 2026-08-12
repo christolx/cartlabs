@@ -790,17 +790,19 @@ components:
         slug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
         description: {type: string, maxLength: 1000}
     Store:
-      allOf:
-        - {$ref: "#/components/schemas/StoreInput"}
-        - type: object
-          required: [id, sellerId, status, moderationNote, createdAt, updatedAt]
-          properties:
-            id: {type: string, format: uuid}
-            sellerId: {type: string, format: uuid}
-            status: {$ref: "#/components/schemas/ModerationStatus"}
-            moderationNote: {type: string}
-            createdAt: {type: string, format: date-time}
-            updatedAt: {type: string, format: date-time}
+      type: object
+      additionalProperties: false
+      required: [id, sellerId, name, slug, description, status, moderationNote, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        sellerId: {type: string, format: uuid}
+        name: {type: string, minLength: 2, maxLength: 100}
+        slug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        description: {type: string, maxLength: 1000}
+        status: {$ref: "#/components/schemas/ModerationStatus"}
+        moderationNote: {type: string}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
     Category:
       type: object
       required: [id, name, slug]
@@ -829,13 +831,18 @@ components:
         currency: {type: string, enum: [IDR]}
         stock: {type: integer, minimum: 0}
     Variant:
-      allOf:
-        - {$ref: "#/components/schemas/VariantInput"}
-        - type: object
-          required: [id, active]
-          properties:
-            id: {type: string, format: uuid}
-            active: {type: boolean}
+      type: object
+      additionalProperties: false
+      required: [id, sku, name, attributes, priceMinor, currency, stock, active]
+      properties:
+        id: {type: string, format: uuid}
+        sku: {type: string, minLength: 2, maxLength: 64}
+        name: {type: string, minLength: 1, maxLength: 120}
+        attributes: {type: object, additionalProperties: {type: string}}
+        priceMinor: {type: integer, format: int64, minimum: 0}
+        currency: {type: string, enum: [IDR]}
+        stock: {type: integer, minimum: 0}
+        active: {type: boolean}
     ImageInput:
       type: object
       additionalProperties: false
@@ -845,12 +852,14 @@ components:
         altText: {type: string, maxLength: 160}
         position: {type: integer, minimum: 0}
     ProductImage:
-      allOf:
-        - {$ref: "#/components/schemas/ImageInput"}
-        - type: object
-          required: [id]
-          properties:
-            id: {type: string, format: uuid}
+      type: object
+      additionalProperties: false
+      required: [id, url, altText, position]
+      properties:
+        id: {type: string, format: uuid}
+        url: {type: string, format: uri-reference, pattern: '^(https?://|/[^/])'}
+        altText: {type: string, maxLength: 160}
+        position: {type: integer, minimum: 0}
     ProductSummary:
       type: object
       required: [id, name, slug, storeName, category, minPriceMinor, currency, inStock, imageUrl]
@@ -1028,17 +1037,20 @@ components:
         title: {type: string, minLength: 1, maxLength: 120}
         body: {type: string, minLength: 1, maxLength: 2000}
     Review:
-      allOf:
-        - {$ref: "#/components/schemas/ReviewInput"}
-        - type: object
-          required: [id, buyerId, buyerName, productId, createdAt, updatedAt]
-          properties:
-            id: {type: string, format: uuid}
-            buyerId: {type: string, format: uuid}
-            buyerName: {type: string}
-            productId: {type: string, format: uuid}
-            createdAt: {type: string, format: date-time}
-            updatedAt: {type: string, format: date-time}
+      type: object
+      additionalProperties: false
+      required: [id, buyerId, buyerName, purchaseItemId, productId, rating, title, body, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        buyerId: {type: string, format: uuid}
+        buyerName: {type: string}
+        purchaseItemId: {type: string, format: uuid}
+        productId: {type: string, format: uuid}
+        rating: {type: integer, minimum: 1, maximum: 5}
+        title: {type: string, minLength: 1, maxLength: 120}
+        body: {type: string, minLength: 1, maxLength: 2000}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
     ReviewSummary:
       type: object
       required: [average, count, items]

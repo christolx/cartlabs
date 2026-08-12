@@ -22,6 +22,8 @@ type fakeChecker struct {
 
 type fakeIdentity struct{}
 
+const testUserID = "01989f00-0000-7000-8000-000000000001"
+
 type fakeLimiter struct {
 	allowed bool
 	err     error
@@ -35,7 +37,7 @@ func (fakeIdentity) Login(_ context.Context, email, password string) (identity.S
 	if email != "buyer@example.com" || password != "valid-password" {
 		return identity.Session{}, "", domain.ErrUnauthorized
 	}
-	user := identity.User{ID: "user-1", Email: email, DisplayName: "Buyer", Role: identity.RoleBuyer}
+	user := identity.User{ID: testUserID, Email: email, DisplayName: "Buyer", Role: identity.RoleBuyer}
 	return identity.Session{AccessToken: "access", TokenType: "Bearer", ExpiresIn: 900, User: user}, "refresh", nil
 }
 func (fakeIdentity) DemoLogin(context.Context, identity.Role) (identity.Session, string, error) {
@@ -49,7 +51,7 @@ func (fakeIdentity) Authenticate(_ context.Context, raw string) (identity.Princi
 	if raw != "access" {
 		return identity.Principal{}, domain.ErrUnauthorized
 	}
-	return identity.Principal{UserID: "user-1", Role: identity.RoleBuyer}, nil
+	return identity.Principal{UserID: testUserID, Role: identity.RoleBuyer}, nil
 }
 func (fakeIdentity) User(_ context.Context, principal identity.Principal) (identity.User, error) {
 	return identity.User{ID: principal.UserID, Email: "buyer@example.com", DisplayName: "Buyer", Role: principal.Role}, nil
@@ -81,8 +83,9 @@ func TestLiveness(t *testing.T) {
 func TestMutationRateLimit(t *testing.T) {
 	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)),
 		WithServices(fakeIdentity{}, nil, nil), WithAuthRateLimiter(fakeLimiter{allowed: false}))
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewBufferString(`{}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/reviews", bytes.NewBufferString(`{"purchaseItemId":"01989f00-0000-7000-8000-000000000101","rating":5,"title":"Good","body":"Works"}`))
 	request.Header.Set("Authorization", "Bearer access")
+	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusTooManyRequests {
@@ -116,6 +119,7 @@ func TestReadinessFailure(t *testing.T) {
 func TestLoginSetsHttpOnlyRefreshCookie(t *testing.T) {
 	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithServices(fakeIdentity{}, nil, nil), WithRefreshCookie(true, 24*time.Hour))
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password"}`))
+	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
@@ -131,6 +135,7 @@ func TestLoginRateLimit(t *testing.T) {
 	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)),
 		WithServices(fakeIdentity{}, nil, nil), WithAuthRateLimiter(fakeLimiter{allowed: false}))
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password"}`))
+	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusTooManyRequests {
@@ -144,6 +149,7 @@ func TestLoginRateLimit(t *testing.T) {
 func TestLoginRejectsUnknownJSONField(t *testing.T) {
 	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithServices(fakeIdentity{}, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password","admin":true}`))
+	request.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	server.Handler().ServeHTTP(response, request)
 	if response.Code != http.StatusBadRequest {
