@@ -10,7 +10,7 @@ HURL ?= hurl
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev search-dev search-migrate search-reindex \
 	compose-up compose-full compose-down compose-logs migrate seed reset \
 	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset \
-	helm-check infra-check platform-check deployment-smoke microservice-test search-outage clean
+	helm-check helm-regression k3s-e2e infra-check platform-check deployment-smoke microservice-test search-outage clean
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -120,7 +120,10 @@ security: ## Scan Go and frontend dependency vulnerabilities
 	go tool govulncheck ./...
 	pnpm audit --audit-level high
 
-helm-check: ## Lint and render the k3s Helm chart
+helm-regression: ## Check rendered k3s behavior that schema validation cannot prove
+	bash tests/deployment/helm-regression.sh
+
+helm-check: helm-regression ## Lint and render the k3s Helm chart
 	helm lint deploy/helm --values deploy/helm/values-local.yaml
 	helm lint deploy/helm --values deploy/helm/values-demo.yaml
 	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-local.yaml | \
@@ -140,6 +143,9 @@ platform-check: helm-check infra-check ## Validate deployment and infrastructure
 
 deployment-smoke: ## Smoke-test an already deployed demo URL
 	bash tests/deployment/smoke.sh "$${DEMO_URL:?set DEMO_URL}"
+
+k3s-e2e: ## Build, import, install, upgrade, and verify an isolated local k3s release
+	bash tests/deployment/k3s-e2e.sh
 
 check: generate lint test build ## Run full local verification
 	@git diff --exit-code -- internal/contract/openapi.gen.go apps/web/src/lib/api/schema.d.ts
