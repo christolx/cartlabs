@@ -94,6 +94,8 @@ Content-Type: application/json
   "reason": ""
 }
 HTTP 200
+[Captures]
+ft_delivered_item_id: jsonpath "$.items[0].id"
 [Asserts]
 jsonpath "$.status" == "delivered"
 jsonpath "$.deliveredAt" exists
@@ -152,7 +154,7 @@ POST {{base_url}}/reviews
 Authorization: Bearer {{ft_buyer_token}}
 Content-Type: application/json
 {
-  "purchaseItemId": "{{ft_item_one_id}}",
+  "purchaseItemId": "{{ft_delivered_item_id}}",
   "rating": 5,
   "title": "Built for daily use",
   "body": "Verified delivery and sturdy finish."
@@ -162,13 +164,13 @@ HTTP 201
 ft_review_id: jsonpath "$.id"
 [Asserts]
 jsonpath "$.rating" == 5
-jsonpath "$.buyerName" == "Fulfillment Demo Buyer"
+jsonpath "$.buyerName" == "Synthetic Traffic Buyer"
 
 POST {{base_url}}/reviews
 Authorization: Bearer {{ft_buyer_token}}
 Content-Type: application/json
 {
-  "purchaseItemId": "{{ft_item_one_id}}",
+  "purchaseItemId": "{{ft_delivered_item_id}}",
   "rating": 4,
   "title": "Duplicate",
   "body": "Second review must not be accepted."
