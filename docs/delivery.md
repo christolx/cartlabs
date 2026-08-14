@@ -23,6 +23,7 @@ apps/
   search/
   search-migrate/
   search-reindex/
+  synthetic-traffic/
   migrate/
   seed/
   reset/
