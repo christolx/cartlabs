@@ -13,6 +13,7 @@ platform operations, not production-scale commerce.
 - [Operability](./operability.md) — telemetry, recovery, limits, and runbooks
 - [Search service](./search-service.md) — ownership, failure behavior, migration, and rollback
 - [Roadmap](./roadmap.md) — incremental implementation plan
+- [Product completion roadmap](./product-completion-roadmap.md) — frontend journeys and product hardening
 - [Milestones](./milestone.md) — completed work and exit evidence
 - [Decisions](./decisions.md) — accepted and pending architecture decisions
 
