@@ -20,6 +20,36 @@
         "schedule": { "type": "string", "minLength": 1 },
         "retention": { "type": "string", "pattern": "^[0-9]+[dh]$" }
       }
+    },
+    "observability": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "traceSampleRatio": { "type": "string", "pattern": "^(0(\\.[0-9]+)?|1(\\.0+)?)$" },
+        "prometheus": {
+          "type": "object",
+          "properties": {
+            "retention": { "type": "string", "pattern": "^[0-9]+[dh]$" },
+            "storage": { "type": "string", "minLength": 2 }
+          }
+        },
+        "tempo": {
+          "type": "object",
+          "properties": {
+            "retention": { "type": "string", "pattern": "^[0-9]+[dh]$" },
+            "storage": { "type": "string", "minLength": 2 }
+          }
+        }
+      }
+    },
+    "syntheticTraffic": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "readInterval": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
+        "journeyInterval": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
+        "requestTimeout": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" }
+      }
     }
   }
 }

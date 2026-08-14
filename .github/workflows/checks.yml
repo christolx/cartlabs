@@ -108,6 +108,7 @@ jobs:
             search,
             search-migrate,
             search-reindex,
+            synthetic-traffic,
           ]
     steps:
       - uses: actions/checkout@v4

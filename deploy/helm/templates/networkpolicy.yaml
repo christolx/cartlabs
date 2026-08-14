@@ -14,9 +14,9 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+              {{- include "cartlabs.selectorLabels" . | nindent 14 }}
       ports:
         - { protocol: TCP, port: 5432 }
 ---
@@ -34,9 +34,9 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+              {{- include "cartlabs.selectorLabels" . | nindent 14 }}
       ports:
         - { protocol: TCP, port: 6379 }
 ---
@@ -54,9 +54,9 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+              {{- include "cartlabs.selectorLabels" . | nindent 14 }}
       ports:
         - { protocol: TCP, port: 5672 }
 ---
@@ -74,9 +74,9 @@ spec:
   policyTypes: [Ingress]
   ingress:
     - from:
-        - namespaceSelector:
+        - podSelector:
             matchLabels:
-              kubernetes.io/metadata.name: {{ .Release.Namespace }}
+              {{- include "cartlabs.selectorLabels" . | nindent 14 }}
       ports:
         - { protocol: TCP, port: 9092 }
         - { protocol: TCP, port: 9093 }

@@ -1,8 +1,9 @@
 # Cartlabs Helm chart
 
 This chart packages the complete demo stack for a single-node k3s cluster:
-API, worker, search gRPC service, web, mock payment provider, PostgreSQL, Redis, RabbitMQ, database
-hooks, reset and backup CronJobs, ingress, network policies, and smoke tests.
+application services, PostgreSQL, Redis, RabbitMQ, database jobs, recovery jobs,
+Prometheus, Tempo, internal Grafana, synthetic traffic, ingress, network policies,
+and smoke tests.
 
 ## Secret contract
 
@@ -24,6 +25,8 @@ default name is `cartlabs-secrets`.
 | `BACKUP_S3_ACCESS_KEY` | Backup access key |
 | `BACKUP_S3_SECRET_KEY` | Backup secret key |
 | `BACKUP_S3_BUCKET` | Existing backup bucket |
+| `GRAFANA_ADMIN_USER` | Internal Grafana administrator |
+| `GRAFANA_ADMIN_PASSWORD` | Internal Grafana administrator password |
 
 With release name `cartlabs`, internal hosts are `cartlabs-postgresql`,
 `cartlabs-redis`, `cartlabs-rabbitmq`, and `cartlabs-mock-payment`. Keep URLs in
@@ -45,7 +48,18 @@ helm test cartlabs --namespace cartlabs --logs
 ```
 
 `values-local.yaml` uses unqualified local images and `imagePullPolicy: Never`.
-Import every `cartlabs-*:local` image into the local cluster before installing.
+Build, import, install, upgrade, and verify an isolated local release with:
+
+```bash
+make k3s-e2e
+```
+
+The target refuses to reuse an existing namespace, removes only the namespace it
+created, and imports every `cartlabs-*:local` image immediately before install.
+When direct k3s containerd access is unavailable, `pkexec` opens the desktop
+password prompt. Override `K3S_NAMESPACE` to choose another disposable namespace.
+Set `K3S_BUILD=0` to reuse existing Docker images while still re-importing them.
+Set `K3S_KEEP_NAMESPACE=1` only when failed-release inspection is needed.
 
 ## Lifecycle
 
@@ -57,7 +71,10 @@ Import every `cartlabs-*:local` image into the local cluster before installing.
 - Reset CronJob is suspended; serialized GitHub workflow creates manual jobs.
 - Backup CronJob creates custom-format dumps and uploads them to external
   S3-compatible storage with seven-day retention.
-- Dependency ingress is limited to the release namespace.
+- Demo values deploy small Prometheus and Tempo PVCs, internal Grafana, and a
+  bounded synthetic buyer journey. Access Grafana with
+  `kubectl -n cartlabs port-forward service/cartlabs-grafana 3001:3000`.
+- Dependency ingress is limited to pods belonging to the same Helm release.
 - Workloads run non-root with dropped capabilities and read-only root filesystems
   where image behavior permits.
 

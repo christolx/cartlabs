@@ -2,11 +2,11 @@ apiVersion: v2
 name: cartlabs
 description: Cartlabs marketplace demo platform
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.1.0"
 kubeVersion: ">=1.31.0-0"
 annotations:
   artifacthub.io/license: MIT
   artifacthub.io/changes: |
     - kind: added
-      description: Initial k3s demo chart
+      description: Lightweight observability stack and synthetic business traffic

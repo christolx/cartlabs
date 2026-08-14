@@ -1,0 +1,335 @@
+{{- if .Values.observability.enabled }}
+{{- $fullname := include "cartlabs.fullname" . -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-prometheus
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+    scrape_configs:
+      - job_name: cartlabs-api
+        metrics_path: /metrics
+        static_configs: [{ targets: [{{ printf "%s-api:8080" $fullname | quote }}] }]
+      - job_name: cartlabs-worker
+        metrics_path: /
+        static_configs: [{ targets: [{{ printf "%s-worker-metrics:9091" $fullname | quote }}] }]
+      - job_name: cartlabs-search
+        metrics_path: /metrics
+        static_configs: [{ targets: [{{ printf "%s-search:9093" $fullname | quote }}] }]
+      {{- if .Values.syntheticTraffic.enabled }}
+      - job_name: cartlabs-synthetic-traffic
+        metrics_path: /metrics
+        static_configs: [{ targets: [{{ printf "%s-synthetic-traffic:9094" $fullname | quote }}] }]
+      {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-tempo
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+data:
+  tempo.yml: |
+    server:
+      http_listen_port: 3200
+    distributor:
+      receivers:
+        otlp:
+          protocols:
+            http:
+              endpoint: 0.0.0.0:4318
+    ingester:
+      max_block_duration: 5m
+    compactor:
+      compaction:
+        block_retention: {{ .Values.observability.tempo.retention }}
+    storage:
+      trace:
+        backend: local
+        wal:
+          path: /var/tempo/wal
+        local:
+          path: /var/tempo/blocks
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-prometheus
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests: { storage: {{ .Values.observability.prometheus.storage }} }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-tempo
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.global.storageClass }}
+  storageClassName: {{ .Values.global.storageClass }}
+  {{- end }}
+  resources:
+    requests: { storage: {{ .Values.observability.tempo.storage }} }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-prometheus
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: prometheus
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: prometheus
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: prometheus
+          image: {{ .Values.observability.prometheus.image }}
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.observability.prometheus.retention }}
+            - --storage.tsdb.retention.size=1536MB
+          ports: [{ name: http, containerPort: 9090 }]
+          readinessProbe: { httpGet: { path: /-/ready, port: http } }
+          livenessProbe: { httpGet: { path: /-/healthy, port: http } }
+          resources: {{ toYaml .Values.observability.prometheus.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: config, mountPath: /etc/prometheus, readOnly: true }
+            - { name: data, mountPath: /prometheus }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: config, configMap: { name: {{ $fullname }}-prometheus } }
+        - { name: data, persistentVolumeClaim: { claimName: {{ $fullname }}-prometheus } }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-tempo
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: tempo
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: tempo
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: tempo
+          image: {{ .Values.observability.tempo.image }}
+          args: ["-config.file=/etc/tempo/tempo.yml"]
+          ports:
+            - { name: http, containerPort: 3200 }
+            - { name: otlp-http, containerPort: 4318 }
+          startupProbe:
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe: { httpGet: { path: /ready, port: http } }
+          livenessProbe: { httpGet: { path: /ready, port: http } }
+          resources: {{ toYaml .Values.observability.tempo.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: config, mountPath: /etc/tempo, readOnly: true }
+            - { name: data, mountPath: /var/tempo }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: config, configMap: { name: {{ $fullname }}-tempo } }
+        - { name: data, persistentVolumeClaim: { claimName: {{ $fullname }}-tempo } }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-prometheus
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+spec:
+  selector:
+    {{- include "cartlabs.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: prometheus
+  ports: [{ name: http, port: 9090, targetPort: http }]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-tempo
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+spec:
+  selector:
+    {{- include "cartlabs.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: tempo
+  ports:
+    - { name: http, port: 3200, targetPort: http }
+    - { name: otlp-http, port: 4318, targetPort: otlp-http }
+{{- if .Values.observability.grafana.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-grafana
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+data:
+  datasources.yml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        uid: prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ $fullname }}-prometheus:9090
+        isDefault: true
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://{{ $fullname }}-tempo:3200
+        jsonData:
+          tracesToMetrics:
+            datasourceUid: prometheus
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+      - name: Cartlabs
+        folder: Cartlabs
+        type: file
+        disableDeletion: true
+        editable: false
+        options: { path: /var/lib/grafana/dashboards }
+  cartlabs-overview.json: |
+{{ .Files.Get "files/cartlabs-overview.json" | indent 4 }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-grafana
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "cartlabs.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: grafana
+  template:
+    metadata:
+      labels:
+        {{- include "cartlabs.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: grafana
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: grafana
+          image: {{ .Values.observability.grafana.image }}
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: GF_AUTH_ANONYMOUS_ENABLED, value: "false" }
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.existingSecret }}, key: GRAFANA_ADMIN_USER } }
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.existingSecret }}, key: GRAFANA_ADMIN_PASSWORD } }
+          readinessProbe: { httpGet: { path: /api/health, port: http } }
+          livenessProbe: { httpGet: { path: /api/health, port: http } }
+          resources: {{ toYaml .Values.observability.grafana.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - { name: datasources, mountPath: /etc/grafana/provisioning/datasources, readOnly: true }
+            - { name: dashboards-provider, mountPath: /etc/grafana/provisioning/dashboards, readOnly: true }
+            - { name: dashboard, mountPath: /var/lib/grafana/dashboards, readOnly: true }
+            - { name: data, mountPath: /var/lib/grafana }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: datasources
+          configMap: { name: {{ $fullname }}-grafana, items: [{ key: datasources.yml, path: datasources.yml }] }
+        - name: dashboards-provider
+          configMap: { name: {{ $fullname }}-grafana, items: [{ key: dashboards.yml, path: dashboards.yml }] }
+        - name: dashboard
+          configMap: { name: {{ $fullname }}-grafana, items: [{ key: cartlabs-overview.json, path: cartlabs-overview.json }] }
+        - { name: data, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-grafana
+  labels:
+    {{- include "cartlabs.labels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+spec:
+  selector:
+    {{- include "cartlabs.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: grafana
+  ports: [{ name: http, port: 3000, targetPort: http }]
+{{- end }}
+{{- end }}

@@ -50,6 +50,70 @@
       "targets": [{ "expr": "sum by (result) (rate(cartlabs_notification_delivery_total[5m]))", "legendFormat": "{{result}}", "refId": "A" }],
       "title": "Notification delivery outcomes",
       "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 15},
+      "id": 6,
+      "targets": [{"expr": "sum by (result) (rate(cartlabs_search_requests_total[5m]))", "legendFormat": "{{result}}", "refId": "A"}],
+      "title": "Search request outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 15},
+      "id": 7,
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, result) (rate(cartlabs_search_request_duration_seconds_bucket[5m])))", "legendFormat": "{{result}}", "refId": "A"}],
+      "title": "Search p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 15},
+      "id": 8,
+      "targets": [
+        {"expr": "sum by (result) (rate(cartlabs_catalog_search_total[5m]))", "legendFormat": "catalog {{result}}", "refId": "A"},
+        {"expr": "cartlabs_search_documents", "legendFormat": "documents", "refId": "B"}
+      ],
+      "title": "Search health and fallback",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 12, "x": 0, "y": 22},
+      "id": 9,
+      "targets": [
+        {"expr": "sum by (result) (rate(cartlabs_outbox_relay_total[5m]))", "legendFormat": "outbox {{result}}", "refId": "A"},
+        {"expr": "sum by (result) (rate(cartlabs_search_delivery_total[5m]))", "legendFormat": "search {{result}}", "refId": "B"}
+      ],
+      "title": "Worker delivery outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "ops"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 12, "x": 12, "y": 22},
+      "id": 10,
+      "targets": [
+        {"expr": "sum by (result) (rate(cartlabs_synthetic_journeys_total[15m]))", "legendFormat": "journey {{result}}", "refId": "A"},
+        {"expr": "sum by (step, result) (rate(cartlabs_synthetic_requests_total[5m]))", "legendFormat": "{{step}} {{result}}", "refId": "B"},
+        {"expr": "histogram_quantile(0.95, sum by (le) (rate(cartlabs_synthetic_journey_duration_seconds_bucket[30m])))", "legendFormat": "journey p95", "refId": "C"}
+      ],
+      "title": "Synthetic traffic outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 24, "x": 0, "y": 29},
+      "id": 11,
+      "targets": [{"expr": "up", "legendFormat": "{{job}}", "refId": "A"}],
+      "title": "Prometheus target health",
+      "type": "timeseries"
     }
   ],
   "refresh": "5s",
@@ -60,5 +124,5 @@
   "timezone": "browser",
   "title": "Cartlabs Overview",
   "uid": "cartlabs-overview",
-  "version": 1
+  "version": 2
 }

@@ -46,6 +46,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
 {{- end -}}
 
+{{- define "cartlabs.otlpTraceEndpoint" -}}
+{{- if .Values.observability.enabled -}}
+{{- printf "http://%s-tempo:4318/v1/traces" (include "cartlabs.fullname" .) -}}
+{{- else -}}
+{{- .Values.observability.otlpTraceEndpoint -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "cartlabs.componentLabels" -}}
 {{ include "cartlabs.selectorLabels" .root }}
 app.kubernetes.io/component: {{ .component }}

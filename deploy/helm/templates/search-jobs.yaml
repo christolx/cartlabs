@@ -34,6 +34,16 @@ spec:
       {{- with $.Values.global.imagePullSecrets }}
       imagePullSecrets: {{ toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        - name: wait-postgresql
+          image: {{ $.Values.postgresql.image }}
+          command: ["sh", "-ec", "until pg_isready -d \"$SEARCH_DATABASE_URL\"; do sleep 2; done"]
+          envFrom:
+            - secretRef: { name: {{ $.Values.global.existingSecret }} }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+            readOnlyRootFilesystem: true
       containers:
         - name: {{ $name }}
           image: {{ include "cartlabs.image" (list $ $job.image) }}

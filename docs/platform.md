@@ -87,6 +87,7 @@ Set environment variable `DEMO_HOST` and these environment secrets:
 - `SEARCH_DATABASE_URL`, `SEARCH_SERVICE_TOKEN`
 - `BACKUP_S3_ENDPOINT`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`,
   `BACKUP_S3_BUCKET`
+- `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
 
 Use internal hosts `cartlabs-postgresql:5432` and
 `cartlabs-rabbitmq:5672` in application URLs. Grant GHCR token read-only package
@@ -95,7 +96,7 @@ then dispatch delivery; `global.secretRevision` rolls affected Pods.
 
 ## Delivery and verification
 
-Default-branch delivery builds eleven runtime images independently, publishes
+Default-branch delivery builds twelve runtime images independently, publishes
 full-SHA tags with SBOM and provenance, and deploys the exact SHA through Helm.
 Deployment and reset share `cartlabs-demo-mutation` concurrency, preventing
 migrations and destructive demo resets from overlapping.
@@ -103,6 +104,17 @@ migrations and destructive demo resets from overlapping.
 Helm waits for probes, runs migrations, seeds first install, runs an in-cluster
 test, then external smoke checks readiness, homepage rendering, catalog data,
 request IDs, demo login, and cart access.
+
+Demo Helm values also run internal Prometheus, Tempo, and Grafana. Prometheus
+keeps three days of metrics, Tempo keeps 24 hours of traces, and both use small
+PVCs. Synthetic traffic performs catalog reads every ten seconds and a failed
+payment journey every 15 minutes with the dedicated `buyer3` demo account;
+failed payment restores reserved inventory.
+Grafana has no ingress. Access it through port-forward:
+
+```bash
+kubectl -n cartlabs port-forward service/cartlabs-grafana 3001:3000
+```
 
 Operator checks:
 

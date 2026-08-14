@@ -18,3 +18,10 @@ backup:
 demoReset:
   enabled: true
   suspend: true
+
+observability:
+  enabled: true
+  traceSampleRatio: "1"
+
+syntheticTraffic:
+  enabled: true

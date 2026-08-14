@@ -24,6 +24,16 @@ spec:
         - |
           curl --fail --silent --show-error http://{{ include "cartlabs.fullname" . }}-api:8080/api/v1/health/ready | grep -q '"status":"ok"'
           curl --fail --silent --show-error http://{{ include "cartlabs.fullname" . }}-web:3000/ | grep -q 'Cartlabs'
+          {{- if .Values.observability.enabled }}
+          curl --fail --silent --show-error http://{{ include "cartlabs.fullname" . }}-prometheus:9090/-/ready >/dev/null
+          curl --fail --silent --show-error http://{{ include "cartlabs.fullname" . }}-tempo:3200/ready >/dev/null
+          {{- if .Values.observability.grafana.enabled }}
+          curl --fail --silent --show-error http://{{ include "cartlabs.fullname" . }}-grafana:3000/api/health | grep -q '"database"'
+          {{- end }}
+          {{- end }}
+          {{- if .Values.syntheticTraffic.enabled }}
+          curl --fail --silent --show-error http://{{ include "cartlabs.fullname" . }}-synthetic-traffic:9094/health/ready >/dev/null
+          {{- end }}
       securityContext:
         allowPrivilegeEscalation: false
         capabilities: { drop: ["ALL"] }

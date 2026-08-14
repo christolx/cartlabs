@@ -38,6 +38,7 @@ jobs:
           - { app: search, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=search" }
           - { app: search-migrate, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=search-migrate" }
           - { app: search-reindex, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=search-reindex" }
+          - { app: synthetic-traffic, dockerfile: deploy/docker/go.Dockerfile, build_args: "APP=synthetic-traffic" }
           - { app: web, dockerfile: deploy/docker/web.Dockerfile, build_args: "" }
     steps:
       - uses: actions/checkout@v4
@@ -108,6 +109,8 @@ jobs:
           BACKUP_S3_ACCESS_KEY: ${{ secrets.BACKUP_S3_ACCESS_KEY }}
           BACKUP_S3_SECRET_KEY: ${{ secrets.BACKUP_S3_SECRET_KEY }}
           BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+          GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
         run: |
           kubectl create namespace cartlabs --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n cartlabs create secret docker-registry ghcr-pull \
@@ -127,6 +130,8 @@ jobs:
             --from-literal=BACKUP_S3_ACCESS_KEY="$BACKUP_S3_ACCESS_KEY" \
             --from-literal=BACKUP_S3_SECRET_KEY="$BACKUP_S3_SECRET_KEY" \
             --from-literal=BACKUP_S3_BUCKET="$BACKUP_S3_BUCKET" \
+            --from-literal=GRAFANA_ADMIN_USER="$GRAFANA_ADMIN_USER" \
+            --from-literal=GRAFANA_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD" \
             --dry-run=client -o yaml | kubectl apply -f -
       - name: Deploy immutable release
         env:
