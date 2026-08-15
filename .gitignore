@@ -30,3 +30,5 @@ infra/terraform/backend.hcl
 infra/ansible/inventory.yml
 infra/ansible/group_vars/all.yml
 infra/ansible/artifacts/
+apps/web/playwright-report/
+apps/web/test-results/

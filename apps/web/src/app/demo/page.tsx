@@ -1,7 +1,7 @@
-import { DemoConsole } from "@/components/demo-console";
+import { DemoEntry } from "@/components/demo-entry";
 
-export const metadata = { title: "Role demo", description: "Exercise buyer, seller, and admin marketplace workflows." };
+export const metadata = { title: "Demo guide", description: "Enter buyer, seller, and admin marketplace workflows through normal product pages." };
 
 export default function DemoPage() {
-  return <main className="demo-page shell"><div className="demo-intro"><p className="eyebrow">Working role isolation</p><h1>Run marketplace workflow.</h1><p>Create as seller, approve as admin, discover as buyer. Every action reaches same API used by end-to-end tests.</p></div><DemoConsole /></main>;
+  return <main className="demo-page shell"><div className="demo-intro"><p className="eyebrow">Marketplace workflow</p><h1>Run real actor pages.</h1><p>Use roles in order to exercise supply, moderation, purchase, fulfillment, and review.</p></div><DemoEntry /></main>;
 }

@@ -7,6 +7,8 @@
     "web:build": "pnpm --filter web build",
     "web:lint": "pnpm --filter web lint",
     "web:typecheck": "pnpm --filter web typecheck",
+    "web:test": "pnpm --filter web test",
+    "web:test:e2e": "pnpm --filter web test:e2e",
     "openapi:lint": "redocly lint api/openapi/openapi.yaml",
     "openapi:generate:ts": "openapi-typescript api/openapi/openapi.yaml -o apps/web/src/lib/api/schema.d.ts"
   },

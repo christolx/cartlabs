@@ -8,7 +8,7 @@ HURL ?= hurl
 .DEFAULT_GOAL := help
 
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev search-dev search-migrate search-reindex \
-	compose-up compose-full compose-down compose-logs migrate seed reset \
+	compose-up compose-full compose-down compose-logs migrate seed reset web-e2e \
 	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset \
 	helm-check helm-regression k3s-e2e infra-check platform-check deployment-smoke microservice-test search-outage clean
 
@@ -96,6 +96,10 @@ lint: ## Run format, static, frontend, and OpenAPI checks
 test: ## Run backend tests and frontend type checking
 	go test ./...
 	pnpm web:typecheck
+	pnpm web:test
+
+web-e2e: ## Run frontend browser tests with mocked API boundaries
+	pnpm web:test:e2e
 
 e2e-api: ## Run black-box API workflow tests against a running API
 	$(HURL) --test --jobs 1 --error-format long --retry 10 \
