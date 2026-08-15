@@ -96,4 +96,11 @@ func TestPublicStoreRequiresApprovedValidSlug(t *testing.T) {
 	if _, err := service.FindPublic(context.Background(), "bad slug"); !errors.Is(err, domain.ErrInvalid) {
 		t.Fatalf("invalid error = %v", err)
 	}
+	service.repository.(*fakeRepository).value.Status = "rejected"
+	if _, err := service.FindPublic(context.Background(), "north-star"); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("rejected error = %v", err)
+	}
+	if _, err := service.FindPublic(context.Background(), "missing"); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("missing error = %v", err)
+	}
 }

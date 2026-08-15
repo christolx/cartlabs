@@ -50,6 +50,9 @@ func (backendIdentity) UpdateUserStatus(_ context.Context, principal identity.Pr
 	if principal.Role != identity.RoleAdmin {
 		return identity.AdminUser{}, domain.ErrForbidden
 	}
+	if id == testAdminID {
+		return identity.AdminUser{}, domain.ErrConflict
+	}
 	if id != testSellerID {
 		return identity.AdminUser{}, domain.ErrNotFound
 	}
@@ -95,6 +98,10 @@ func TestBackendCompletionHandlers(t *testing.T) {
 		{"admin users", http.MethodGet, "/api/v1/admin/users", "admin", "", http.StatusOK},
 		{"buyer admin users", http.MethodGet, "/api/v1/admin/users", "buyer", "", http.StatusForbidden},
 		{"update status", http.MethodPatch, "/api/v1/admin/users/" + testSellerID + "/status", "admin", `{"status":"suspended","reason":"policy"}`, http.StatusOK},
+		{"buyer update status", http.MethodPatch, "/api/v1/admin/users/" + testSellerID + "/status", "buyer", `{"status":"suspended","reason":"policy"}`, http.StatusForbidden},
+		{"update missing user", http.MethodPatch, "/api/v1/admin/users/01989f00-0000-7000-8000-000000000099/status", "admin", `{"status":"suspended","reason":"policy"}`, http.StatusNotFound},
+		{"unsafe status transition", http.MethodPatch, "/api/v1/admin/users/" + testAdminID + "/status", "admin", `{"status":"suspended","reason":"policy"}`, http.StatusConflict},
+		{"missing public store", http.MethodGet, "/api/v1/catalog/stores/missing", "", "", http.StatusNotFound},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
