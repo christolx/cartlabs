@@ -40,6 +40,22 @@ func (r *PostgresRepository) FindBySeller(ctx context.Context, sellerID string) 
 	return scanStore(r.pool.QueryRow(ctx, `SELECT `+storeColumns+` FROM stores WHERE seller_id = $1`, sellerID))
 }
 
+func (r *PostgresRepository) FindPublicBySlug(ctx context.Context, slug string) (Profile, error) {
+	var profile Profile
+	err := r.pool.QueryRow(ctx, `
+		SELECT s.id::text,s.name,s.slug,s.description,u.display_name,s.created_at
+		FROM stores s JOIN users u ON u.id=s.seller_id
+		WHERE s.slug=$1 AND s.status='approved'`, slug).
+		Scan(&profile.ID, &profile.Name, &profile.Slug, &profile.Description, &profile.SellerDisplayName, &profile.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Profile{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return Profile{}, fmt.Errorf("find public store: %w", err)
+	}
+	return profile, nil
+}
+
 func (r *PostgresRepository) Create(ctx context.Context, value Store, actorID string) (Store, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

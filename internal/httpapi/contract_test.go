@@ -51,7 +51,7 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 	variant := catalog.Variant{ID: contractID2, SKU: "LAMP-01", Name: "Brass", Attributes: map[string]string{"finish": "brass"}, PriceMinor: 249000, Currency: "IDR", Stock: 2, Active: true}
 	image := catalog.ProductImage{ID: contractID3, URL: "/images/lamp.webp", AltText: "Lamp", Position: 0}
 	product := catalog.Product{
-		ID: contractID4, StoreID: contractID1, StoreName: "Studio", Category: category,
+		ID: contractID4, StoreID: contractID1, StoreName: "Studio", StoreSlug: "studio", Category: category,
 		Name: "Lamp", Slug: "lamp", Description: "Desk lamp", Status: "published",
 		ModerationStatus: "approved", ModerationNote: "", Variants: []catalog.Variant{variant},
 		Images: []catalog.ProductImage{image}, CreatedAt: now, UpdatedAt: now,
@@ -85,11 +85,19 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	storeProfile, err := toContractStoreProfile(marketstore.Profile{ID: contractID1, Name: "Studio", Slug: "studio", Description: "Store", SellerDisplayName: "Seller", CreatedAt: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminUser, err := toContractAdminUser(identity.AdminUser{ID: contractID2, Email: "seller@example.com", DisplayName: "Seller", Role: identity.RoleSeller, Status: "active", CreatedAt: now, UpdatedAt: now})
+	if err != nil {
+		t.Fatal(err)
+	}
 	productResponse, err := toContractProduct(product)
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, err := toContractProductPage(catalog.Page{Items: []catalog.Summary{{ID: contractID4, Name: "Lamp", Slug: "lamp", StoreName: "Studio", Category: category, MinPriceMinor: 249000, Currency: "IDR", InStock: true, ImageURL: "/images/lamp.webp"}}, Page: 1, PageSize: 20, Total: 1})
+	page, err := toContractProductPage(catalog.Page{Items: []catalog.Summary{{ID: contractID4, Name: "Lamp", Slug: "lamp", StoreName: "Studio", StoreSlug: "studio", Category: category, MinPriceMinor: 249000, Currency: "IDR", InStock: true, ImageURL: "/images/lamp.webp"}}, Page: 1, PageSize: 20, Total: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +130,7 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 		name  string
 		value any
 	}{
-		{"Session", session}, {"Store", store}, {"ProductDetail", productResponse},
+		{"Session", session}, {"Store", store}, {"StoreProfile", storeProfile}, {"AdminUser", adminUser}, {"ProductDetail", productResponse},
 		{"ProductPage", page}, {"Cart", cart}, {"Purchase", purchaseResponse},
 		{"ReviewSummary", reviewSummary}, {"AdminOverview", overview},
 		{"AuditEvent", audit}, {"Notification", notification},

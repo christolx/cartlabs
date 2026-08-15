@@ -113,3 +113,36 @@ func (a *api) currentUser(w http.ResponseWriter, r *http.Request, principal iden
 	}
 	writeJSON(w, http.StatusOK, response)
 }
+
+func (a *api) adminUsers(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	users, err := a.config.identity.ListUsers(r.Context(), principal)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractAdminUsers(users)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, itemsResponse[contract.AdminUser]{Items: response})
+}
+
+func (a *api) updateUserStatus(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	var input contract.UserStatusInput
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	user, err := a.config.identity.UpdateUserStatus(r.Context(), principal, r.PathValue("userId"), string(input.Status), input.Reason)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractAdminUser(user)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
+}

@@ -117,25 +117,57 @@ func TestCatalogFiltersRejectInvalidRange(t *testing.T) {
 	}
 }
 
+func TestSellerProductDetailOwnershipAndValidation(t *testing.T) {
+	id := "01989f00-0000-7000-8000-000000000201"
+	service := NewService(&fakeRepository{product: Product{ID: id}})
+	product, err := service.FindOwn(context.Background(), identity.Principal{UserID: "seller", Role: identity.RoleSeller}, id)
+	if err != nil || product.ID != id {
+		t.Fatalf("product = %#v, err = %v", product, err)
+	}
+	if _, err := service.FindOwn(context.Background(), identity.Principal{UserID: "other", Role: identity.RoleSeller}, id); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("non-owner error = %v", err)
+	}
+	if _, err := service.FindOwn(context.Background(), identity.Principal{Role: identity.RoleBuyer}, id); !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("buyer error = %v", err)
+	}
+	if _, err := service.FindOwn(context.Background(), identity.Principal{UserID: "seller", Role: identity.RoleSeller}, "bad"); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("invalid ID error = %v", err)
+	}
+}
+
+func TestCatalogStoreFilterValidation(t *testing.T) {
+	repository := &fakeRepository{}
+	service := NewService(repository)
+	if _, err := service.ListPublic(context.Background(), Filters{StoreSlug: " Bad Store ", Page: 1, PageSize: 20}); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("invalid slug error = %v", err)
+	}
+	if _, err := service.ListPublic(context.Background(), Filters{StoreSlug: " NUSANTARA-GOODS ", Page: 1, PageSize: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if repository.filters.StoreSlug != "nusantara-goods" {
+		t.Fatalf("store slug = %q", repository.filters.StoreSlug)
+	}
+}
+
 func TestCatalogSearchUsesCandidatesAndFallsBack(t *testing.T) {
 	repository := &fakeRepository{}
 	results := []string{}
 	service := NewService(repository, WithCandidateSearcher(fakeCandidateSearcher{ids: []string{"01989f00-0000-7000-8000-000000000201"}}),
 		WithSearchObserver(func(result string) { results = append(results, result) }))
-	if _, err := service.ListPublic(context.Background(), Filters{Search: "basket", Page: 1, PageSize: 20}); err != nil {
+	if _, err := service.ListPublic(context.Background(), Filters{Search: "basket", StoreSlug: "nusantara-goods", Page: 1, PageSize: 20}); err != nil {
 		t.Fatal(err)
 	}
-	if len(repository.candidates) != 1 || results[0] != "service" {
+	if len(repository.candidates) != 1 || results[0] != "service" || repository.filters.StoreSlug != "nusantara-goods" {
 		t.Fatalf("candidates=%v results=%v", repository.candidates, results)
 	}
 
 	repository.candidates = nil
 	service = NewService(repository, WithCandidateSearcher(fakeCandidateSearcher{err: errors.New("search unavailable")}),
 		WithSearchObserver(func(result string) { results = append(results, result) }))
-	if _, err := service.ListPublic(context.Background(), Filters{Search: "basket", Page: 1, PageSize: 20}); err != nil {
+	if _, err := service.ListPublic(context.Background(), Filters{Search: "basket", StoreSlug: "nusantara-goods", Page: 1, PageSize: 20}); err != nil {
 		t.Fatal(err)
 	}
-	if repository.filters.Search != "basket" || results[len(results)-1] != "fallback" {
+	if repository.filters.Search != "basket" || repository.filters.StoreSlug != "nusantara-goods" || results[len(results)-1] != "fallback" {
 		t.Fatalf("filters=%#v results=%v", repository.filters, results)
 	}
 }

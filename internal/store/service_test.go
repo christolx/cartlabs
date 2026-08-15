@@ -38,6 +38,12 @@ func (f *fakeRepository) Moderate(_ context.Context, id, status, note, _ string,
 	f.value.ModerationNote = note
 	return f.value, nil
 }
+func (f *fakeRepository) FindPublicBySlug(_ context.Context, slug string) (Profile, error) {
+	if f.value.Slug != slug || f.value.Status != "approved" {
+		return Profile{}, domain.ErrNotFound
+	}
+	return Profile{ID: f.value.ID, Name: f.value.Name, Slug: f.value.Slug, Description: f.value.Description, CreatedAt: f.value.CreatedAt}, nil
+}
 
 func TestSellerStoreLifecycleAndRBAC(t *testing.T) {
 	repository := &fakeRepository{}
@@ -74,5 +80,20 @@ func TestStoreRejectsInvalidSlug(t *testing.T) {
 	_, err := service.Create(context.Background(), identity.Principal{UserID: "seller", Role: identity.RoleSeller}, Input{Name: "Valid", Slug: "Not Valid", Description: ""})
 	if !errors.Is(err, domain.ErrInvalid) {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestPublicStoreRequiresApprovedValidSlug(t *testing.T) {
+	service := NewService(&fakeRepository{value: Store{ID: "store", Name: "North", Slug: "north-star", Status: "pending"}})
+	if _, err := service.FindPublic(context.Background(), "north-star"); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("pending error = %v", err)
+	}
+	service.repository.(*fakeRepository).value.Status = "approved"
+	profile, err := service.FindPublic(context.Background(), " NORTH-STAR ")
+	if err != nil || profile.Slug != "north-star" {
+		t.Fatalf("profile = %#v, err = %v", profile, err)
+	}
+	if _, err := service.FindPublic(context.Background(), "bad slug"); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("invalid error = %v", err)
 	}
 }

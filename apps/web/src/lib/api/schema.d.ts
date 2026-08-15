@@ -157,6 +157,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/catalog/stores/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get approved public store profile */
+        get: operations["getCatalogStore"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/catalog/products/{slug}": {
         parameters: {
             query?: never;
@@ -218,7 +235,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Get complete owned seller product */
+        get: operations["getSellerProduct"];
         put?: never;
         post?: never;
         delete?: never;
@@ -311,6 +329,40 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/admin/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List users newest first */
+        get: operations["listAdminUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{userId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Suspend or reactivate user */
+        patch: operations["updateAdminUserStatus"];
         trace?: never;
     };
     "/admin/stores/{storeId}/moderation": {
@@ -648,6 +700,8 @@ export interface components {
         /** @enum {string} */
         Role: "buyer" | "seller" | "admin";
         /** @enum {string} */
+        UserStatus: "active" | "suspended";
+        /** @enum {string} */
         ModerationStatus: "pending" | "approved" | "rejected";
         LoginRequest: {
             /** Format: email */
@@ -673,6 +727,23 @@ export interface components {
             displayName: string;
             role: components["schemas"]["Role"];
         };
+        AdminUser: {
+            /** Format: uuid */
+            id: string;
+            /** Format: email */
+            email: string;
+            displayName: string;
+            role: components["schemas"]["Role"];
+            status: components["schemas"]["UserStatus"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UserStatusInput: {
+            status: components["schemas"]["UserStatus"];
+            reason: string;
+        };
         StoreInput: {
             name: string;
             slug: string;
@@ -692,6 +763,16 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        StoreProfile: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            description: string;
+            sellerDisplayName: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         Category: {
             /** Format: uuid */
@@ -753,6 +834,7 @@ export interface components {
             name: string;
             slug: string;
             storeName: string;
+            storeSlug: string;
             category: components["schemas"]["Category"];
             /** Format: int64 */
             minPriceMinor: number;
@@ -766,6 +848,7 @@ export interface components {
             /** Format: uuid */
             storeId: string;
             storeName?: string;
+            storeSlug: string;
             category: components["schemas"]["Category"];
             name: string;
             slug: string;
@@ -1153,12 +1236,15 @@ export interface components {
         ProductId: string;
         VariantId: string;
         StoreId: string;
+        UserId: string;
         PurchaseId: string;
         OrderId: string;
         IdempotencyKey: string;
         ProductSlug: string;
+        StoreSlug: string;
         Search: string;
         CategoryFilter: string;
+        StoreFilter: string;
         MinPrice: number;
         MaxPrice: number;
         InStock: boolean;
@@ -1357,6 +1443,7 @@ export interface operations {
             query?: {
                 q?: components["parameters"]["Search"];
                 category?: components["parameters"]["CategoryFilter"];
+                store?: components["parameters"]["StoreFilter"];
                 minPrice?: components["parameters"]["MinPrice"];
                 maxPrice?: components["parameters"]["MaxPrice"];
                 inStock?: components["parameters"]["InStock"];
@@ -1379,6 +1466,40 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+        };
+    };
+    getCatalogStore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["StoreSlug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved public store profile */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "id": "01989f00-0000-7000-8000-000000000010",
+                     *       "name": "Nusantara Crafts",
+                     *       "slug": "nusantara-crafts",
+                     *       "description": "Handmade goods from local makers.",
+                     *       "sellerDisplayName": "Sari",
+                     *       "createdAt": "2026-08-12T10:00:00Z"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["StoreProfile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
         };
     };
     getCatalogProduct: {
@@ -1523,6 +1644,31 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getSellerProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Complete owned product */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     updateSellerProduct: {
@@ -1679,6 +1825,65 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    listAdminUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Admin-safe user list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["AdminUser"][];
+                    };
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    updateAdminUserStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                /**
+                 * @example {
+                 *       "status": "suspended",
+                 *       "reason": "Repeated marketplace policy violations"
+                 *     }
+                 */
+                "application/json": components["schemas"]["UserStatusInput"];
+            };
+        };
+        responses: {
+            /** @description Updated user */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminUser"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     moderateStore: {

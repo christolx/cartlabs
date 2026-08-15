@@ -23,12 +23,12 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 type rowScanner interface{ Scan(...any) error }
 
 const productSelect = `
-	p.id::text,p.store_id::text,s.name,c.id::text,c.name,c.slug,p.name,p.slug,p.description,
+	p.id::text,p.store_id::text,s.name,s.slug,c.id::text,c.name,c.slug,p.name,p.slug,p.description,
 	p.status::text,p.moderation_status::text,p.moderation_note,p.created_at,p.updated_at`
 
 func scanProduct(row rowScanner) (Product, error) {
 	var value Product
-	err := row.Scan(&value.ID, &value.StoreID, &value.StoreName, &value.Category.ID, &value.Category.Name,
+	err := row.Scan(&value.ID, &value.StoreID, &value.StoreName, &value.StoreSlug, &value.Category.ID, &value.Category.Name,
 		&value.Category.Slug, &value.Name, &value.Slug, &value.Description, &value.Status,
 		&value.ModerationStatus, &value.ModerationNote, &value.CreatedAt, &value.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -300,7 +300,7 @@ func (r *PostgresRepository) ListPublicCandidates(ctx context.Context, filters F
 }
 
 func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, candidates []string, candidateSearch bool) (Page, error) {
-	search, category := nullableText(filters.Search), nullableText(filters.CategorySlug)
+	search, category, storeSlug := nullableText(filters.Search), nullableText(filters.CategorySlug), nullableText(filters.StoreSlug)
 	var total int
 	err := r.pool.QueryRow(ctx, `
 		SELECT count(*) FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id
@@ -309,13 +309,14 @@ func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, ca
 		AND ((NOT $6::boolean AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%'))
 			OR ($6::boolean AND p.id=ANY($7::uuid[])))
 		AND ($2::text IS NULL OR c.slug=$2) AND ($3::bigint IS NULL OR prices.min_price >= $3)
-		AND ($4::bigint IS NULL OR prices.min_price <= $4) AND (NOT $5 OR prices.in_stock)`,
-		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, candidateSearch, candidates).Scan(&total)
+		AND ($4::bigint IS NULL OR prices.min_price <= $4) AND (NOT $5 OR prices.in_stock)
+		AND ($8::text IS NULL OR s.slug=$8)`,
+		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, candidateSearch, candidates, storeSlug).Scan(&total)
 	if err != nil {
 		return Page{}, fmt.Errorf("count public products: %w", err)
 	}
 	rows, err := r.pool.Query(ctx, `
-		SELECT p.id::text,p.name,p.slug,s.name,c.id::text,c.name,c.slug,prices.min_price,prices.currency,prices.in_stock,
+		SELECT p.id::text,p.name,p.slug,s.name,s.slug,c.id::text,c.name,c.slug,prices.min_price,prices.currency,prices.in_stock,
 		COALESCE((SELECT url FROM product_images WHERE product_id=p.id ORDER BY position LIMIT 1),'')
 		FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id
 		JOIN LATERAL (SELECT min(price_minor) min_price,min(currency) currency,bool_or(stock>0) in_stock FROM product_variants WHERE product_id=p.id AND active) prices ON prices.min_price IS NOT NULL
@@ -324,8 +325,9 @@ func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, ca
 			OR ($6::boolean AND p.id=ANY($7::uuid[])))
 		AND ($2::text IS NULL OR c.slug=$2) AND ($3::bigint IS NULL OR prices.min_price >= $3)
 		AND ($4::bigint IS NULL OR prices.min_price <= $4) AND (NOT $5 OR prices.in_stock)
-		ORDER BY p.updated_at DESC,p.id DESC LIMIT $8 OFFSET $9`,
-		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, candidateSearch, candidates, filters.PageSize, (filters.Page-1)*filters.PageSize)
+		AND ($8::text IS NULL OR s.slug=$8)
+		ORDER BY p.updated_at DESC,p.id DESC LIMIT $9 OFFSET $10`,
+		search, category, filters.MinPrice, filters.MaxPrice, filters.InStock, candidateSearch, candidates, storeSlug, filters.PageSize, (filters.Page-1)*filters.PageSize)
 	if err != nil {
 		return Page{}, fmt.Errorf("list public products: %w", err)
 	}
@@ -333,7 +335,7 @@ func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, ca
 	items := make([]Summary, 0)
 	for rows.Next() {
 		var item Summary
-		if err := rows.Scan(&item.ID, &item.Name, &item.Slug, &item.StoreName, &item.Category.ID, &item.Category.Name, &item.Category.Slug,
+		if err := rows.Scan(&item.ID, &item.Name, &item.Slug, &item.StoreName, &item.StoreSlug, &item.Category.ID, &item.Category.Name, &item.Category.Slug,
 			&item.MinPriceMinor, &item.Currency, &item.InStock, &item.ImageURL); err != nil {
 			return Page{}, fmt.Errorf("scan product summary: %w", err)
 		}

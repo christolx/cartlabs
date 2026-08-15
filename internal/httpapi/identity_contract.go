@@ -46,3 +46,32 @@ func toContractSession(value identity.Session) (contract.Session, error) {
 	}
 	return contract.Session{AccessToken: value.AccessToken, TokenType: tokenType, ExpiresIn: value.ExpiresIn, User: user}, nil
 }
+
+func toContractAdminUser(value identity.AdminUser) (contract.AdminUser, error) {
+	id, err := contractUUID(value.ID, "adminUser.id")
+	if err != nil {
+		return contract.AdminUser{}, err
+	}
+	role, err := toContractRole(value.Role)
+	if err != nil {
+		return contract.AdminUser{}, err
+	}
+	status := contract.UserStatus(value.Status)
+	if !status.Valid() {
+		return contract.AdminUser{}, fmt.Errorf("map invalid user status %q", value.Status)
+	}
+	return contract.AdminUser{Id: id, Email: openapi_types.Email(value.Email), DisplayName: value.DisplayName,
+		Role: role, Status: status, CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt}, nil
+}
+
+func toContractAdminUsers(values []identity.AdminUser) ([]contract.AdminUser, error) {
+	result := make([]contract.AdminUser, len(values))
+	for i := range values {
+		mapped, err := toContractAdminUser(values[i])
+		if err != nil {
+			return nil, err
+		}
+		result[i] = mapped
+	}
+	return result, nil
+}

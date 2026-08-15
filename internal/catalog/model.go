@@ -12,6 +12,7 @@ type Product struct {
 	ID               string         `json:"id"`
 	StoreID          string         `json:"storeId"`
 	StoreName        string         `json:"storeName,omitempty"`
+	StoreSlug        string         `json:"storeSlug"`
 	Category         Category       `json:"category"`
 	Name             string         `json:"name"`
 	Slug             string         `json:"slug"`
@@ -68,6 +69,7 @@ type ImageInput struct {
 type Filters struct {
 	Search       string
 	CategorySlug string
+	StoreSlug    string
 	MinPrice     *int64
 	MaxPrice     *int64
 	InStock      bool
@@ -80,6 +82,7 @@ type Summary struct {
 	Name          string   `json:"name"`
 	Slug          string   `json:"slug"`
 	StoreName     string   `json:"storeName"`
+	StoreSlug     string   `json:"storeSlug"`
 	Category      Category `json:"category"`
 	MinPriceMinor int64    `json:"minPriceMinor"`
 	Currency      string   `json:"currency"`

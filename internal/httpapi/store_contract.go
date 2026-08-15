@@ -39,6 +39,15 @@ func toContractStore(value marketstore.Store) (contract.Store, error) {
 	}, nil
 }
 
+func toContractStoreProfile(value marketstore.Profile) (contract.StoreProfile, error) {
+	id, err := contractUUID(value.ID, "storeProfile.id")
+	if err != nil {
+		return contract.StoreProfile{}, err
+	}
+	return contract.StoreProfile{Id: id, Name: value.Name, Slug: value.Slug, Description: value.Description,
+		SellerDisplayName: value.SellerDisplayName, CreatedAt: value.CreatedAt}, nil
+}
+
 func toContractStores(values []marketstore.Store) ([]contract.Store, error) {
 	result := make([]contract.Store, len(values))
 	for i := range values {

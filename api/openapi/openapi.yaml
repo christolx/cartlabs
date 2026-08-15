@@ -161,6 +161,7 @@ paths:
       parameters:
         - {$ref: "#/components/parameters/Search"}
         - {$ref: "#/components/parameters/CategoryFilter"}
+        - {$ref: "#/components/parameters/StoreFilter"}
         - {$ref: "#/components/parameters/MinPrice"}
         - {$ref: "#/components/parameters/MaxPrice"}
         - {$ref: "#/components/parameters/InStock"}
@@ -173,6 +174,29 @@ paths:
             application/json:
               schema: {$ref: "#/components/schemas/ProductPage"}
         "400": {$ref: "#/components/responses/BadRequest"}
+  /catalog/stores/{slug}:
+    get:
+      operationId: getCatalogStore
+      summary: Get approved public store profile
+      tags: [Catalog]
+      security: []
+      parameters:
+        - {$ref: "#/components/parameters/StoreSlug"}
+      responses:
+        "200":
+          description: Approved public store profile
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/StoreProfile"}
+              example:
+                id: 01989f00-0000-7000-8000-000000000010
+                name: Nusantara Crafts
+                slug: nusantara-crafts
+                description: Handmade goods from local makers.
+                sellerDisplayName: Sari
+                createdAt: "2026-08-12T10:00:00Z"
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
   /catalog/products/{slug}:
     get:
       operationId: getCatalogProduct
@@ -267,6 +291,21 @@ paths:
         "400": {$ref: "#/components/responses/BadRequest"}
         "403": {$ref: "#/components/responses/Forbidden"}
   /seller/products/{productId}:
+    get:
+      operationId: getSellerProduct
+      summary: Get complete owned seller product
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      responses:
+        "200":
+          description: Complete owned product
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
     patch:
       operationId: updateSellerProduct
       summary: Update seller product
@@ -374,6 +413,46 @@ paths:
                 required: [items]
                 properties:
                   items: {type: array, items: {$ref: "#/components/schemas/Store"}}
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      summary: List users newest first
+      tags: [Admin]
+      responses:
+        "200":
+          description: Admin-safe user list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: "#/components/schemas/AdminUser"}}
+        "403": {$ref: "#/components/responses/Forbidden"}
+  /admin/users/{userId}/status:
+    patch:
+      operationId: updateAdminUserStatus
+      summary: Suspend or reactivate user
+      tags: [Admin]
+      parameters:
+        - {$ref: "#/components/parameters/UserId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UserStatusInput"}
+            example: {status: suspended, reason: Repeated marketplace policy violations}
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AdminUser"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /admin/stores/{storeId}/moderation:
     patch:
       operationId: moderateStore
@@ -705,12 +784,15 @@ components:
     ProductId: {name: productId, in: path, required: true, schema: {type: string, format: uuid}}
     VariantId: {name: variantId, in: path, required: true, schema: {type: string, format: uuid}}
     StoreId: {name: storeId, in: path, required: true, schema: {type: string, format: uuid}}
+    UserId: {name: userId, in: path, required: true, schema: {type: string, format: uuid}}
     PurchaseId: {name: purchaseId, in: path, required: true, schema: {type: string, format: uuid}}
     OrderId: {name: orderId, in: path, required: true, schema: {type: string, format: uuid}}
     IdempotencyKey: {name: Idempotency-Key, in: header, required: true, schema: {type: string, minLength: 8, maxLength: 128}}
     ProductSlug: {name: slug, in: path, required: true, schema: {type: string}}
+    StoreSlug: {name: slug, in: path, required: true, schema: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}}
     Search: {name: q, in: query, schema: {type: string, maxLength: 100}}
     CategoryFilter: {name: category, in: query, schema: {type: string}}
+    StoreFilter: {name: store, in: query, schema: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}}
     MinPrice: {name: minPrice, in: query, schema: {type: integer, format: int64, minimum: 0}}
     MaxPrice: {name: maxPrice, in: query, schema: {type: integer, format: int64, minimum: 0}}
     InStock: {name: inStock, in: query, schema: {type: boolean}}
@@ -751,6 +833,7 @@ components:
         detail: {type: string}
         requestId: {type: string}
     Role: {type: string, enum: [buyer, seller, admin]}
+    UserStatus: {type: string, enum: [active, suspended]}
     ModerationStatus: {type: string, enum: [pending, approved, rejected]}
     LoginRequest:
       type: object
@@ -781,6 +864,25 @@ components:
         email: {type: string, format: email}
         displayName: {type: string}
         role: {$ref: "#/components/schemas/Role"}
+    AdminUser:
+      type: object
+      additionalProperties: false
+      required: [id, email, displayName, role, status, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        email: {type: string, format: email}
+        displayName: {type: string}
+        role: {$ref: "#/components/schemas/Role"}
+        status: {$ref: "#/components/schemas/UserStatus"}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    UserStatusInput:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status: {$ref: "#/components/schemas/UserStatus"}
+        reason: {type: string, minLength: 1, maxLength: 500, pattern: '.*\S.*'}
     StoreInput:
       type: object
       additionalProperties: false
@@ -803,6 +905,17 @@ components:
         moderationNote: {type: string}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
+    StoreProfile:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug, description, sellerDisplayName, createdAt]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string, minLength: 2, maxLength: 100}
+        slug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        description: {type: string, maxLength: 1000}
+        sellerDisplayName: {type: string}
+        createdAt: {type: string, format: date-time}
     Category:
       type: object
       required: [id, name, slug]
@@ -862,12 +975,13 @@ components:
         position: {type: integer, minimum: 0}
     ProductSummary:
       type: object
-      required: [id, name, slug, storeName, category, minPriceMinor, currency, inStock, imageUrl]
+      required: [id, name, slug, storeName, storeSlug, category, minPriceMinor, currency, inStock, imageUrl]
       properties:
         id: {type: string, format: uuid}
         name: {type: string}
         slug: {type: string}
         storeName: {type: string}
+        storeSlug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
         category: {$ref: "#/components/schemas/Category"}
         minPriceMinor: {type: integer, format: int64}
         currency: {type: string}
@@ -875,11 +989,12 @@ components:
         imageUrl: {type: string}
     ProductDetail:
       type: object
-      required: [id, storeId, category, name, slug, description, status, moderationStatus, moderationNote, variants, images, createdAt, updatedAt]
+      required: [id, storeId, storeSlug, category, name, slug, description, status, moderationStatus, moderationNote, variants, images, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         storeId: {type: string, format: uuid}
         storeName: {type: string}
+        storeSlug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
         category: {$ref: "#/components/schemas/Category"}
         name: {type: string}
         slug: {type: string}

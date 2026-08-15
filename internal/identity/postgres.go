@@ -2,11 +2,13 @@ package identity
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/christolx/cartlabs/internal/domain"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -21,13 +23,13 @@ func NewPostgresRepository(pool *pgxpool.Pool) *PostgresRepository {
 
 func (r *PostgresRepository) FindByEmail(ctx context.Context, email string) (User, error) {
 	return scanUser(r.pool.QueryRow(ctx, `
-		SELECT id::text, email, password_hash, display_name, role::text, status::text, created_at
+		SELECT id::text, email, password_hash, display_name, role::text, status::text, created_at, updated_at
 		FROM users WHERE email = $1`, email))
 }
 
 func (r *PostgresRepository) FindByID(ctx context.Context, id string) (User, error) {
 	return scanUser(r.pool.QueryRow(ctx, `
-		SELECT id::text, email, password_hash, display_name, role::text, status::text, created_at
+		SELECT id::text, email, password_hash, display_name, role::text, status::text, created_at, updated_at
 		FROM users WHERE id = $1`, id))
 }
 
@@ -37,7 +39,7 @@ type rowScanner interface {
 
 func scanUser(row rowScanner) (User, error) {
 	var user User
-	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.Role, &user.Status, &user.CreatedAt); err != nil {
+	if err := row.Scan(&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return User{}, domain.ErrNotFound
 		}
@@ -101,7 +103,7 @@ func (r *PostgresRepository) RotateRefreshSession(ctx context.Context, currentHa
 		return User{}, fmt.Errorf("insert rotated refresh session: %w", err)
 	}
 	user, err := scanUser(tx.QueryRow(ctx, `
-		SELECT id::text, email, password_hash, display_name, role::text, status::text, created_at
+		SELECT id::text, email, password_hash, display_name, role::text, status::text, created_at, updated_at
 		FROM users WHERE id = $1`, current.UserID))
 	if err != nil || user.Status != "active" {
 		return User{}, domain.ErrUnauthorized
@@ -123,4 +125,91 @@ func (r *PostgresRepository) RevokeRefreshFamily(ctx context.Context, tokenHash 
 		return domain.ErrNotFound
 	}
 	return nil
+}
+
+func (r *PostgresRepository) ListUsers(ctx context.Context) ([]AdminUser, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT id::text,email,display_name,role::text,status::text,created_at,updated_at
+		FROM users ORDER BY created_at DESC,id DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("list users: %w", err)
+	}
+	defer rows.Close()
+	users := make([]AdminUser, 0)
+	for rows.Next() {
+		user, err := scanAdminUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+	return users, rows.Err()
+}
+
+func scanAdminUser(row rowScanner) (AdminUser, error) {
+	var user AdminUser
+	if err := row.Scan(&user.ID, &user.Email, &user.DisplayName, &user.Role, &user.Status, &user.CreatedAt, &user.UpdatedAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return AdminUser{}, domain.ErrNotFound
+		}
+		return AdminUser{}, fmt.Errorf("scan admin user: %w", err)
+	}
+	return user, nil
+}
+
+func (r *PostgresRepository) UpdateUserStatus(ctx context.Context, actorID, userID, status, reason string, now time.Time) (AdminUser, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return AdminUser{}, fmt.Errorf("begin user status update: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	// Serialize status changes so concurrent admin suspensions cannot bypass last-admin protection.
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(1128352842)`); err != nil {
+		return AdminUser{}, fmt.Errorf("lock user status updates: %w", err)
+	}
+	current, err := scanAdminUser(tx.QueryRow(ctx, `
+		SELECT id::text,email,display_name,role::text,status::text,created_at,updated_at
+		FROM users WHERE id=$1 FOR UPDATE`, userID))
+	if err != nil {
+		return AdminUser{}, err
+	}
+	if current.Status == status || actorID == userID && status == "suspended" {
+		return AdminUser{}, domain.ErrConflict
+	}
+	if current.Role == RoleAdmin && status == "suspended" {
+		var activeAdmins int
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM users WHERE role='admin' AND status='active'`).Scan(&activeAdmins); err != nil {
+			return AdminUser{}, fmt.Errorf("count active admins: %w", err)
+		}
+		if activeAdmins <= 1 {
+			return AdminUser{}, domain.ErrConflict
+		}
+	}
+	updated, err := scanAdminUser(tx.QueryRow(ctx, `
+		UPDATE users SET status=$2,updated_at=$3 WHERE id=$1
+		RETURNING id::text,email,display_name,role::text,status::text,created_at,updated_at`, userID, status, now))
+	if err != nil {
+		return AdminUser{}, err
+	}
+	if status == "suspended" {
+		if _, err := tx.Exec(ctx, `UPDATE refresh_sessions SET revoked_at=COALESCE(revoked_at,$2) WHERE user_id=$1`, userID, now); err != nil {
+			return AdminUser{}, fmt.Errorf("revoke user refresh sessions: %w", err)
+		}
+	}
+	metadata, err := json.Marshal(map[string]string{"from": current.Status, "to": status, "reason": reason})
+	if err != nil {
+		return AdminUser{}, fmt.Errorf("encode user status audit: %w", err)
+	}
+	auditID, err := uuid.NewV7()
+	if err != nil {
+		return AdminUser{}, fmt.Errorf("generate audit ID: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (id,actor_id,action,resource_type,resource_id,metadata,created_at)
+		VALUES ($1,$2,$3,'user',$4,$5,$6)`, auditID.String(), actorID, "user.status."+status, userID, metadata, now); err != nil {
+		return AdminUser{}, fmt.Errorf("insert user status audit: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return AdminUser{}, fmt.Errorf("commit user status update: %w", err)
+	}
+	return updated, nil
 }

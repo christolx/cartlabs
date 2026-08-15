@@ -19,3 +19,12 @@ type Input struct {
 	Slug        string `json:"slug"`
 	Description string `json:"description"`
 }
+
+type Profile struct {
+	ID                string
+	Name              string
+	Slug              string
+	Description       string
+	SellerDisplayName string
+	CreatedAt         time.Time
+}

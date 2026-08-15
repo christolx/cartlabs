@@ -37,6 +37,8 @@ type IdentityService interface {
 	Logout(context.Context, string) error
 	Authenticate(context.Context, string) (identity.Principal, error)
 	User(context.Context, identity.Principal) (identity.User, error)
+	ListUsers(context.Context, identity.Principal) ([]identity.AdminUser, error)
+	UpdateUserStatus(context.Context, identity.Principal, string, string, string) (identity.AdminUser, error)
 }
 
 type RateLimiter interface {
@@ -49,11 +51,13 @@ type StoreService interface {
 	Update(context.Context, identity.Principal, marketstore.Input) (marketstore.Store, error)
 	ListForAdmin(context.Context, identity.Principal) ([]marketstore.Store, error)
 	Moderate(context.Context, identity.Principal, string, string, string) (marketstore.Store, error)
+	FindPublic(context.Context, string) (marketstore.Profile, error)
 }
 
 type CatalogService interface {
 	Categories(context.Context) ([]catalog.Category, error)
 	ListOwn(context.Context, identity.Principal) ([]catalog.Product, error)
+	FindOwn(context.Context, identity.Principal, string) (catalog.Product, error)
 	Create(context.Context, identity.Principal, catalog.ProductInput) (catalog.Product, error)
 	Update(context.Context, identity.Principal, string, catalog.ProductInput) (catalog.Product, error)
 	AddVariant(context.Context, identity.Principal, string, catalog.VariantInput) (catalog.Variant, error)
@@ -157,17 +161,21 @@ func New(checker ReadinessChecker, logger *slog.Logger, options ...Option) *Serv
 	mux.HandleFunc("GET /api/v1/categories", application.categories)
 	mux.HandleFunc("GET /api/v1/catalog/products", application.catalogProducts)
 	mux.HandleFunc("GET /api/v1/catalog/products/{slug}", application.catalogProduct)
+	mux.HandleFunc("GET /api/v1/catalog/stores/{slug}", application.catalogStore)
 	mux.HandleFunc("GET /api/v1/seller/store", application.auth(application.getStore))
 	mux.HandleFunc("POST /api/v1/seller/store", application.auth(application.createStore))
 	mux.HandleFunc("PATCH /api/v1/seller/store", application.auth(application.updateStore))
 	mux.HandleFunc("GET /api/v1/seller/products", application.auth(application.sellerProducts))
 	mux.HandleFunc("POST /api/v1/seller/products", application.auth(application.createProduct))
+	mux.HandleFunc("GET /api/v1/seller/products/{productId}", application.auth(application.sellerProduct))
 	mux.HandleFunc("PATCH /api/v1/seller/products/{productId}", application.auth(application.updateProduct))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/variants", application.auth(application.createVariant))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/images", application.auth(application.createImage))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/publish", application.auth(application.publishProduct))
 	mux.HandleFunc("PATCH /api/v1/seller/variants/{variantId}/inventory", application.auth(application.adjustInventory))
 	mux.HandleFunc("GET /api/v1/admin/stores", application.auth(application.adminStores))
+	mux.HandleFunc("GET /api/v1/admin/users", application.auth(application.adminUsers))
+	mux.HandleFunc("PATCH /api/v1/admin/users/{userId}/status", application.auth(application.updateUserStatus))
 	mux.HandleFunc("PATCH /api/v1/admin/stores/{storeId}/moderation", application.auth(application.moderateStore))
 	mux.HandleFunc("GET /api/v1/admin/products", application.auth(application.adminProducts))
 	mux.HandleFunc("PATCH /api/v1/admin/products/{productId}/moderation", application.auth(application.moderateProduct))

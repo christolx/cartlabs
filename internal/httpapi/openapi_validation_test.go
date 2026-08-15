@@ -27,9 +27,14 @@ func TestOpenAPIRequestValidation(t *testing.T) {
 		{name: "invalid enum", method: http.MethodPost, path: "/api/v1/auth/demo-login", body: `{"role":"operator"}`, contentType: "application/json"},
 		{name: "invalid body UUID", method: http.MethodPost, path: "/api/v1/seller/products", body: `{"categoryId":"not-a-uuid","name":"Lamp","slug":"lamp","description":"Desk lamp"}`, contentType: "application/json"},
 		{name: "invalid path UUID", method: http.MethodPut, path: "/api/v1/cart/items/not-a-uuid", body: `{"quantity":1}`, contentType: "application/json"},
+		{name: "invalid seller product UUID", method: http.MethodGet, path: "/api/v1/seller/products/not-a-uuid"},
 		{name: "body below minimum", method: http.MethodPut, path: "/api/v1/cart/items/01989f00-0000-7000-8000-000000000001", body: `{"quantity":0}`, contentType: "application/json"},
 		{name: "invalid slug pattern", method: http.MethodPost, path: "/api/v1/seller/products", body: `{"categoryId":"01989f00-0000-7000-8000-000000000001","name":"Lamp","slug":"Bad Slug","description":"Desk lamp"}`, contentType: "application/json"},
 		{name: "query below minimum", method: http.MethodGet, path: "/api/v1/catalog/products?page=0"},
+		{name: "invalid store filter", method: http.MethodGet, path: "/api/v1/catalog/products?store=Bad%20Store"},
+		{name: "invalid user status", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"deleted","reason":"policy"}`, contentType: "application/json"},
+		{name: "blank status reason", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"   "}`, contentType: "application/json"},
+		{name: "unknown status field", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"policy","notify":true}`, contentType: "application/json"},
 		{name: "missing required header", method: http.MethodPost, path: "/api/v1/checkout"},
 	}
 	for _, test := range tests {

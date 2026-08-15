@@ -49,7 +49,7 @@ func (a *api) catalogProducts(w http.ResponseWriter, r *http.Request) {
 
 func parseFilters(r *http.Request) (catalog.Filters, error) {
 	query := r.URL.Query()
-	filters := catalog.Filters{Search: query.Get("q"), CategorySlug: query.Get("category"), Page: 1, PageSize: 20}
+	filters := catalog.Filters{Search: query.Get("q"), CategorySlug: query.Get("category"), StoreSlug: query.Get("store"), Page: 1, PageSize: 20}
 	var err error
 	if value := query.Get("page"); value != "" {
 		filters.Page, err = strconv.Atoi(value)
@@ -103,6 +103,24 @@ func (a *api) catalogProduct(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, response)
 }
 
+func (a *api) catalogStore(w http.ResponseWriter, r *http.Request) {
+	if a.config.stores == nil {
+		writeError(w, domain.ErrNotFound)
+		return
+	}
+	value, err := a.config.stores.FindPublic(r.Context(), r.PathValue("slug"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractStoreProfile(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
 func (a *api) sellerProducts(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
 	items, err := a.config.catalog.ListOwn(r.Context(), principal)
 	if err != nil {
@@ -115,6 +133,20 @@ func (a *api) sellerProducts(w http.ResponseWriter, r *http.Request, principal i
 		return
 	}
 	writeJSON(w, http.StatusOK, itemsResponse[contract.ProductDetail]{Items: response})
+}
+
+func (a *api) sellerProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	value, err := a.config.catalog.FindOwn(r.Context(), principal, r.PathValue("productId"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
 }
 
 func (a *api) createProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {

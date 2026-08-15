@@ -18,6 +18,17 @@ type User struct {
 	Role         Role      `json:"role"`
 	Status       string    `json:"-"`
 	CreatedAt    time.Time `json:"-"`
+	UpdatedAt    time.Time `json:"-"`
+}
+
+type AdminUser struct {
+	ID          string
+	Email       string
+	DisplayName string
+	Role        Role
+	Status      string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type RefreshSession struct {
@@ -37,8 +48,9 @@ type Session struct {
 }
 
 type Principal struct {
-	UserID string
-	Role   Role
+	UserID      string
+	Role        Role
+	UserVersion int64
 }
 
 func (p Principal) Require(roles ...Role) bool {

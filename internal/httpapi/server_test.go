@@ -56,6 +56,12 @@ func (fakeIdentity) Authenticate(_ context.Context, raw string) (identity.Princi
 func (fakeIdentity) User(_ context.Context, principal identity.Principal) (identity.User, error) {
 	return identity.User{ID: principal.UserID, Email: "buyer@example.com", DisplayName: "Buyer", Role: principal.Role}, nil
 }
+func (fakeIdentity) ListUsers(context.Context, identity.Principal) ([]identity.AdminUser, error) {
+	return nil, domain.ErrForbidden
+}
+func (fakeIdentity) UpdateUserStatus(context.Context, identity.Principal, string, string, string) (identity.AdminUser, error) {
+	return identity.AdminUser{}, domain.ErrForbidden
+}
 
 func (f fakeChecker) Check(context.Context) (map[string]string, bool) {
 	state := "ok"

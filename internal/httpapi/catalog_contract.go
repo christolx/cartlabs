@@ -118,6 +118,7 @@ func toContractProduct(value catalog.Product) (contract.ProductDetail, error) {
 	}
 	result := contract.ProductDetail{
 		Id: id, StoreId: storeID, Category: category, Name: value.Name, Slug: value.Slug,
+		StoreSlug:   value.StoreSlug,
 		Description: value.Description, Status: status, ModerationStatus: moderationStatus,
 		ModerationNote: value.ModerationNote, Variants: variants, Images: images,
 		CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
@@ -149,7 +150,7 @@ func toContractProductSummary(value catalog.Summary) (contract.ProductSummary, e
 	if err != nil {
 		return contract.ProductSummary{}, err
 	}
-	return contract.ProductSummary{Id: id, Name: value.Name, Slug: value.Slug, StoreName: value.StoreName, Category: category, MinPriceMinor: value.MinPriceMinor, Currency: value.Currency, InStock: value.InStock, ImageUrl: value.ImageURL}, nil
+	return contract.ProductSummary{Id: id, Name: value.Name, Slug: value.Slug, StoreName: value.StoreName, StoreSlug: value.StoreSlug, Category: category, MinPriceMinor: value.MinPriceMinor, Currency: value.Currency, InStock: value.InStock, ImageUrl: value.ImageURL}, nil
 }
 
 func toContractProductPage(value catalog.Page) (contract.ProductPage, error) {

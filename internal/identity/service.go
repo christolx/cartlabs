@@ -21,6 +21,8 @@ type Repository interface {
 	CreateRefreshSession(context.Context, RefreshSession) error
 	RotateRefreshSession(context.Context, []byte, RefreshSession, time.Time) (User, error)
 	RevokeRefreshFamily(context.Context, []byte, time.Time) error
+	ListUsers(context.Context) ([]AdminUser, error)
+	UpdateUserStatus(context.Context, string, string, string, string, time.Time) (AdminUser, error)
 }
 
 type Config struct {
@@ -139,7 +141,7 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (Principal, erro
 		return Principal{}, domain.ErrUnauthorized
 	}
 	user, err := s.repository.FindByID(ctx, principal.UserID)
-	if errors.Is(err, domain.ErrNotFound) || err == nil && (user.Status != "active" || user.Role != principal.Role) {
+	if errors.Is(err, domain.ErrNotFound) || err == nil && (user.Status != "active" || user.Role != principal.Role || user.UpdatedAt.UnixNano() != principal.UserVersion) {
 		return Principal{}, domain.ErrUnauthorized
 	}
 	if err != nil {
@@ -150,6 +152,25 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (Principal, erro
 
 func (s *Service) User(ctx context.Context, principal Principal) (User, error) {
 	return s.repository.FindByID(ctx, principal.UserID)
+}
+
+func (s *Service) ListUsers(ctx context.Context, principal Principal) ([]AdminUser, error) {
+	if !principal.Require(RoleAdmin) {
+		return nil, domain.ErrForbidden
+	}
+	return s.repository.ListUsers(ctx)
+}
+
+func (s *Service) UpdateUserStatus(ctx context.Context, principal Principal, userID, status, reason string) (AdminUser, error) {
+	if !principal.Require(RoleAdmin) {
+		return AdminUser{}, domain.ErrForbidden
+	}
+	status = strings.ToLower(strings.TrimSpace(status))
+	reason = strings.TrimSpace(reason)
+	if _, err := uuid.Parse(userID); err != nil || status != "active" && status != "suspended" || reason == "" || len(reason) > 500 {
+		return AdminUser{}, domain.ErrInvalid
+	}
+	return s.repository.UpdateUserStatus(ctx, principal.UserID, userID, status, reason, s.now().UTC())
 }
 
 func (s *Service) createSession(ctx context.Context, user User) (Session, string, error) {

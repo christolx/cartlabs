@@ -72,6 +72,16 @@ func (s *Service) ListOwn(ctx context.Context, principal identity.Principal) ([]
 	return s.repository.ListForSeller(ctx, principal.UserID)
 }
 
+func (s *Service) FindOwn(ctx context.Context, principal identity.Principal, productID string) (Product, error) {
+	if !principal.Require(identity.RoleSeller) {
+		return Product{}, domain.ErrForbidden
+	}
+	if _, err := uuid.Parse(productID); err != nil {
+		return Product{}, domain.ErrInvalid
+	}
+	return s.repository.FindForSeller(ctx, principal.UserID, productID)
+}
+
 func (s *Service) Create(ctx context.Context, principal identity.Principal, input ProductInput) (Product, error) {
 	if !principal.Require(identity.RoleSeller) {
 		return Product{}, domain.ErrForbidden
@@ -188,7 +198,9 @@ func (s *Service) Moderate(ctx context.Context, principal identity.Principal, pr
 func (s *Service) ListPublic(ctx context.Context, filters Filters) (Page, error) {
 	filters.Search = strings.TrimSpace(filters.Search)
 	filters.CategorySlug = strings.TrimSpace(filters.CategorySlug)
+	filters.StoreSlug = strings.ToLower(strings.TrimSpace(filters.StoreSlug))
 	if len(filters.Search) > 100 || filters.Page < 1 || filters.PageSize < 1 || filters.PageSize > 100 ||
+		filters.StoreSlug != "" && !slugPattern.MatchString(filters.StoreSlug) ||
 		filters.MinPrice != nil && *filters.MinPrice < 0 || filters.MaxPrice != nil && *filters.MaxPrice < 0 ||
 		filters.MinPrice != nil && filters.MaxPrice != nil && *filters.MinPrice > *filters.MaxPrice {
 		return Page{}, domain.ErrInvalid
@@ -209,7 +221,11 @@ func (s *Service) ListPublic(ctx context.Context, filters Filters) (Page, error)
 }
 
 func (s *Service) FindPublic(ctx context.Context, slug string) (Product, error) {
-	return s.repository.FindPublic(ctx, strings.TrimSpace(slug))
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if !slugPattern.MatchString(slug) {
+		return Product{}, domain.ErrInvalid
+	}
+	return s.repository.FindPublic(ctx, slug)
 }
 
 func validateProduct(input ProductInput) (ProductInput, error) {

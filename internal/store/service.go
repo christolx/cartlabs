@@ -20,6 +20,7 @@ type Repository interface {
 	Update(context.Context, Store, string) (Store, error)
 	List(context.Context) ([]Store, error)
 	Moderate(context.Context, string, string, string, string, time.Time) (Store, error)
+	FindPublicBySlug(context.Context, string) (Profile, error)
 }
 
 type Service struct {
@@ -36,6 +37,14 @@ func (s *Service) GetOwn(ctx context.Context, principal identity.Principal) (Sto
 		return Store{}, domain.ErrForbidden
 	}
 	return s.repository.FindBySeller(ctx, principal.UserID)
+}
+
+func (s *Service) FindPublic(ctx context.Context, slug string) (Profile, error) {
+	slug = strings.ToLower(strings.TrimSpace(slug))
+	if !slugPattern.MatchString(slug) {
+		return Profile{}, domain.ErrInvalid
+	}
+	return s.repository.FindPublicBySlug(ctx, slug)
 }
 
 func (s *Service) Create(ctx context.Context, principal identity.Principal, input Input) (Store, error) {

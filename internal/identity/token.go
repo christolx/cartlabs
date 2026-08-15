@@ -19,7 +19,8 @@ type tokenManager struct {
 }
 
 type accessClaims struct {
-	Role Role `json:"role"`
+	Role        Role  `json:"role"`
+	UserVersion int64 `json:"userVersion"`
 	jwt.RegisteredClaims
 }
 
@@ -27,7 +28,7 @@ func (m tokenManager) issue(user User) (string, int, error) {
 	now := m.now().UTC()
 	expires := now.Add(m.ttl)
 	claims := accessClaims{
-		Role: user.Role,
+		Role: user.Role, UserVersion: user.UpdatedAt.UnixNano(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    m.issuer,
 			Subject:   user.ID,
@@ -56,7 +57,7 @@ func (m tokenManager) parse(raw string) (Principal, error) {
 	if claims.Role != RoleBuyer && claims.Role != RoleSeller && claims.Role != RoleAdmin {
 		return Principal{}, ErrInvalidCredentials
 	}
-	return Principal{UserID: claims.Subject, Role: claims.Role}, nil
+	return Principal{UserID: claims.Subject, Role: claims.Role, UserVersion: claims.UserVersion}, nil
 }
 
 func newOpaqueToken() (string, []byte, error) {
