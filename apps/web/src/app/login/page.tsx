@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import type { components } from "@/lib/api/schema";
 import { actorHome, useSession } from "@/components/session-provider";
 import { errorMessage } from "@/lib/api/browser";
@@ -15,13 +15,12 @@ function safeDestination(value: string | null, fallback: string) {
 export default function LoginPage() {
   const { demoEnabled, status, user, login, demoLogin } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (status === "authenticated" && user) router.replace(safeDestination(searchParams.get("next"), actorHome(user.role)));
-  }, [router, searchParams, status, user]);
+    if (status === "authenticated" && user) router.replace(safeDestination(new URLSearchParams(window.location.search).get("next"), actorHome(user.role)));
+  }, [router, status, user]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,7 +30,7 @@ export default function LoginPage() {
     setMessage("");
     try {
       const current = await login(String(data.get("email")), String(data.get("password")));
-      router.replace(safeDestination(searchParams.get("next"), actorHome(current.role)));
+      router.replace(safeDestination(new URLSearchParams(window.location.search).get("next"), actorHome(current.role)));
     } catch (error) {
       setMessage(errorMessage(error, "Sign in failed."));
     } finally {
@@ -45,7 +44,7 @@ export default function LoginPage() {
     setMessage("");
     try {
       const current = await demoLogin(role);
-      router.replace(safeDestination(searchParams.get("next"), actorHome(current.role)));
+      router.replace(safeDestination(new URLSearchParams(window.location.search).get("next"), actorHome(current.role)));
     } catch (error) {
       setMessage(errorMessage(error, "Demo login failed."));
     } finally {

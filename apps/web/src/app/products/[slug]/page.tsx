@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddToCart } from "@/components/add-to-cart";
 import { APIError, apiGet, formatMoney, type ProductDetail } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
@@ -41,19 +42,19 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
             ) : <div className="image-fallback">Image pending</div>}
           </div>
           <div className="detail-copy">
-            <p className="product-store">{product.storeName}</p>
+            <p className="product-store"><Link className="text-link" href={`/stores/${product.storeSlug}`}>{product.storeName}</Link> / {product.category.name}</p>
             <h1>{product.name}</h1>
             <p className="detail-description">{product.description}</p>
             {firstVariant && <p className="detail-price">From {formatMoney(firstVariant.priceMinor, firstVariant.currency)}</p>}
             <div className="variant-list" role="list" aria-label="Available variants">
               {product.variants.map((variant) => (
                 <div className="variant-row" role="listitem" key={variant.id}>
-                  <div><strong>{variant.name}</strong><span>{variant.sku}</span></div>
+                  <div><strong>{variant.name}</strong><span>{variant.sku}{Object.keys(variant.attributes).length ? ` / ${Object.entries(variant.attributes).map(([key, value]) => `${key}: ${value}`).join(", ")}` : ""}</span></div>
                   <div><strong>{formatMoney(variant.priceMinor, variant.currency)}</strong><span>{variant.stock > 0 ? `${variant.stock} available` : "Sold out"}</span></div>
                 </div>
               ))}
             </div>
-            <p className="purchase-note">Catalog stock shown live. Checkout available in role demo.</p>
+            <AddToCart product={product} />
           </div>
         </article>
         <section className="review-section" aria-labelledby="reviews-heading">
@@ -63,7 +64,7 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
               <h2 id="reviews-heading">Buyer reviews</h2>
             </div>
             <div className="review-score" role="group" aria-label={`${reviews.average.toFixed(1)} out of 5 from ${reviews.count} reviews`}>
-              <strong>{reviews.count ? reviews.average.toFixed(1) : "—"}</strong>
+              <strong>{reviews.count ? reviews.average.toFixed(1) : "No score"}</strong>
               <span>{reviews.count} {reviews.count === 1 ? "review" : "reviews"}</span>
             </div>
           </div>
