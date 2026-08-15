@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SiteHeader } from "@/components/site-header";
 import { APIError, apiGet, formatMoney, type ProductDetail } from "@/lib/api/client";
 import type { components } from "@/lib/api/schema";
 
@@ -33,8 +32,6 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
   const firstImage = product.images[0];
 
   return (
-    <>
-      <SiteHeader />
       <main className="product-page shell">
         <Link className="back-link" href="/#catalog">Back to catalog</Link>
         <article className="product-detail">
@@ -86,6 +83,5 @@ export default async function ProductPage({ params }: PageProps<"/products/[slug
           ) : <p className="empty-copy">No verified reviews yet.</p>}
         </section>
       </main>
-    </>
   );
 }

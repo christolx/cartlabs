@@ -23,7 +23,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
       <div className="product-copy">
-        <p className="product-store">{product.storeName}</p>
+        <p className="product-store"><Link href={`/stores/${product.storeSlug}`}>{product.storeName}</Link></p>
         <h3>
           <Link href={`/products/${product.slug}`}>{product.name}</Link>
         </h3>
