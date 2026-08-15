@@ -292,6 +292,50 @@ details summary { color: var(--accent); font-weight: 650; cursor: pointer; }
 .inline-form label { display: grid; gap: 6px; }
 .inline-form label span { color: var(--muted); font-size: 12px; }
 
+.admin-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+.admin-metrics > * { display: flex; min-height: 145px; flex-direction: column; justify-content: space-between; padding: 24px; background: var(--surface-raised); }
+.admin-metrics a:hover { background: var(--surface); }
+.admin-metrics span { color: var(--muted); font-size: 13px; }
+.admin-metrics strong { font-size: clamp(32px, 4vw, 52px); letter-spacing: -.055em; }
+.admin-metrics .admin-gmv { grid-column: 1 / -1; min-height: 110px; flex-direction: row; align-items: center; }
+.moderation-list { display: grid; gap: 18px; }
+.moderation-list > article { padding: clamp(22px, 3vw, 32px); border: 1px solid var(--line); border-radius: 14px; background: var(--surface-raised); }
+.moderation-list article > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.moderation-list h2 { margin: 0; font-size: 24px; letter-spacing: -.04em; }
+.moderation-list header span, .moderation-list article > p { color: var(--muted); font-size: 12px; }
+.moderation-list article > p { max-width: 74ch; font-size: 14px; line-height: 1.65; }
+.moderation-actions { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.moderation-actions details { min-width: 160px; }
+.moderation-actions form { width: min(420px, calc(100vw - 64px)); margin-top: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
+.moderation-actions form p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.moderation-supply { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 24px; }
+.moderation-supply h3 { font-size: 15px; }
+.moderation-supply section:first-child > div { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px 0; }
+.moderation-supply section:first-child > div div { display: grid; gap: 4px; }
+.moderation-supply section span { color: var(--muted); font-size: 11px; }
+.moderation-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.moderation-images figure { margin: 0; }
+.moderation-images img { width: 100%; height: auto; aspect-ratio: 3 / 2; border-radius: 8px; object-fit: cover; background: var(--surface); }
+.moderation-images figcaption { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.user-filters { display: grid; grid-template-columns: minmax(240px, 1fr) 180px 180px; gap: 14px; margin-bottom: 28px; }
+.user-filters label { display: grid; gap: 7px; }
+.user-filters label span { color: var(--muted); font-size: 12px; }
+.user-table { overflow: visible; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-raised); }
+.user-table-head, .user-table-row { display: grid; grid-template-columns: minmax(220px, 1.5fr) .6fr .7fr 1fr minmax(120px, .7fr); gap: 18px; align-items: center; padding: 14px 20px; }
+.user-table-head { color: var(--muted); font-size: 11px; font-weight: 650; }
+.user-table-row { border-top: 1px solid var(--line); font-size: 13px; }
+.user-table-row > div:first-child { display: grid; gap: 4px; }
+.user-table-row > div:first-child span, .user-table-row time { color: var(--muted); font-size: 11px; }
+.user-action { position: relative; }
+.user-action form { position: absolute; right: 0; z-index: 6; width: min(360px, calc(100vw - 48px)); margin-top: 10px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); box-shadow: var(--shadow); }
+.user-action form p { margin: 0; color: var(--muted); font-size: 12px; }
+.audit-timeline { display: grid; max-width: 1000px; }
+.audit-timeline article { display: grid; grid-template-columns: minmax(180px, .35fr) minmax(0, 1fr); gap: 32px; padding: 24px 0; border-top: 1px solid var(--line); }
+.audit-marker { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 11px; text-transform: capitalize; }
+.audit-timeline h2 { margin: 0; font-size: 18px; text-transform: capitalize; }
+.audit-timeline p { color: var(--muted); line-height: 1.55; }
+.audit-timeline pre { max-width: 100%; overflow-x: auto; padding: 14px; border-radius: 8px; background: var(--surface); color: var(--text); font-size: 11px; }
+
 .auth-page { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .65fr); gap: clamp(40px, 9vw, 140px); align-items: start; padding-block: clamp(64px, 10vw, 140px); }
 .auth-copy { position: sticky; top: 120px; }
 .auth-copy h1 { max-width: 650px; margin: 0; font-size: clamp(48px, 7vw, 86px); font-weight: 650; letter-spacing: -.065em; line-height: .96; }
@@ -441,6 +485,9 @@ details summary { color: var(--accent); font-weight: 650; cursor: pointer; }
   .order-summary { position: static; }
   .management-grid { grid-template-columns: 1fr; }
   .submit-panel { grid-column: auto; }
+  .user-table-head { display: none; }
+  .user-table-row { grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(90px, .7fr)); }
+  .user-table-row > div:last-child { grid-column: 1 / -1; }
   .cart-panel { grid-row: auto; }
 }
 
@@ -488,6 +535,15 @@ details summary { color: var(--accent); font-weight: 650; cursor: pointer; }
   .seller-order-cards header, .seller-order-cards footer { align-items: flex-start; flex-direction: column; }
   .seller-order-cards footer .row-actions { flex-wrap: wrap; }
   .inline-form { right: auto; left: 0; }
+  .admin-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-metrics .admin-gmv { grid-column: span 2; align-items: flex-start; flex-direction: column; }
+  .moderation-list article > header { flex-direction: column; }
+  .moderation-supply { grid-template-columns: 1fr; }
+  .user-filters { grid-template-columns: 1fr; }
+  .user-table-row { grid-template-columns: 1fr 1fr; }
+  .user-table-row > div:first-child, .user-table-row > div:last-child { grid-column: 1 / -1; }
+  .user-action form { right: auto; left: 0; }
+  .audit-timeline article { grid-template-columns: 1fr; gap: 14px; }
   .public-review-list { grid-template-columns: 1fr; }
   .role-switcher { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
   .role-switcher button { min-width: 0; }
