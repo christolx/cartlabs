@@ -17,8 +17,14 @@ cp .env.example .env
 make setup
 make compose-up
 make migrate
-make seed
 make dev
+```
+
+`make dev` runs in foreground. After Search starts, run this from another
+terminal in repository root:
+
+```bash
+make seed
 ```
 
 Useful commands:
