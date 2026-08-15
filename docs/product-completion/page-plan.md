@@ -607,4 +607,4 @@ Before frontend implementation begins:
 - [x] Unsupported features accepted as out of scope.
 - [x] Scope decisions resolved or explicitly deferred.
 - [x] Page boundaries may change visually without losing required behavior.
-- [ ] Backend assumptions verified against implemented OpenAPI contracts.
+- [x] Backend assumptions verified against implemented OpenAPI contracts.

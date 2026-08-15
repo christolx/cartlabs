@@ -98,7 +98,17 @@ explicit interfaces. No module reads another module's tables directly.
 - Role checks at route and domain layers
 - Resource ownership checks for every seller operation
 - Rate limits for authentication and sensitive mutations
+- Admin status changes lock target account, preserve one active admin, revoke
+  all refresh sessions, invalidate issued access tokens, and append immutable
+  audit metadata in one PostgreSQL transaction.
 - Optional OIDC integration deferred
+
+## Public Marketplace Privacy
+
+- Public store profiles expose approved store copy and seller display name only.
+- Pending and rejected stores share same not-found response as missing stores.
+- Catalog store filtering composes with search and existing filters; PostgreSQL
+  remains visibility authority when search candidate service is unavailable.
 
 ## Payment Simulation
 

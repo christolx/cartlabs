@@ -20,12 +20,12 @@ redesigned frontend.
 
 ## Phase 0 - Backend Completion
 
-- [ ] Add admin user listing and safe account status management.
-- [ ] Add approved public store profiles and store-filtered catalog results.
-- [ ] Add owned seller product detail endpoint.
-- [ ] Synchronize OpenAPI and generated Go/TypeScript contracts.
-- [ ] Pass backend unit, integration, Compose, outage, and full checks.
-- [ ] Verify completed contracts match approved frontend page assumptions.
+- [x] Add admin user listing and safe account status management.
+- [x] Add approved public store profiles and store-filtered catalog results.
+- [x] Add owned seller product detail endpoint.
+- [x] Synchronize OpenAPI and generated Go/TypeScript contracts.
+- [x] Pass backend unit, integration, Compose, outage, and full checks.
+- [x] Verify completed contracts match approved frontend page assumptions.
 
 ## Phase 1 - Foundation
 
