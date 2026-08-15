@@ -49,12 +49,33 @@ func scanUser(row rowScanner) (User, error) {
 }
 
 func (r *PostgresRepository) CreateRefreshSession(ctx context.Context, session RefreshSession) error {
-	_, err := r.pool.Exec(ctx, `
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin refresh session creation: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockIdentityUser(ctx, tx, session.UserID); err != nil {
+		return err
+	}
+	var status string
+	if err := tx.QueryRow(ctx, `SELECT status::text FROM users WHERE id=$1`, session.UserID).Scan(&status); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ErrUnauthorized
+		}
+		return fmt.Errorf("check refresh session user: %w", err)
+	}
+	if status != "active" {
+		return domain.ErrUnauthorized
+	}
+	_, err = tx.Exec(ctx, `
 		INSERT INTO refresh_sessions (id, family_id, user_id, token_hash, expires_at, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6)`,
 		session.ID, session.FamilyID, session.UserID, session.TokenHash, session.ExpiresAt, session.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create refresh session: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit refresh session creation: %w", err)
 	}
 	return nil
 }
@@ -65,6 +86,17 @@ func (r *PostgresRepository) RotateRefreshSession(ctx context.Context, currentHa
 		return User{}, fmt.Errorf("begin refresh rotation: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+
+	var userID string
+	if err := tx.QueryRow(ctx, `SELECT user_id::text FROM refresh_sessions WHERE token_hash=$1`, currentHash).Scan(&userID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return User{}, domain.ErrNotFound
+		}
+		return User{}, fmt.Errorf("find refresh session user: %w", err)
+	}
+	if err := lockIdentityUser(ctx, tx, userID); err != nil {
+		return User{}, err
+	}
 
 	var current RefreshSession
 	var rotatedAt, revokedAt *time.Time
@@ -167,6 +199,9 @@ func (r *PostgresRepository) UpdateUserStatus(ctx context.Context, actorID, user
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(1128352842)`); err != nil {
 		return AdminUser{}, fmt.Errorf("lock user status updates: %w", err)
 	}
+	if err := lockIdentityUser(ctx, tx, userID); err != nil {
+		return AdminUser{}, err
+	}
 	current, err := scanAdminUser(tx.QueryRow(ctx, `
 		SELECT id::text,email,display_name,role::text,status::text,created_at,updated_at
 		FROM users WHERE id=$1 FOR UPDATE`, userID))
@@ -212,4 +247,11 @@ func (r *PostgresRepository) UpdateUserStatus(ctx context.Context, actorID, user
 		return AdminUser{}, fmt.Errorf("commit user status update: %w", err)
 	}
 	return updated, nil
+}
+
+func lockIdentityUser(ctx context.Context, tx pgx.Tx, userID string) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('identity.user:' || $1, 0))`, userID); err != nil {
+		return fmt.Errorf("lock identity user: %w", err)
+	}
+	return nil
 }
