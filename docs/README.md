@@ -7,6 +7,7 @@ platform operations, not production-scale commerce.
 ## Documents
 
 - [Product](./product.md) — users, scope, and marketplace behavior
+- [End-to-end flows](./e2e-flow.md) — buyer, seller, admin, payment, and notification journeys
 - [Architecture](./architecture.md) — system shape and technical boundaries
 - [Delivery](./delivery.md) — environments, CI/CD, testing, and operations
 - [Demo platform](./platform.md) — provisioning, deployment, rollback, and recovery

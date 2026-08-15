@@ -37,6 +37,7 @@ make reset
 
 Planning lives in [`docs/`](./docs/README.md). REST contract lives in
 [`api/openapi/openapi.yaml`](./api/openapi/openapi.yaml).
+Role journeys live in [`docs/e2e-flow.md`](./docs/e2e-flow.md).
 
 ## Demo accounts
 
