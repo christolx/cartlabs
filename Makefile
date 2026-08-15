@@ -21,7 +21,10 @@ setup: ## Install dependencies and generate API types
 	$(MAKE) generate
 
 dev: ## Run web, API, worker, search, and mock payment locally
-	$(MAKE) -j5 web-dev api-dev worker-dev search-dev payment-dev
+	@set -a; \
+	if [ -f .env ]; then . ./.env || exit 1; fi; \
+	set +a; \
+	exec $(MAKE) -j5 web-dev api-dev worker-dev search-dev payment-dev
 
 web-dev: ## Run Next.js development server
 	pnpm web:dev
