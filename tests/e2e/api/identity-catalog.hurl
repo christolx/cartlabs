@@ -90,6 +90,28 @@ Content-Type: application/json
 }
 HTTP 201
 
+GET {{base_url}}/seller/products/{{product_id}}
+Authorization: Bearer {{seller_token}}
+HTTP 200
+[Asserts]
+jsonpath "$.id" == "{{product_id}}"
+jsonpath "$.variants[0].id" == "{{variant_id}}"
+jsonpath "$.images[0].position" == 0
+
+POST {{base_url}}/auth/login
+Content-Type: application/json
+{
+  "email": "merchant@demo.cartlabs.local",
+  "password": "demo-pass-123"
+}
+HTTP 200
+[Captures]
+other_seller_token: jsonpath "$.accessToken"
+
+GET {{base_url}}/seller/products/{{product_id}}
+Authorization: Bearer {{other_seller_token}}
+HTTP 404
+
 POST {{base_url}}/seller/products/{{product_id}}/publish
 Authorization: Bearer {{seller_token}}
 HTTP 200
@@ -119,12 +141,31 @@ HTTP 200
 jsonpath "$.total" == 1
 jsonpath "$.items[0].slug" == "milestone-one-lamp"
 jsonpath "$.items[0].minPriceMinor" == 399000
+jsonpath "$.items[0].storeSlug" == "demo-seller-studio"
+
+GET {{base_url}}/catalog/stores/demo-seller-studio
+HTTP 200
+[Asserts]
+jsonpath "$.name" == "Demo Seller Studio"
+jsonpath "$.sellerDisplayName" == "Demo Seller"
+
+GET {{base_url}}/catalog/products?store=demo-seller-studio&q=Milestone%20One%20Lamp&category=home-living&inStock=true
+HTTP 200
+[Asserts]
+jsonpath "$.total" == 1
+jsonpath "$.items[0].slug" == "milestone-one-lamp"
+
+GET {{base_url}}/catalog/products?store=nusantara-goods&q=Milestone%20One%20Lamp
+HTTP 200
+[Asserts]
+jsonpath "$.total" == 0
 
 GET {{base_url}}/catalog/products/milestone-one-lamp
 HTTP 200
 [Asserts]
 jsonpath "$.variants[0].stock" == 7
 jsonpath "$.images[0].position" == 0
+jsonpath "$.storeSlug" == "demo-seller-studio"
 
 PATCH {{base_url}}/seller/variants/{{variant_id}}/inventory
 Authorization: Bearer {{seller_token}}
