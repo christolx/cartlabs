@@ -16,7 +16,7 @@ redesigned frontend.
 - Replace every existing page and UI, including `DemoConsole`.
 - Preserve working functionality, API contracts, and domain behavior.
 - Run functional QA on every actor slice before moving forward.
-- Run manual visual review after the visual overhaul, not per functional slice.
+- Run manual visual review after each redesigned page, then check each page family and final cross-system consistency.
 
 ## Phase 0 - Backend Completion
 
@@ -29,45 +29,45 @@ redesigned frontend.
 
 ## Phase 1 - Foundation
 
-- [ ] Build the catalog-first homepage and login page.
-- [ ] Add durable sessions, role navigation, and shared UI states.
-- [ ] Pass foundation functional QA.
+- [x] Build the catalog-first homepage and login page.
+- [x] Add durable sessions, role navigation, and shared UI states.
+- [x] Pass foundation functional QA.
 
 ## Phase 2 - Buyer
 
-- [ ] Build catalog, store, product, cart, checkout, purchase, and review pages.
-- [ ] Complete buyer flow through normal navigation.
-- [ ] Pass buyer functional QA.
+- [x] Build catalog, store, product, cart, checkout, purchase, and review pages.
+- [x] Complete buyer flow through normal navigation.
+- [x] Pass buyer functional QA.
 
 ## Phase 3 - Seller
 
-- [ ] Build seller home, store, product, inventory, and order pages.
-- [ ] Complete seller supply and fulfillment flows through normal navigation.
-- [ ] Pass seller functional QA.
+- [x] Build seller home, store, product, inventory, and order pages.
+- [x] Complete seller supply and fulfillment flows through normal navigation.
+- [x] Pass seller functional QA.
 
 ## Phase 4 - Admin
 
-- [ ] Build admin overview, store verification, listing enforcement,
+- [x] Build admin overview, store verification, listing enforcement,
   user-management, and audit pages.
-- [ ] Complete admin flow through normal navigation.
-- [ ] Pass admin functional QA.
+- [x] Complete admin flow through normal navigation.
+- [x] Pass admin functional QA.
 
 ## Phase 5 - Functional Integration
 
-- [ ] Replace `/demo` with role quick-login into real pages.
-- [ ] Remove `DemoConsole` and all legacy UI.
-- [ ] Add frontend and browser tests.
-- [ ] Exercise complete seller -> admin -> buyer journey in browser.
-- [ ] Check session reload, direct URLs, role boundaries, and failure states.
-- [ ] Check basic mobile/desktop usability and accessibility.
-- [ ] Pass integrated functional QA.
+- [x] Replace `/demo` with role quick-login into real pages.
+- [x] Remove `DemoConsole` and all legacy UI.
+- [x] Add frontend and browser tests.
+- [x] Exercise complete seller -> admin -> buyer journey in browser.
+- [x] Check session reload, direct URLs, role boundaries, and failure states.
+- [x] Check basic mobile/desktop usability and accessibility.
+- [x] Pass integrated functional QA.
 
 ## Phase 6 - Visual Overhaul
 
 - [ ] Choose art direction and create the frontend design system.
 - [ ] Apply the approved visual system across every page and shared state.
 - [ ] Complete responsive, interaction, accessibility, and content polish.
-- [ ] Pass **MANUAL VISUAL REVIEW**.
+- [ ] Pass per-page **MANUAL VISUAL REVIEW**, family checkpoints, and final cross-system drift audit.
 
 ## Phase 7 - Final Regression
 
