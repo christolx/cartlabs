@@ -56,7 +56,7 @@ ON CONFLICT (seller_id) DO UPDATE SET
     status = EXCLUDED.status,
     updated_at = now();
 
-INSERT INTO products (id, store_id, category_id, name, slug, description, status, moderation_status)
+INSERT INTO products (id, store_id, category_id, name, slug, description, status)
 VALUES
     (
         '01989f00-0000-7000-8000-000000000301',
@@ -65,8 +65,7 @@ VALUES
         'Handwoven Market Basket',
         'handwoven-market-basket',
         'Structured natural-fiber basket woven for markets, picnics, and daily storage.',
-        'published',
-        'approved'
+        'published'
     ),
     (
         '01989f00-0000-7000-8000-000000000302',
@@ -75,14 +74,12 @@ VALUES
         'Indigo Utility Tray',
         'indigo-utility-tray',
         'Compact woven tray for entryways, desks, and shared tables.',
-        'published',
-        'approved'
+        'published'
     )
 ON CONFLICT (slug) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     status = EXCLUDED.status,
-    moderation_status = EXCLUDED.moderation_status,
     updated_at = now();
 
 INSERT INTO product_variants (id, product_id, sku, name, attributes, price_minor, currency, stock)
