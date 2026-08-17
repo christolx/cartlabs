@@ -24,9 +24,10 @@ type Repository interface {
 	AddVariant(context.Context, string, Variant, string) (Variant, error)
 	AddImage(context.Context, string, ProductImage, string) (ProductImage, error)
 	Publish(context.Context, string, string, time.Time) (Product, error)
+	Archive(context.Context, string, string, time.Time) (Product, error)
 	AdjustInventory(context.Context, string, string, int, string, string, time.Time) (Variant, error)
 	ListForAdmin(context.Context) ([]Product, error)
-	Moderate(context.Context, string, string, string, string, time.Time) (Product, error)
+	UpdateStatus(context.Context, string, string, string, string, time.Time) (Product, error)
 	ListPublic(context.Context, Filters) (Page, error)
 	ListPublicCandidates(context.Context, Filters, []string) (Page, error)
 	FindPublic(context.Context, string) (Product, error)
@@ -97,7 +98,7 @@ func (s *Service) Create(ctx context.Context, principal identity.Principal, inpu
 	now := s.now().UTC()
 	return s.repository.Create(ctx, principal.UserID, Product{
 		ID: id.String(), Category: Category{ID: input.CategoryID}, Name: input.Name, Slug: input.Slug,
-		Description: input.Description, Status: "draft", ModerationStatus: "pending", CreatedAt: now, UpdatedAt: now,
+		Description: input.Description, Status: "draft", CreatedAt: now, UpdatedAt: now,
 	}, principal.UserID)
 }
 
@@ -114,7 +115,7 @@ func (s *Service) Update(ctx context.Context, principal identity.Principal, prod
 		return Product{}, err
 	}
 	product.Category.ID, product.Name, product.Slug, product.Description = input.CategoryID, input.Name, input.Slug, input.Description
-	product.Status, product.ModerationStatus, product.ModerationNote, product.UpdatedAt = "draft", "pending", "", s.now().UTC()
+	product.UpdatedAt = s.now().UTC()
 	return s.repository.Update(ctx, product, principal.UserID, principal.UserID)
 }
 
@@ -161,10 +162,26 @@ func (s *Service) Publish(ctx context.Context, principal identity.Principal, pro
 	if !principal.Require(identity.RoleSeller) {
 		return Product{}, domain.ErrForbidden
 	}
+	if _, err := uuid.Parse(productID); err != nil {
+		return Product{}, domain.ErrInvalid
+	}
 	if _, err := s.repository.FindForSeller(ctx, principal.UserID, productID); err != nil {
 		return Product{}, err
 	}
 	return s.repository.Publish(ctx, productID, principal.UserID, s.now().UTC())
+}
+
+func (s *Service) Archive(ctx context.Context, principal identity.Principal, productID string) (Product, error) {
+	if !principal.Require(identity.RoleSeller) {
+		return Product{}, domain.ErrForbidden
+	}
+	if _, err := uuid.Parse(productID); err != nil {
+		return Product{}, domain.ErrInvalid
+	}
+	if _, err := s.repository.FindForSeller(ctx, principal.UserID, productID); err != nil {
+		return Product{}, err
+	}
+	return s.repository.Archive(ctx, productID, principal.UserID, s.now().UTC())
 }
 
 func (s *Service) AdjustInventory(ctx context.Context, principal identity.Principal, variantID string, delta int, reason string) (Variant, error) {
@@ -185,14 +202,15 @@ func (s *Service) ListForAdmin(ctx context.Context, principal identity.Principal
 	return s.repository.ListForAdmin(ctx)
 }
 
-func (s *Service) Moderate(ctx context.Context, principal identity.Principal, productID, status, note string) (Product, error) {
+func (s *Service) UpdateStatus(ctx context.Context, principal identity.Principal, productID, status, reason string) (Product, error) {
 	if !principal.Require(identity.RoleAdmin) {
 		return Product{}, domain.ErrForbidden
 	}
-	if status != "approved" && status != "rejected" || len(note) > 500 {
+	reason = strings.TrimSpace(reason)
+	if _, err := uuid.Parse(productID); err != nil || status != "suspended" && status != "published" || reason == "" || len(reason) > 500 {
 		return Product{}, domain.ErrInvalid
 	}
-	return s.repository.Moderate(ctx, productID, status, strings.TrimSpace(note), principal.UserID, s.now().UTC())
+	return s.repository.UpdateStatus(ctx, productID, status, reason, principal.UserID, s.now().UTC())
 }
 
 func (s *Service) ListPublic(ctx context.Context, filters Filters) (Page, error) {

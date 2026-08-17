@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -85,9 +86,9 @@ func (r *PostgresRepository) Update(ctx context.Context, value Store, actorID st
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	updated, err := scanStore(tx.QueryRow(ctx, `
-		UPDATE stores SET name=$2,slug=$3,description=$4,status='pending',moderation_note='',updated_at=$5
+		UPDATE stores SET name=$2,slug=$3,description=$4,status=$7,moderation_note=$8,updated_at=$5
 		WHERE id=$1 AND seller_id=$6 RETURNING `+storeColumns,
-		value.ID, value.Name, value.Slug, value.Description, value.UpdatedAt, value.SellerID))
+		value.ID, value.Name, value.Slug, value.Description, value.UpdatedAt, value.SellerID, value.Status, value.ModerationNote))
 	if err != nil {
 		return Store{}, mapWriteError(err)
 	}
@@ -123,13 +124,20 @@ func (r *PostgresRepository) Moderate(ctx context.Context, id, status, note, act
 		return Store{}, fmt.Errorf("begin moderate store: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	var current string
+	if err := tx.QueryRow(ctx, `SELECT status::text FROM stores WHERE id=$1 FOR UPDATE`, id).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
+		return Store{}, domain.ErrNotFound
+	} else if err != nil {
+		return Store{}, fmt.Errorf("lock store verification: %w", err)
+	}
 	updated, err := scanStore(tx.QueryRow(ctx, `
 		UPDATE stores SET status=$2,moderation_note=$3,updated_at=$4 WHERE id=$1 RETURNING `+storeColumns,
 		id, status, note, now))
 	if err != nil {
 		return Store{}, mapWriteError(err)
 	}
-	if err := insertAudit(ctx, tx, actorID, "store.moderated."+status, "store", id, now); err != nil {
+	if err := insertAuditMetadata(ctx, tx, actorID, "store.verified."+status, "store", id,
+		map[string]any{"from": current, "to": status, "note": note}, now); err != nil {
 		return Store{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -143,12 +151,20 @@ type auditExecutor interface {
 }
 
 func insertAudit(ctx context.Context, tx auditExecutor, actorID, action, resourceType, resourceID string, now time.Time) error {
+	return insertAuditMetadata(ctx, tx, actorID, action, resourceType, resourceID, map[string]any{}, now)
+}
+
+func insertAuditMetadata(ctx context.Context, tx auditExecutor, actorID, action, resourceType, resourceID string, metadata map[string]any, now time.Time) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return fmt.Errorf("generate audit ID: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (id,actor_id,action,resource_type,resource_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)`,
-		id.String(), actorID, action, resourceType, resourceID, now); err != nil {
+	payload, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("encode audit metadata: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (id,actor_id,action,resource_type,resource_id,metadata,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+		id.String(), actorID, action, resourceType, resourceID, payload, now); err != nil {
 		return fmt.Errorf("insert audit log: %w", err)
 	}
 	return nil

@@ -239,6 +239,20 @@ func (a *api) publishProduct(w http.ResponseWriter, r *http.Request, principal i
 	writeJSON(w, http.StatusOK, response)
 }
 
+func (a *api) archiveProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	value, err := a.config.catalog.Archive(r.Context(), principal, r.PathValue("productId"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractProduct(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
 func (a *api) adjustInventory(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
 	var input contract.InventoryAdjustment
 	if err := decodeJSON(w, r, &input); err != nil {
@@ -264,26 +278,26 @@ func (a *api) adminProducts(w http.ResponseWriter, r *http.Request, principal id
 		writeError(w, err)
 		return
 	}
-	response, err := toContractProducts(items)
+	response, err := toContractAdminProducts(items)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, itemsResponse[contract.ProductDetail]{Items: response})
+	writeJSON(w, http.StatusOK, itemsResponse[contract.AdminProduct]{Items: response})
 }
 
-func (a *api) moderateProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
-	var input contract.ModerationInput
+func (a *api) updateProductStatus(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	var input contract.ProductStatusInput
 	if err := decodeJSON(w, r, &input); err != nil {
 		writeError(w, err)
 		return
 	}
-	value, err := a.config.catalog.Moderate(r.Context(), principal, r.PathValue("productId"), string(input.Status), input.Note)
+	value, err := a.config.catalog.UpdateStatus(r.Context(), principal, r.PathValue("productId"), string(input.Status), input.Reason)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	response, err := toContractProduct(value)
+	response, err := toContractAdminProduct(value)
 	if err != nil {
 		writeError(w, err)
 		return

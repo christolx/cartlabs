@@ -164,7 +164,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get approved public store profile */
+        /** Get verified public store profile */
         get: operations["getCatalogStore"];
         put?: never;
         post?: never;
@@ -289,8 +289,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Publish product for review */
+        /** Publish complete draft or archived product immediately */
         post: operations["publishSellerProduct"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/seller/products/{productId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive published product */
+        post: operations["archiveSellerProduct"];
         delete?: never;
         options?: never;
         head?: never;
@@ -321,7 +338,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List stores for moderation */
+        /** List stores for verification */
         get: operations["listAdminStores"];
         put?: never;
         post?: never;
@@ -378,7 +395,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Moderate store */
+        /** Verify or reject store */
         patch: operations["moderateStore"];
         trace?: never;
     };
@@ -389,7 +406,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List products for moderation */
+        /** List published and suspended products for enforcement */
         get: operations["listAdminProducts"];
         put?: never;
         post?: never;
@@ -399,7 +416,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/admin/products/{productId}/moderation": {
+    "/admin/products/{productId}/status": {
         parameters: {
             query?: never;
             header?: never;
@@ -412,8 +429,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Moderate product */
-        patch: operations["moderateProduct"];
+        /** Suspend or reinstate product listing */
+        patch: operations["updateAdminProductStatus"];
         trace?: never;
     };
     "/cart": {
@@ -854,11 +871,33 @@ export interface components {
             slug: string;
             description: string;
             /** @enum {string} */
-            status: "draft" | "published" | "archived";
-            moderationStatus: components["schemas"]["ModerationStatus"];
-            moderationNote: string;
+            status: "draft" | "published" | "archived" | "suspended";
             variants: components["schemas"]["Variant"][];
             images: components["schemas"]["ProductImage"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AdminProduct: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            storeId: string;
+            storeName?: string;
+            storeSlug: string;
+            category: components["schemas"]["Category"];
+            name: string;
+            slug: string;
+            description: string;
+            /** @enum {string} */
+            status: "published" | "suspended";
+            variants: components["schemas"]["Variant"][];
+            images: components["schemas"]["ProductImage"][];
+            enforcementReason: string;
+            /** Format: date-time */
+            enforcedAt: string | null;
+            enforcedBy: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -878,6 +917,11 @@ export interface components {
             /** @enum {string} */
             status: "approved" | "rejected";
             note: string;
+        };
+        ProductStatusInput: {
+            /** @enum {string} */
+            status: "suspended" | "published";
+            reason: string;
         };
         CartItemInput: {
             quantity: number;
@@ -1456,7 +1500,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Published approved products */
+            /** @description Published products from verified stores */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1513,7 +1557,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Published approved product detail */
+            /** @description Published product detail from verified store */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1559,7 +1603,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Store submitted for moderation */
+            /** @description Store submitted for verification */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -1766,7 +1810,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Product submitted for moderation */
+            /** @description Published product */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1775,6 +1819,30 @@ export interface operations {
                     "application/json": components["schemas"]["ProductDetail"];
                 };
             };
+            409: components["responses"]["Conflict"];
+        };
+    };
+    archiveSellerProduct: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived product */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
         };
     };
@@ -1814,7 +1882,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Stores awaiting or having moderation */
+            /** @description Stores awaiting or having verification */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1901,7 +1969,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Moderated store */
+            /** @description Verified or rejected store */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1922,20 +1990,20 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Products awaiting or having moderation */
+            /** @description Enforceable listings with latest suspension context */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        items: components["schemas"]["ProductDetail"][];
+                        items: components["schemas"]["AdminProduct"][];
                     };
                 };
             };
         };
     };
-    moderateProduct: {
+    updateAdminProductStatus: {
         parameters: {
             query?: never;
             header?: never;
@@ -1946,20 +2014,23 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ModerationInput"];
+                "application/json": components["schemas"]["ProductStatusInput"];
             };
         };
         responses: {
-            /** @description Moderated product */
+            /** @description Updated enforceable listing */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ProductDetail"];
+                    "application/json": components["schemas"]["AdminProduct"];
                 };
             };
+            400: components["responses"]["BadRequest"];
+            403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     getCart: {

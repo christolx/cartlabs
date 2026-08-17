@@ -9,21 +9,22 @@ type Category struct {
 }
 
 type Product struct {
-	ID               string         `json:"id"`
-	StoreID          string         `json:"storeId"`
-	StoreName        string         `json:"storeName,omitempty"`
-	StoreSlug        string         `json:"storeSlug"`
-	Category         Category       `json:"category"`
-	Name             string         `json:"name"`
-	Slug             string         `json:"slug"`
-	Description      string         `json:"description"`
-	Status           string         `json:"status"`
-	ModerationStatus string         `json:"moderationStatus"`
-	ModerationNote   string         `json:"moderationNote"`
-	Variants         []Variant      `json:"variants"`
-	Images           []ProductImage `json:"images"`
-	CreatedAt        time.Time      `json:"createdAt"`
-	UpdatedAt        time.Time      `json:"updatedAt"`
+	ID                string
+	StoreID           string
+	StoreName         string
+	StoreSlug         string
+	Category          Category
+	Name              string
+	Slug              string
+	Description       string
+	Status            string
+	Variants          []Variant
+	Images            []ProductImage
+	EnforcementReason string
+	EnforcedAt        *time.Time
+	EnforcedBy        *string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type ProductInput struct {

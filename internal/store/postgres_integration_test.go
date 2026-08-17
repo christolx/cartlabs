@@ -4,9 +4,11 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/christolx/cartlabs/internal/domain"
 	"github.com/google/uuid"
@@ -24,13 +26,14 @@ func TestPublicStoreProfileOnlyReturnsApprovedStore(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	sellerID, storeID := uuid.NewString(), uuid.NewString()
+	sellerID, adminID, storeID := uuid.NewString(), uuid.NewString(), uuid.NewString()
 	slug := "public-profile-" + storeID[:8]
 	defer func() {
+		_, _ = pool.Exec(ctx, `DELETE FROM audit_log WHERE resource_type='store' AND resource_id=$1`, storeID)
 		_, _ = pool.Exec(ctx, `DELETE FROM stores WHERE id=$1`, storeID)
-		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id=$1`, sellerID)
+		_, _ = pool.Exec(ctx, `DELETE FROM users WHERE id=ANY($1::uuid[])`, []string{sellerID, adminID})
 	}()
-	if _, err := pool.Exec(ctx, `INSERT INTO users (id,email,password_hash,display_name,role,status) VALUES ($1,$2,'hash','Public Seller','seller','active')`, sellerID, sellerID+"@example.com"); err != nil {
+	if _, err := pool.Exec(ctx, `INSERT INTO users (id,email,password_hash,display_name,role,status) VALUES ($1,$2,'hash','Public Seller','seller','active'),($3,$4,'hash','Verification Admin','admin','active')`, sellerID, sellerID+"@example.com", adminID, adminID+"@example.com"); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := pool.Exec(ctx, `INSERT INTO stores (id,seller_id,name,slug,description,status) VALUES ($1,$2,'Public Store',$3,'Public description','pending')`, storeID, sellerID, slug); err != nil {
@@ -40,13 +43,21 @@ func TestPublicStoreProfileOnlyReturnsApprovedStore(t *testing.T) {
 	if _, err := repository.FindPublicBySlug(ctx, slug); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("pending error = %v", err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE stores SET status='rejected' WHERE id=$1`, storeID); err != nil {
+	if _, err := repository.Moderate(ctx, storeID, "rejected", "profile mismatch", adminID, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := repository.FindPublicBySlug(ctx, slug); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("rejected error = %v", err)
 	}
-	if _, err := pool.Exec(ctx, `UPDATE stores SET status='approved' WHERE id=$1`, storeID); err != nil {
+	var raw []byte
+	if err := pool.QueryRow(ctx, `SELECT metadata FROM audit_log WHERE resource_type='store' AND resource_id=$1 AND action='store.verified.rejected' ORDER BY created_at DESC LIMIT 1`, storeID).Scan(&raw); err != nil {
+		t.Fatal(err)
+	}
+	var metadata map[string]string
+	if err := json.Unmarshal(raw, &metadata); err != nil || metadata["from"] != "pending" || metadata["to"] != "rejected" || metadata["note"] != "profile mismatch" {
+		t.Fatalf("metadata=%v err=%v", metadata, err)
+	}
+	if _, err := repository.Moderate(ctx, storeID, "approved", "", adminID, time.Now().UTC()); err != nil {
 		t.Fatal(err)
 	}
 	profile, err := repository.FindPublicBySlug(ctx, slug)

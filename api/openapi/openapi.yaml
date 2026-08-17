@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Cartlabs API
-  version: 0.3.0
+  version: 0.4.0
   description: Public REST contract for Cartlabs web and API applications.
 servers:
   - url: /api/v1
@@ -17,7 +17,7 @@ tags:
   - name: Seller
     description: Seller-owned catalog management.
   - name: Admin
-    description: Marketplace moderation.
+    description: Marketplace verification and enforcement.
   - name: Cart
     description: Buyer cart and checkout.
   - name: Purchases
@@ -169,7 +169,7 @@ paths:
         - {$ref: "#/components/parameters/PageSize"}
       responses:
         "200":
-          description: Published approved products
+          description: Published products from verified stores
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ProductPage"}
@@ -177,7 +177,7 @@ paths:
   /catalog/stores/{slug}:
     get:
       operationId: getCatalogStore
-      summary: Get approved public store profile
+      summary: Get verified public store profile
       tags: [Catalog]
       security: []
       parameters:
@@ -207,7 +207,7 @@ paths:
         - {$ref: "#/components/parameters/ProductSlug"}
       responses:
         "200":
-          description: Published approved product detail
+          description: Published product detail from verified store
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ProductDetail"}
@@ -235,7 +235,7 @@ paths:
             schema: {$ref: "#/components/schemas/StoreInput"}
       responses:
         "201":
-          description: Store submitted for moderation
+          description: Store submitted for verification
           content:
             application/json:
               schema: {$ref: "#/components/schemas/Store"}
@@ -368,16 +368,31 @@ paths:
   /seller/products/{productId}/publish:
     post:
       operationId: publishSellerProduct
-      summary: Publish product for review
+      summary: Publish complete draft or archived product immediately
       tags: [Seller]
       parameters:
         - {$ref: "#/components/parameters/ProductId"}
       responses:
         "200":
-          description: Product submitted for moderation
+          description: Published product
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ProductDetail"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /seller/products/{productId}/archive:
+    post:
+      operationId: archiveSellerProduct
+      summary: Archive published product
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+      responses:
+        "200":
+          description: Archived product
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductDetail"}
+        "404": {$ref: "#/components/responses/NotFound"}
         "409": {$ref: "#/components/responses/Conflict"}
   /seller/variants/{variantId}/inventory:
     patch:
@@ -401,11 +416,11 @@ paths:
   /admin/stores:
     get:
       operationId: listAdminStores
-      summary: List stores for moderation
+      summary: List stores for verification
       tags: [Admin]
       responses:
         "200":
-          description: Stores awaiting or having moderation
+          description: Stores awaiting or having verification
           content:
             application/json:
               schema:
@@ -456,7 +471,7 @@ paths:
   /admin/stores/{storeId}/moderation:
     patch:
       operationId: moderateStore
-      summary: Moderate store
+      summary: Verify or reject store
       tags: [Admin]
       parameters:
         - {$ref: "#/components/parameters/StoreId"}
@@ -467,7 +482,7 @@ paths:
             schema: {$ref: "#/components/schemas/ModerationInput"}
       responses:
         "200":
-          description: Moderated store
+          description: Verified or rejected store
           content:
             application/json:
               schema: {$ref: "#/components/schemas/Store"}
@@ -475,22 +490,22 @@ paths:
   /admin/products:
     get:
       operationId: listAdminProducts
-      summary: List products for moderation
+      summary: List published and suspended products for enforcement
       tags: [Admin]
       responses:
         "200":
-          description: Products awaiting or having moderation
+          description: Enforceable listings with latest suspension context
           content:
             application/json:
               schema:
                 type: object
                 required: [items]
                 properties:
-                  items: {type: array, items: {$ref: "#/components/schemas/ProductDetail"}}
-  /admin/products/{productId}/moderation:
+                  items: {type: array, items: {$ref: "#/components/schemas/AdminProduct"}}
+  /admin/products/{productId}/status:
     patch:
-      operationId: moderateProduct
-      summary: Moderate product
+      operationId: updateAdminProductStatus
+      summary: Suspend or reinstate product listing
       tags: [Admin]
       parameters:
         - {$ref: "#/components/parameters/ProductId"}
@@ -498,14 +513,17 @@ paths:
         required: true
         content:
           application/json:
-            schema: {$ref: "#/components/schemas/ModerationInput"}
+            schema: {$ref: "#/components/schemas/ProductStatusInput"}
       responses:
         "200":
-          description: Moderated product
+          description: Updated enforceable listing
           content:
             application/json:
-              schema: {$ref: "#/components/schemas/ProductDetail"}
+              schema: {$ref: "#/components/schemas/AdminProduct"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "403": {$ref: "#/components/responses/Forbidden"}
         "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /cart:
     get:
       operationId: getCart
@@ -989,7 +1007,8 @@ components:
         imageUrl: {type: string}
     ProductDetail:
       type: object
-      required: [id, storeId, storeSlug, category, name, slug, description, status, moderationStatus, moderationNote, variants, images, createdAt, updatedAt]
+      additionalProperties: false
+      required: [id, storeId, storeSlug, category, name, slug, description, status, variants, images, createdAt, updatedAt]
       properties:
         id: {type: string, format: uuid}
         storeId: {type: string, format: uuid}
@@ -999,11 +1018,30 @@ components:
         name: {type: string}
         slug: {type: string}
         description: {type: string}
-        status: {type: string, enum: [draft, published, archived]}
-        moderationStatus: {$ref: "#/components/schemas/ModerationStatus"}
-        moderationNote: {type: string}
+        status: {type: string, enum: [draft, published, archived, suspended]}
         variants: {type: array, items: {$ref: "#/components/schemas/Variant"}}
         images: {type: array, items: {$ref: "#/components/schemas/ProductImage"}}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    AdminProduct:
+      type: object
+      additionalProperties: false
+      required: [id, storeId, storeSlug, category, name, slug, description, status, variants, images, enforcementReason, enforcedAt, enforcedBy, createdAt, updatedAt]
+      properties:
+        id: {type: string, format: uuid}
+        storeId: {type: string, format: uuid}
+        storeName: {type: string}
+        storeSlug: {type: string, pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'}
+        category: {$ref: "#/components/schemas/Category"}
+        name: {type: string}
+        slug: {type: string}
+        description: {type: string}
+        status: {type: string, enum: [published, suspended]}
+        variants: {type: array, items: {$ref: "#/components/schemas/Variant"}}
+        images: {type: array, items: {$ref: "#/components/schemas/ProductImage"}}
+        enforcementReason: {type: string, maxLength: 500}
+        enforcedAt: {type: string, format: date-time, nullable: true}
+        enforcedBy: {type: string, nullable: true}
         createdAt: {type: string, format: date-time}
         updatedAt: {type: string, format: date-time}
     ProductPage:
@@ -1028,6 +1066,13 @@ components:
       properties:
         status: {type: string, enum: [approved, rejected]}
         note: {type: string, maxLength: 500}
+    ProductStatusInput:
+      type: object
+      additionalProperties: false
+      required: [status, reason]
+      properties:
+        status: {type: string, enum: [suspended, published]}
+        reason: {type: string, minLength: 1, maxLength: 500, pattern: '.*\S.*'}
     CartItemInput:
       type: object
       additionalProperties: false

@@ -71,6 +71,13 @@ func (publicStoreService) FindPublic(_ context.Context, slug string) (marketstor
 
 type sellerCatalogService struct{ CatalogService }
 
+func backendProduct(status string) catalog.Product {
+	now := time.Date(2026, 8, 16, 10, 0, 0, 0, time.UTC)
+	return catalog.Product{ID: testProductID, StoreID: testSellerID, StoreName: "North Star", StoreSlug: "north-star",
+		Category: catalog.Category{ID: testAdminID, Name: "Home", Slug: "home"}, Name: "Lamp", Slug: "lamp",
+		Description: "Desk lamp", Status: status, Variants: []catalog.Variant{}, Images: []catalog.ProductImage{}, CreatedAt: now, UpdatedAt: now}
+}
+
 func (sellerCatalogService) FindOwn(_ context.Context, principal identity.Principal, id string) (catalog.Product, error) {
 	if principal.Role != identity.RoleSeller {
 		return catalog.Product{}, domain.ErrForbidden
@@ -78,10 +85,32 @@ func (sellerCatalogService) FindOwn(_ context.Context, principal identity.Princi
 	if id != testProductID {
 		return catalog.Product{}, domain.ErrNotFound
 	}
-	now := time.Date(2026, 8, 16, 10, 0, 0, 0, time.UTC)
-	return catalog.Product{ID: id, StoreID: testSellerID, StoreName: "North Star", StoreSlug: "north-star",
-		Category: catalog.Category{ID: testAdminID, Name: "Home", Slug: "home"}, Name: "Lamp", Slug: "lamp",
-		Description: "Desk lamp", Status: "draft", ModerationStatus: "pending", Variants: []catalog.Variant{}, Images: []catalog.ProductImage{}, CreatedAt: now, UpdatedAt: now}, nil
+	return backendProduct("draft"), nil
+}
+
+func (sellerCatalogService) Archive(_ context.Context, principal identity.Principal, id string) (catalog.Product, error) {
+	if principal.Role != identity.RoleSeller {
+		return catalog.Product{}, domain.ErrForbidden
+	}
+	if id != testProductID {
+		return catalog.Product{}, domain.ErrNotFound
+	}
+	return backendProduct("archived"), nil
+}
+
+func (sellerCatalogService) UpdateStatus(_ context.Context, principal identity.Principal, id, status, reason string) (catalog.Product, error) {
+	if principal.Role != identity.RoleAdmin {
+		return catalog.Product{}, domain.ErrForbidden
+	}
+	if id != testProductID {
+		return catalog.Product{}, domain.ErrNotFound
+	}
+	product := backendProduct(status)
+	product.EnforcementReason = reason
+	product.EnforcedAt = &product.UpdatedAt
+	actor := "Admin"
+	product.EnforcedBy = &actor
+	return product, nil
 }
 
 func TestBackendCompletionHandlers(t *testing.T) {
@@ -95,6 +124,9 @@ func TestBackendCompletionHandlers(t *testing.T) {
 		{"seller detail", http.MethodGet, "/api/v1/seller/products/" + testProductID, "seller", "", http.StatusOK},
 		{"seller non-owner", http.MethodGet, "/api/v1/seller/products/01989f00-0000-7000-8000-000000000099", "seller", "", http.StatusNotFound},
 		{"buyer seller detail", http.MethodGet, "/api/v1/seller/products/" + testProductID, "buyer", "", http.StatusForbidden},
+		{"archive product", http.MethodPost, "/api/v1/seller/products/" + testProductID + "/archive", "seller", "", http.StatusOK},
+		{"enforce product", http.MethodPatch, "/api/v1/admin/products/" + testProductID + "/status", "admin", `{"status":"suspended","reason":"policy"}`, http.StatusOK},
+		{"buyer enforce product", http.MethodPatch, "/api/v1/admin/products/" + testProductID + "/status", "buyer", `{"status":"suspended","reason":"policy"}`, http.StatusForbidden},
 		{"admin users", http.MethodGet, "/api/v1/admin/users", "admin", "", http.StatusOK},
 		{"buyer admin users", http.MethodGet, "/api/v1/admin/users", "buyer", "", http.StatusForbidden},
 		{"update status", http.MethodPatch, "/api/v1/admin/users/" + testSellerID + "/status", "admin", `{"status":"suspended","reason":"policy"}`, http.StatusOK},

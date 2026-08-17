@@ -72,20 +72,21 @@ func (r *PostgresRepository) SetCartItem(ctx context.Context, buyerID, variantID
 
 	var stock int
 	var active bool
-	var productStatus, productModeration, storeStatus string
+	var productStatus, storeStatus string
 	err = tx.QueryRow(ctx, `
-		SELECT pv.stock,pv.active,p.status::text,p.moderation_status::text,s.status::text
+		SELECT pv.stock,pv.active,p.status::text,s.status::text
 		FROM product_variants pv
 		JOIN products p ON p.id=pv.product_id
 		JOIN stores s ON s.id=p.store_id
-		WHERE pv.id=$1`, variantID).Scan(&stock, &active, &productStatus, &productModeration, &storeStatus)
+		WHERE pv.id=$1
+		FOR SHARE OF p,s`, variantID).Scan(&stock, &active, &productStatus, &storeStatus)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Cart{}, domain.ErrNotFound
 	}
 	if err != nil {
 		return Cart{}, fmt.Errorf("inspect cart variant: %w", err)
 	}
-	if !active || productStatus != "published" || productModeration != "approved" || storeStatus != "approved" || quantity > stock {
+	if !active || productStatus != "published" || storeStatus != "approved" || quantity > stock {
 		return Cart{}, domain.ErrConflict
 	}
 	cartID, err := r.ensureCart(ctx, tx, buyerID, now)
@@ -207,14 +208,15 @@ func (r *PostgresRepository) Checkout(ctx context.Context, buyerID, idempotencyK
 		SELECT pv.id::text,p.id::text,p.name,p.slug,pv.name,pv.sku,
 			COALESCE((SELECT pi.url FROM product_images pi WHERE pi.product_id=p.id ORDER BY pi.position LIMIT 1),''),
 			ci.quantity,pv.stock,pv.price_minor,(pv.price_minor*ci.quantity),pv.currency,
-			s.id::text,s.name,pv.active,p.status::text,p.moderation_status::text,s.status::text
+			s.id::text,s.name,pv.active,p.status::text,s.status::text
 		FROM cart_items ci
 		JOIN product_variants pv ON pv.id=ci.variant_id
 		JOIN products p ON p.id=pv.product_id
 		JOIN stores s ON s.id=p.store_id
 		WHERE ci.cart_id=$1
 		ORDER BY pv.id
-		FOR UPDATE OF pv`, cartID)
+		FOR UPDATE OF pv
+		FOR SHARE OF p,s`, cartID)
 	if err != nil {
 		return Purchase{}, false, fmt.Errorf("lock checkout items: %w", err)
 	}
@@ -222,15 +224,15 @@ func (r *PostgresRepository) Checkout(ctx context.Context, buyerID, idempotencyK
 	for rows.Next() {
 		var item checkoutItem
 		var active bool
-		var productStatus, moderationStatus, storeStatus string
+		var productStatus, storeStatus string
 		if err := rows.Scan(&item.VariantID, &item.ProductID, &item.ProductName, &item.ProductSlug, &item.VariantName,
 			&item.SKU, &item.ImageURL, &item.Quantity, &item.AvailableStock, &item.UnitPriceMinor,
 			&item.LineTotalMinor, &item.Currency, &item.StoreID, &item.StoreName, &active,
-			&productStatus, &moderationStatus, &storeStatus); err != nil {
+			&productStatus, &storeStatus); err != nil {
 			rows.Close()
 			return Purchase{}, false, fmt.Errorf("scan checkout item: %w", err)
 		}
-		if !active || productStatus != "published" || moderationStatus != "approved" || storeStatus != "approved" ||
+		if !active || productStatus != "published" || storeStatus != "approved" ||
 			item.Currency != "IDR" || item.Quantity > item.AvailableStock {
 			rows.Close()
 			return Purchase{}, false, domain.ErrConflict

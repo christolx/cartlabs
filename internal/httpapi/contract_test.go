@@ -53,8 +53,7 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 	product := catalog.Product{
 		ID: contractID4, StoreID: contractID1, StoreName: "Studio", StoreSlug: "studio", Category: category,
 		Name: "Lamp", Slug: "lamp", Description: "Desk lamp", Status: "published",
-		ModerationStatus: "approved", ModerationNote: "", Variants: []catalog.Variant{variant},
-		Images: []catalog.ProductImage{image}, CreatedAt: now, UpdatedAt: now,
+		Variants: []catalog.Variant{variant}, Images: []catalog.ProductImage{image}, CreatedAt: now, UpdatedAt: now,
 	}
 	purchaseItem := purchase.PurchaseItem{
 		ID: contractID1, ProductID: contractID4, VariantID: contractID2, ProductName: "Lamp",
@@ -97,6 +96,14 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	product.EnforcementReason = "policy"
+	product.EnforcedAt = &now
+	actorName := "Admin"
+	product.EnforcedBy = &actorName
+	adminProduct, err := toContractAdminProduct(product)
+	if err != nil {
+		t.Fatal(err)
+	}
 	page, err := toContractProductPage(catalog.Page{Items: []catalog.Summary{{ID: contractID4, Name: "Lamp", Slug: "lamp", StoreName: "Studio", StoreSlug: "studio", Category: category, MinPriceMinor: 249000, Currency: "IDR", InStock: true, ImageURL: "/images/lamp.webp"}}, Page: 1, PageSize: 20, Total: 1})
 	if err != nil {
 		t.Fatal(err)
@@ -130,7 +137,7 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 		name  string
 		value any
 	}{
-		{"Session", session}, {"Store", store}, {"StoreProfile", storeProfile}, {"AdminUser", adminUser}, {"ProductDetail", productResponse},
+		{"Session", session}, {"Store", store}, {"StoreProfile", storeProfile}, {"AdminUser", adminUser}, {"ProductDetail", productResponse}, {"AdminProduct", adminProduct},
 		{"ProductPage", page}, {"Cart", cart}, {"Purchase", purchaseResponse},
 		{"ReviewSummary", reviewSummary}, {"AdminOverview", overview},
 		{"AuditEvent", audit}, {"Notification", notification},

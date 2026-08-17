@@ -24,13 +24,13 @@ type rowScanner interface{ Scan(...any) error }
 
 const productSelect = `
 	p.id::text,p.store_id::text,s.name,s.slug,c.id::text,c.name,c.slug,p.name,p.slug,p.description,
-	p.status::text,p.moderation_status::text,p.moderation_note,p.created_at,p.updated_at`
+	p.status::text,p.created_at,p.updated_at`
 
 func scanProduct(row rowScanner) (Product, error) {
 	var value Product
 	err := row.Scan(&value.ID, &value.StoreID, &value.StoreName, &value.StoreSlug, &value.Category.ID, &value.Category.Name,
 		&value.Category.Slug, &value.Name, &value.Slug, &value.Description, &value.Status,
-		&value.ModerationStatus, &value.ModerationNote, &value.CreatedAt, &value.UpdatedAt)
+		&value.CreatedAt, &value.UpdatedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Product{}, domain.ErrNotFound
 	}
@@ -79,12 +79,15 @@ func (r *PostgresRepository) Create(ctx context.Context, sellerID string, value 
 	defer func() { _ = tx.Rollback(ctx) }()
 	created, err := scanProduct(tx.QueryRow(ctx, `
 		WITH inserted AS (
-			INSERT INTO products (id,store_id,category_id,name,slug,description,status,moderation_status,created_at,updated_at)
-			SELECT $1,s.id,$3,$4,$5,$6,'draft','pending',$7,$7 FROM stores s WHERE s.seller_id=$2
+			INSERT INTO products (id,store_id,category_id,name,slug,description,status,created_at,updated_at)
+			SELECT $1,s.id,$3,$4,$5,$6,'draft',$7,$7 FROM stores s WHERE s.seller_id=$2 AND s.status='approved'
 			RETURNING *
 		)
 		SELECT `+productSelect+` FROM inserted p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`,
 		value.ID, sellerID, value.Category.ID, value.Name, value.Slug, value.Description, value.CreatedAt))
+	if errors.Is(err, domain.ErrNotFound) {
+		return Product{}, domain.ErrForbidden
+	}
 	if err != nil {
 		return Product{}, mapWriteError(err)
 	}
@@ -108,7 +111,7 @@ func (r *PostgresRepository) Update(ctx context.Context, value Product, sellerID
 	defer func() { _ = tx.Rollback(ctx) }()
 	updated, err := scanProduct(tx.QueryRow(ctx, `
 		WITH changed AS (
-			UPDATE products p SET category_id=$3,name=$4,slug=$5,description=$6,status='draft',moderation_status='pending',moderation_note='',updated_at=$7
+			UPDATE products p SET category_id=$3,name=$4,slug=$5,description=$6,updated_at=$7
 			FROM stores own WHERE p.id=$1 AND p.store_id=own.id AND own.seller_id=$2 RETURNING p.*
 		)
 		SELECT `+productSelect+` FROM changed p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`,
@@ -209,26 +212,78 @@ func (r *PostgresRepository) Publish(ctx context.Context, productID, actorID str
 		return Product{}, fmt.Errorf("begin publish product: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	var current string
+	if err := tx.QueryRow(ctx, `
+		SELECT p.status::text
+		FROM products p JOIN stores s ON s.id=p.store_id
+		WHERE p.id=$1 AND s.seller_id=$2
+		FOR UPDATE OF p,s`, productID, actorID).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
+		return Product{}, domain.ErrNotFound
+	} else if err != nil {
+		return Product{}, fmt.Errorf("lock product for publish: %w", err)
+	}
+	if current != "draft" && current != "archived" {
+		return Product{}, domain.ErrConflict
+	}
 	updated, err := scanProduct(tx.QueryRow(ctx, `
 		WITH changed AS (
-			UPDATE products p SET status='published',moderation_status='pending',moderation_note='',updated_at=$2
-			FROM stores own WHERE p.id=$1 AND p.store_id=own.id AND own.status='approved'
+			UPDATE products p SET status='published',updated_at=$2
+			FROM stores own WHERE p.id=$1 AND p.store_id=own.id AND own.seller_id=$3 AND own.status='approved'
+			AND p.status IN ('draft','archived')
 			AND EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id=p.id AND v.active AND v.stock>0)
 			AND EXISTS (SELECT 1 FROM product_images i WHERE i.product_id=p.id)
 			RETURNING p.*
 		)
-		SELECT `+productSelect+` FROM changed p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`, productID, now))
+		SELECT `+productSelect+` FROM changed p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`, productID, now, actorID))
 	if errors.Is(err, domain.ErrNotFound) {
 		return Product{}, domain.ErrConflict
 	}
 	if err != nil {
 		return Product{}, err
 	}
-	if err := insertAudit(ctx, tx, actorID, "product.published", "product", productID, now); err != nil {
+	if err := insertAuditMetadata(ctx, tx, actorID, "product.status.published", "product", productID,
+		map[string]any{"from": current, "to": "published"}, now); err != nil {
+		return Product{}, err
+	}
+	if err := insertSearchOutbox(ctx, tx, updated); err != nil {
 		return Product{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return Product{}, fmt.Errorf("commit publish product: %w", err)
+	}
+	return r.loadDetails(ctx, updated)
+}
+
+func (r *PostgresRepository) Archive(ctx context.Context, productID, actorID string, now time.Time) (Product, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Product{}, fmt.Errorf("begin archive product: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	updated, err := scanProduct(tx.QueryRow(ctx, `
+		WITH changed AS (
+			UPDATE products p SET status='archived',updated_at=$3
+			FROM stores own
+			WHERE p.id=$1 AND p.store_id=own.id AND own.seller_id=$2 AND p.status='published'
+			RETURNING p.*
+		)
+		SELECT `+productSelect+` FROM changed p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`,
+		productID, actorID, now))
+	if errors.Is(err, domain.ErrNotFound) {
+		return Product{}, domain.ErrConflict
+	}
+	if err != nil {
+		return Product{}, err
+	}
+	if err := insertAuditMetadata(ctx, tx, actorID, "product.status.archived", "product", productID,
+		map[string]any{"from": "published", "to": "archived"}, now); err != nil {
+		return Product{}, err
+	}
+	if err := insertSearchOutbox(ctx, tx, updated); err != nil {
+		return Product{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Product{}, fmt.Errorf("commit archive product: %w", err)
 	}
 	return r.loadDetails(ctx, updated)
 }
@@ -267,26 +322,117 @@ func (r *PostgresRepository) AdjustInventory(ctx context.Context, variantID, sel
 }
 
 func (r *PostgresRepository) ListForAdmin(ctx context.Context) ([]Product, error) {
-	return r.listProducts(ctx, `SELECT `+productSelect+` FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id ORDER BY p.updated_at DESC`)
+	rows, err := r.pool.Query(ctx, `
+		SELECT `+productSelect+`,COALESCE(enforcement.reason,''),enforcement.created_at,enforcement.actor_name
+		FROM products p
+		JOIN stores s ON s.id=p.store_id
+		JOIN categories c ON c.id=p.category_id
+		LEFT JOIN LATERAL (
+			SELECT ae.metadata->>'reason' AS reason,ae.created_at,u.display_name AS actor_name
+			FROM audit_log ae
+			JOIN users u ON u.id=ae.actor_id
+			WHERE ae.resource_type='product' AND ae.resource_id=p.id AND ae.action='product.status.suspended'
+			ORDER BY ae.created_at DESC,ae.id DESC LIMIT 1
+		) enforcement ON true
+		WHERE p.status IN ('published','suspended')
+		ORDER BY COALESCE(enforcement.created_at,p.updated_at) DESC,p.id DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("list admin products: %w", err)
+	}
+	items := make([]Product, 0)
+	for rows.Next() {
+		item, scanErr := scanProductWithEnforcement(rows)
+		if scanErr != nil {
+			rows.Close()
+			return nil, scanErr
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+	for index := range items {
+		items[index], err = r.loadDetails(ctx, items[index])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return items, nil
 }
 
-func (r *PostgresRepository) Moderate(ctx context.Context, productID, status, note, actorID string, now time.Time) (Product, error) {
+func scanProductWithEnforcement(row rowScanner) (Product, error) {
+	var value Product
+	err := row.Scan(&value.ID, &value.StoreID, &value.StoreName, &value.StoreSlug, &value.Category.ID, &value.Category.Name,
+		&value.Category.Slug, &value.Name, &value.Slug, &value.Description, &value.Status, &value.CreatedAt, &value.UpdatedAt,
+		&value.EnforcementReason, &value.EnforcedAt, &value.EnforcedBy)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Product{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return Product{}, fmt.Errorf("scan admin product: %w", err)
+	}
+	value.Variants = []Variant{}
+	value.Images = []ProductImage{}
+	return value, nil
+}
+
+func (r *PostgresRepository) UpdateStatus(ctx context.Context, productID, status, reason, actorID string, now time.Time) (Product, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
-		return Product{}, fmt.Errorf("begin moderate product: %w", err)
+		return Product{}, fmt.Errorf("begin update product status: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	var current string
+	if err := tx.QueryRow(ctx, `
+		SELECT p.status::text
+		FROM products p JOIN stores s ON s.id=p.store_id
+		WHERE p.id=$1
+		FOR UPDATE OF p,s`, productID).Scan(&current); errors.Is(err, pgx.ErrNoRows) {
+		return Product{}, domain.ErrNotFound
+	} else if err != nil {
+		return Product{}, fmt.Errorf("lock product status: %w", err)
+	}
+	if status == "suspended" && current != "published" || status == "published" && current != "suspended" {
+		return Product{}, domain.ErrConflict
+	}
 	updated, err := scanProduct(tx.QueryRow(ctx, `
-		WITH changed AS (UPDATE products SET moderation_status=$2,moderation_note=$3,updated_at=$4 WHERE id=$1 AND status='published' RETURNING *)
-		SELECT `+productSelect+` FROM changed p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`, productID, status, note, now))
+		WITH changed AS (
+			UPDATE products p SET status=$2::product_status,updated_at=$3
+			WHERE p.id=$1
+			AND ($2::text='suspended' OR (
+				$2::text='published'
+				AND EXISTS (SELECT 1 FROM stores own WHERE own.id=p.store_id AND own.status='approved')
+				AND EXISTS (SELECT 1 FROM product_variants v WHERE v.product_id=p.id AND v.active AND v.stock>0)
+				AND EXISTS (SELECT 1 FROM product_images i WHERE i.product_id=p.id)
+			))
+			RETURNING p.*
+		)
+		SELECT `+productSelect+` FROM changed p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id`, productID, status, now))
+	if errors.Is(err, domain.ErrNotFound) {
+		return Product{}, domain.ErrConflict
+	}
 	if err != nil {
 		return Product{}, err
 	}
-	if err := insertAudit(ctx, tx, actorID, "product.moderated."+status, "product", productID, now); err != nil {
+	if err := insertAuditMetadata(ctx, tx, actorID, "product.status."+status, "product", productID,
+		map[string]any{"from": current, "to": status, "reason": reason}, now); err != nil {
 		return Product{}, err
 	}
+	if err := insertSearchOutbox(ctx, tx, updated); err != nil {
+		return Product{}, err
+	}
+	if err := tx.QueryRow(ctx, `
+		SELECT
+			COALESCE((SELECT ae.metadata->>'reason' FROM audit_log ae WHERE ae.resource_type='product' AND ae.resource_id=$1 AND ae.action='product.status.suspended' ORDER BY ae.created_at DESC,ae.id DESC LIMIT 1),''),
+			(SELECT ae.created_at FROM audit_log ae WHERE ae.resource_type='product' AND ae.resource_id=$1 AND ae.action='product.status.suspended' ORDER BY ae.created_at DESC,ae.id DESC LIMIT 1),
+			(SELECT u.display_name FROM audit_log ae JOIN users u ON u.id=ae.actor_id WHERE ae.resource_type='product' AND ae.resource_id=$1 AND ae.action='product.status.suspended' ORDER BY ae.created_at DESC,ae.id DESC LIMIT 1)`,
+		productID).Scan(&updated.EnforcementReason, &updated.EnforcedAt, &updated.EnforcedBy); err != nil {
+		return Product{}, fmt.Errorf("load enforcement context: %w", err)
+	}
 	if err := tx.Commit(ctx); err != nil {
-		return Product{}, fmt.Errorf("commit moderate product: %w", err)
+		return Product{}, fmt.Errorf("commit product status: %w", err)
 	}
 	return r.loadDetails(ctx, updated)
 }
@@ -305,7 +451,7 @@ func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, ca
 	err := r.pool.QueryRow(ctx, `
 		SELECT count(*) FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id
 		JOIN LATERAL (SELECT min(price_minor) min_price,bool_or(stock>0) in_stock FROM product_variants WHERE product_id=p.id AND active) prices ON prices.min_price IS NOT NULL
-		WHERE p.status='published' AND p.moderation_status='approved' AND s.status='approved'
+		WHERE p.status='published' AND s.status='approved'
 		AND ((NOT $6::boolean AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%'))
 			OR ($6::boolean AND p.id=ANY($7::uuid[])))
 		AND ($2::text IS NULL OR c.slug=$2) AND ($3::bigint IS NULL OR prices.min_price >= $3)
@@ -320,7 +466,7 @@ func (r *PostgresRepository) listPublic(ctx context.Context, filters Filters, ca
 		COALESCE((SELECT url FROM product_images WHERE product_id=p.id ORDER BY position LIMIT 1),'')
 		FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id
 		JOIN LATERAL (SELECT min(price_minor) min_price,min(currency) currency,bool_or(stock>0) in_stock FROM product_variants WHERE product_id=p.id AND active) prices ON prices.min_price IS NOT NULL
-		WHERE p.status='published' AND p.moderation_status='approved' AND s.status='approved'
+		WHERE p.status='published' AND s.status='approved'
 		AND ((NOT $6::boolean AND ($1::text IS NULL OR p.name ILIKE '%'||$1||'%' OR p.description ILIKE '%'||$1||'%'))
 			OR ($6::boolean AND p.id=ANY($7::uuid[])))
 		AND ($2::text IS NULL OR c.slug=$2) AND ($3::bigint IS NULL OR prices.min_price >= $3)
@@ -372,7 +518,7 @@ func nullableText(value string) any {
 }
 
 func (r *PostgresRepository) FindPublic(ctx context.Context, slug string) (Product, error) {
-	value, err := scanProduct(r.pool.QueryRow(ctx, `SELECT `+productSelect+` FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id WHERE p.slug=$1 AND p.status='published' AND p.moderation_status='approved' AND s.status='approved'`, slug))
+	value, err := scanProduct(r.pool.QueryRow(ctx, `SELECT `+productSelect+` FROM products p JOIN stores s ON s.id=p.store_id JOIN categories c ON c.id=p.category_id WHERE p.slug=$1 AND p.status='published' AND s.status='approved'`, slug))
 	if err != nil {
 		return Product{}, err
 	}
@@ -445,11 +591,19 @@ type auditExecutor interface {
 }
 
 func insertAudit(ctx context.Context, tx auditExecutor, actorID, action, resourceType, resourceID string, now time.Time) error {
+	return insertAuditMetadata(ctx, tx, actorID, action, resourceType, resourceID, map[string]any{}, now)
+}
+
+func insertAuditMetadata(ctx context.Context, tx auditExecutor, actorID, action, resourceType, resourceID string, metadata map[string]any, now time.Time) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return fmt.Errorf("generate audit ID: %w", err)
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (id,actor_id,action,resource_type,resource_id,created_at) VALUES ($1,$2,$3,$4,$5,$6)`, id.String(), actorID, action, resourceType, resourceID, now); err != nil {
+	payload, err := json.Marshal(metadata)
+	if err != nil {
+		return fmt.Errorf("encode audit metadata: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO audit_log (id,actor_id,action,resource_type,resource_id,metadata,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`, id.String(), actorID, action, resourceType, resourceID, payload, now); err != nil {
 		return fmt.Errorf("insert audit log: %w", err)
 	}
 	return nil

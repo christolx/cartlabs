@@ -35,6 +35,9 @@ func TestOpenAPIRequestValidation(t *testing.T) {
 		{name: "invalid user status", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"deleted","reason":"policy"}`, contentType: "application/json"},
 		{name: "blank status reason", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"   "}`, contentType: "application/json"},
 		{name: "unknown status field", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"policy","notify":true}`, contentType: "application/json"},
+		{name: "invalid product status", method: http.MethodPatch, path: "/api/v1/admin/products/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"archived","reason":"policy"}`, contentType: "application/json"},
+		{name: "blank product reason", method: http.MethodPatch, path: "/api/v1/admin/products/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"   "}`, contentType: "application/json"},
+		{name: "unknown product status field", method: http.MethodPatch, path: "/api/v1/admin/products/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"policy","notify":true}`, contentType: "application/json"},
 		{name: "missing required header", method: http.MethodPost, path: "/api/v1/checkout"},
 	}
 	for _, test := range tests {

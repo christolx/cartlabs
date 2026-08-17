@@ -57,6 +57,10 @@ func (f *fakeRepository) Publish(_ context.Context, _ string, _ string, _ time.T
 	f.product.Status = "published"
 	return f.product, nil
 }
+func (f *fakeRepository) Archive(_ context.Context, _ string, _ string, _ time.Time) (Product, error) {
+	f.product.Status = "archived"
+	return f.product, nil
+}
 func (f *fakeRepository) AdjustInventory(_ context.Context, _ string, _ string, delta int, _ string, _ string, _ time.Time) (Variant, error) {
 	f.variant.Stock += delta
 	return f.variant, nil
@@ -64,9 +68,8 @@ func (f *fakeRepository) AdjustInventory(_ context.Context, _ string, _ string, 
 func (f *fakeRepository) ListForAdmin(context.Context) ([]Product, error) {
 	return []Product{f.product}, nil
 }
-func (f *fakeRepository) Moderate(_ context.Context, _ string, status, note, _ string, _ time.Time) (Product, error) {
-	f.product.ModerationStatus = status
-	f.product.ModerationNote = note
+func (f *fakeRepository) UpdateStatus(_ context.Context, _ string, status, _, _ string, _ time.Time) (Product, error) {
+	f.product.Status = status
 	return f.product, nil
 }
 func (f *fakeRepository) ListPublic(_ context.Context, filters Filters) (Page, error) {
@@ -169,5 +172,44 @@ func TestCatalogSearchUsesCandidatesAndFallsBack(t *testing.T) {
 	}
 	if repository.filters.Search != "basket" || repository.filters.StoreSlug != "nusantara-goods" || results[len(results)-1] != "fallback" {
 		t.Fatalf("filters=%#v results=%v", repository.filters, results)
+	}
+}
+
+func TestProductEditsPreserveLifecycleStatus(t *testing.T) {
+	id := "01989f00-0000-7000-8000-000000000201"
+	categoryID := "01989f00-0000-7000-8000-000000000101"
+	repository := &fakeRepository{product: Product{ID: id, Status: "suspended"}}
+	service := NewService(repository)
+	updated, err := service.Update(context.Background(), identity.Principal{UserID: "seller", Role: identity.RoleSeller}, id,
+		ProductInput{CategoryID: categoryID, Name: "Updated Product", Slug: "updated-product", Description: "Description"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status != "suspended" {
+		t.Fatalf("status = %q", updated.Status)
+	}
+}
+
+func TestProductLifecycleAuthorizationAndValidation(t *testing.T) {
+	id := "01989f00-0000-7000-8000-000000000201"
+	seller := identity.Principal{UserID: "seller", Role: identity.RoleSeller}
+	admin := identity.Principal{UserID: "admin", Role: identity.RoleAdmin}
+	service := NewService(&fakeRepository{product: Product{ID: id, Status: "published"}})
+
+	archived, err := service.Archive(context.Background(), seller, id)
+	if err != nil || archived.Status != "archived" {
+		t.Fatalf("archived=%#v err=%v", archived, err)
+	}
+	if _, err := service.Archive(context.Background(), admin, id); !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("admin archive error = %v", err)
+	}
+	if _, err := service.UpdateStatus(context.Background(), seller, id, "suspended", "policy"); !errors.Is(err, domain.ErrForbidden) {
+		t.Fatalf("seller enforcement error = %v", err)
+	}
+	if _, err := service.UpdateStatus(context.Background(), admin, id, "suspended", "   "); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("blank reason error = %v", err)
+	}
+	if _, err := service.UpdateStatus(context.Background(), admin, id, "archived", "policy"); !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("invalid status error = %v", err)
 	}
 }

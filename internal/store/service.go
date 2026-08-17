@@ -81,8 +81,10 @@ func (s *Service) Update(ctx context.Context, principal identity.Principal, inpu
 	current.Name = input.Name
 	current.Slug = input.Slug
 	current.Description = input.Description
-	current.Status = "pending"
-	current.ModerationNote = ""
+	if current.Status == "rejected" {
+		current.Status = "pending"
+		current.ModerationNote = ""
+	}
 	current.UpdatedAt = s.now().UTC()
 	return s.repository.Update(ctx, current, principal.UserID)
 }
@@ -98,13 +100,14 @@ func (s *Service) Moderate(ctx context.Context, principal identity.Principal, id
 	if !principal.Require(identity.RoleAdmin) {
 		return Store{}, domain.ErrForbidden
 	}
+	note = strings.TrimSpace(note)
 	if status != "approved" && status != "rejected" {
 		return Store{}, domain.ErrInvalid
 	}
-	if len(note) > 500 {
+	if len(note) > 500 || status == "rejected" && note == "" {
 		return Store{}, domain.ErrInvalid
 	}
-	return s.repository.Moderate(ctx, id, status, strings.TrimSpace(note), principal.UserID, s.now().UTC())
+	return s.repository.Moderate(ctx, id, status, note, principal.UserID, s.now().UTC())
 }
 
 func validateInput(input Input) (Input, error) {

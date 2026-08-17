@@ -290,7 +290,9 @@ func loadReview(ctx context.Context, db queryer, id string) (Review, error) {
 
 func (r *PostgresRepository) ReviewsByProductSlug(ctx context.Context, slug string) (ReviewSummary, error) {
 	var productID string
-	if err := r.pool.QueryRow(ctx, `SELECT id::text FROM products WHERE slug=$1 AND status='published' AND moderation_status='approved'`, slug).Scan(&productID); errors.Is(err, pgx.ErrNoRows) {
+	if err := r.pool.QueryRow(ctx, `
+		SELECT p.id::text FROM products p JOIN stores s ON s.id=p.store_id
+		WHERE p.slug=$1 AND p.status='published' AND s.status='approved'`, slug).Scan(&productID); errors.Is(err, pgx.ErrNoRows) {
 		return ReviewSummary{}, domain.ErrNotFound
 	} else if err != nil {
 		return ReviewSummary{}, fmt.Errorf("find reviewed product: %w", err)
@@ -327,7 +329,7 @@ func (r *PostgresRepository) AdminOverview(ctx context.Context) (AdminOverview, 
 	var result AdminOverview
 	err := r.pool.QueryRow(ctx, `SELECT
 		(SELECT count(*) FROM users),(SELECT count(*) FROM stores WHERE status='approved'),
-		(SELECT count(*) FROM products WHERE status='published' AND moderation_status='approved'),
+		(SELECT count(*) FROM products p JOIN stores s ON s.id=p.store_id WHERE p.status='published' AND s.status='approved'),
 		(SELECT count(*) FROM purchases),(SELECT count(*) FROM seller_orders WHERE status IN ('paid','processing','shipped')),
 		(SELECT count(*) FROM seller_orders WHERE status='delivered'),
 		COALESCE((SELECT sum(subtotal_minor) FROM seller_orders WHERE status IN ('paid','processing','shipped','delivered')),0)`).

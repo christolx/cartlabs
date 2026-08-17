@@ -112,19 +112,44 @@ func toContractProduct(value catalog.Product) (contract.ProductDetail, error) {
 	if !status.Valid() {
 		return contract.ProductDetail{}, fmt.Errorf("map invalid product status %q", value.Status)
 	}
-	moderationStatus, err := toContractModerationStatus(value.ModerationStatus)
-	if err != nil {
-		return contract.ProductDetail{}, err
-	}
 	result := contract.ProductDetail{
 		Id: id, StoreId: storeID, Category: category, Name: value.Name, Slug: value.Slug,
-		StoreSlug:   value.StoreSlug,
-		Description: value.Description, Status: status, ModerationStatus: moderationStatus,
-		ModerationNote: value.ModerationNote, Variants: variants, Images: images,
+		StoreSlug: value.StoreSlug, Description: value.Description, Status: status,
+		Variants: variants, Images: images,
 		CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
 	}
 	if value.StoreName != "" {
 		result.StoreName = &value.StoreName
+	}
+	return result, nil
+}
+
+func toContractAdminProduct(value catalog.Product) (contract.AdminProduct, error) {
+	detail, err := toContractProduct(value)
+	if err != nil {
+		return contract.AdminProduct{}, err
+	}
+	status := contract.AdminProductStatus(value.Status)
+	if !status.Valid() {
+		return contract.AdminProduct{}, fmt.Errorf("map invalid admin product status %q", value.Status)
+	}
+	return contract.AdminProduct{
+		Id: detail.Id, StoreId: detail.StoreId, StoreName: detail.StoreName, StoreSlug: detail.StoreSlug,
+		Category: detail.Category, Name: detail.Name, Slug: detail.Slug, Description: detail.Description,
+		Status: status, Variants: detail.Variants, Images: detail.Images,
+		EnforcementReason: value.EnforcementReason, EnforcedAt: value.EnforcedAt, EnforcedBy: value.EnforcedBy,
+		CreatedAt: detail.CreatedAt, UpdatedAt: detail.UpdatedAt,
+	}, nil
+}
+
+func toContractAdminProducts(values []catalog.Product) ([]contract.AdminProduct, error) {
+	result := make([]contract.AdminProduct, len(values))
+	for i := range values {
+		mapped, err := toContractAdminProduct(values[i])
+		if err != nil {
+			return nil, err
+		}
+		result[i] = mapped
 	}
 	return result, nil
 }

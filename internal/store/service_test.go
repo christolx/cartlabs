@@ -62,7 +62,7 @@ func TestSellerStoreLifecycleAndRBAC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Status != "pending" {
+	if updated.Status != "approved" {
 		t.Fatalf("status = %q", updated.Status)
 	}
 	if _, err := service.ListForAdmin(context.Background(), seller); !errors.Is(err, domain.ErrForbidden) {
@@ -72,6 +72,27 @@ func TestSellerStoreLifecycleAndRBAC(t *testing.T) {
 	approved, err := service.Moderate(context.Background(), admin, updated.ID, "approved", "verified")
 	if err != nil || approved.Status != "approved" {
 		t.Fatalf("moderate = %#v, %v", approved, err)
+	}
+}
+
+func TestRejectedStoreEditReturnsToPending(t *testing.T) {
+	repository := &fakeRepository{value: Store{ID: "store-1", SellerID: "seller-1", Status: "rejected", ModerationNote: "bad profile"}}
+	service := NewService(repository)
+	updated, err := service.Update(context.Background(), identity.Principal{UserID: "seller-1", Role: identity.RoleSeller},
+		Input{Name: "Fixed Store", Slug: "fixed-store", Description: "Updated"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.Status != "pending" || updated.ModerationNote != "" {
+		t.Fatalf("updated = %#v", updated)
+	}
+}
+
+func TestStoreRejectionRequiresNote(t *testing.T) {
+	service := NewService(&fakeRepository{value: Store{ID: "store-1"}})
+	_, err := service.Moderate(context.Background(), identity.Principal{UserID: "admin", Role: identity.RoleAdmin}, "store-1", "rejected", "   ")
+	if !errors.Is(err, domain.ErrInvalid) {
+		t.Fatalf("error = %v", err)
 	}
 }
 

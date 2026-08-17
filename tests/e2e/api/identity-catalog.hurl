@@ -117,31 +117,45 @@ Authorization: Bearer {{seller_token}}
 HTTP 200
 [Asserts]
 jsonpath "$.status" == "published"
-jsonpath "$.moderationStatus" == "pending"
 
-GET {{base_url}}/catalog/products?q=Milestone%20One%20Lamp
-HTTP 200
-[Asserts]
-jsonpath "$.total" == 0
-
-PATCH {{base_url}}/admin/products/{{product_id}}/moderation
-Authorization: Bearer {{admin_token}}
-Content-Type: application/json
-{
-  "status": "approved",
-  "note": "Catalog quality verified"
-}
-HTTP 200
-[Asserts]
-jsonpath "$.moderationStatus" == "approved"
-
-GET {{base_url}}/catalog/products?q=Milestone%20One%20Lamp&category=home-living&inStock=true
+GET {{base_url}}/catalog/products?store=demo-seller-studio&category=home-living&inStock=true
 HTTP 200
 [Asserts]
 jsonpath "$.total" == 1
 jsonpath "$.items[0].slug" == "milestone-one-lamp"
-jsonpath "$.items[0].minPriceMinor" == 399000
-jsonpath "$.items[0].storeSlug" == "demo-seller-studio"
+
+PATCH {{base_url}}/admin/products/{{product_id}}/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+{
+  "status": "suspended",
+  "reason": "Listing enforcement workflow"
+}
+HTTP 200
+[Asserts]
+jsonpath "$.status" == "suspended"
+jsonpath "$.enforcementReason" == "Listing enforcement workflow"
+
+GET {{base_url}}/catalog/products?store=demo-seller-studio&category=home-living&inStock=true
+HTTP 200
+[Asserts]
+jsonpath "$.total" == 0
+
+POST {{base_url}}/seller/products/{{product_id}}/publish
+Authorization: Bearer {{seller_token}}
+HTTP 409
+
+PATCH {{base_url}}/admin/products/{{product_id}}/status
+Authorization: Bearer {{admin_token}}
+Content-Type: application/json
+{
+  "status": "published",
+  "reason": "Seller corrected listing"
+}
+HTTP 200
+[Asserts]
+jsonpath "$.status" == "published"
+jsonpath "$.enforcementReason" == "Listing enforcement workflow"
 
 GET {{base_url}}/catalog/stores/demo-seller-studio
 HTTP 200
@@ -154,6 +168,8 @@ HTTP 200
 [Asserts]
 jsonpath "$.total" == 1
 jsonpath "$.items[0].slug" == "milestone-one-lamp"
+jsonpath "$.items[0].minPriceMinor" == 399000
+jsonpath "$.items[0].storeSlug" == "demo-seller-studio"
 
 GET {{base_url}}/catalog/products?store=nusantara-goods&q=Milestone%20One%20Lamp
 HTTP 200
