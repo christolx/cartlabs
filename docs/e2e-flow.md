@@ -9,8 +9,8 @@ workflows. Exact request and response shapes live in
 | Actor | Primary responsibility |
 | --- | --- |
 | Buyer | Discover products, purchase, track delivery, review delivered items. |
-| Seller | Create approved catalog supply, manage stock, fulfill owned orders. |
-| Admin | Moderate stores/products, inspect platform totals and audit history. |
+| Seller | Publish verified-store catalog supply, manage stock, fulfill owned orders. |
+| Admin | Verify stores, enforce listings, inspect platform totals and audit history. |
 | Payment provider | Confirm or fail payment through signed webhook. |
 | Worker | Deliver durable purchase and order notifications. |
 
@@ -18,10 +18,10 @@ workflows. Exact request and response shapes live in
 
 ```text
 Seller creates store
-  -> Admin approves store
+  -> Admin verifies store
   -> Seller creates product, variant, image, stock
-  -> Seller submits product
-  -> Admin approves product
+  -> Seller publishes product immediately
+  -> Admin suspends/reinstates only when enforcement is needed
   -> Buyer discovers product and adds variant to cart
   -> Buyer checks out
   -> System reserves stock and creates payment intent
@@ -34,11 +34,11 @@ Seller creates store
 
 1. Sign in as seller.
 2. Create store with name, slug, and description. Store begins `pending`.
-3. Admin approves store. Only approved store can create product supply.
+3. Admin verifies store. Only an approved store can create product supply.
 4. Create product draft, then add at least one variant/SKU with price and stock,
    plus product image.
-5. Submit product for moderation. Product remains unavailable to public catalog
-   until admin approval.
+5. Publish complete draft. Product becomes public immediately. Seller may archive
+   a published product and republish a complete archive.
 6. Adjust stock through seller inventory endpoint. Seller may only change owned
    variants.
 7. After buyer payment, list seller orders. Each order belongs to one store.
@@ -56,18 +56,19 @@ shipment.
 ## Admin flow
 
 1. Sign in as admin.
-2. Inspect pending stores. Approve or reject each store with moderation note.
-3. Inspect submitted products. Approve or reject each product with moderation
-   note.
+2. Inspect pending stores. Verify or reject each store; rejection requires note.
+3. Inspect published/suspended listings. Suspend or reinstate with required
+   reason. Seller cannot reverse suspension.
 4. Inspect marketplace overview: users, approved stores, published products,
    purchases, active/delivered orders, and gross merchandise value.
-5. Inspect audit events for moderation and fulfillment history.
+5. Inspect audit events for verification, listing enforcement, and fulfillment history.
 
-Admin does not act as buyer or seller. Moderation gates public supply.
+Admin does not act as buyer or seller. Store verification gates seller supply;
+listing enforcement reacts to unsafe published products.
 
 ## Buyer flow
 
-1. Browse/search approved public products. View live variants, price, stock,
+1. Browse/search published products from verified stores. View live variants, price, stock,
    and public verified reviews.
 2. Add variants to cart or replace quantity. Cart groups lines by store and
    recalculates against live price and inventory.
@@ -123,7 +124,7 @@ or worker republishes do not create duplicate user notifications.
 1. Set `DEMO_MODE=true`.
 2. Start services and seed data; see repository [README](../README.md).
 3. Open `/demo`.
-4. Run roles in order: seller supply -> admin approval -> buyer purchase ->
+4. Run roles in order: seller store -> admin verification -> seller publish -> buyer purchase ->
    seller fulfillment -> buyer review.
 
 Demo accounts use password `demo-pass-123`:

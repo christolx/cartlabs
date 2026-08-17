@@ -1,7 +1,8 @@
 # Validation
 
 - [ ] All [`e2e-flow.md`](../e2e-flow.md) actor flows usable through browser UI.
-- [ ] Approved store profile and store-filtered catalog work through public UI.
+- [ ] Verified store profile and store-filtered catalog work through public UI.
+- [ ] Seller publish/archive and admin suspend/reinstate work without suspension bypass.
 - [ ] Seller product management supports direct product URL loading.
 - [ ] Admin user suspension/reactivation enforces session and audit behavior.
 - [ ] Buyer, seller, admin paths checked at mobile and desktop widths.

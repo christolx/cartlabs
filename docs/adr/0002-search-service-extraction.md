@@ -20,10 +20,11 @@ explicitly excluded from first extraction.
 Extract text candidate retrieval into `apps/search`, an internal protobuf/gRPC
 service. Search owns `cartlabs_search`, including `search_documents` and its
 processed-event ledger. It returns product IDs only. Catalog PostgreSQL remains
-authoritative for publication, moderation, store approval, category, price,
+authoritative for publication, listing enforcement, store verification, category, price,
 inventory, image, response shape, ordering, and pagination.
 
-Catalog create/update transactions append `catalog.search.upsert.v1` to the
+Catalog create, content update, publish, archive, suspend, and reinstate
+transactions append `catalog.search.upsert.v1` to the
 existing outbox. RabbitMQ delivers events to an independently retried search
 consumer. Search applies event IDs idempotently and rejects older document
 versions. Operator reindex reads a bounded source snapshot, upserts every
@@ -40,8 +41,8 @@ paths expose traces and bounded Prometheus metrics.
 ## Consequences
 
 - Search can evolve its index without owning marketplace truth.
-- Eventual index lag cannot expose drafts, rejected products, unavailable stock,
-  or unapproved stores because catalog re-applies those rules.
+- Eventual index lag cannot expose drafts, archived or suspended products,
+  unavailable stock, or unverified stores because catalog re-applies those rules.
 - Search and main catalog databases can share one PostgreSQL server for demo
   cost, but use distinct databases, URLs, migrations, repositories, and backups.
 - Search outage adds at most one RPC deadline per circuit-breaker interval;

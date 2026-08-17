@@ -101,12 +101,18 @@ explicit interfaces. No module reads another module's tables directly.
 - Admin status changes lock target account, preserve one active admin, revoke
   all refresh sessions, invalidate issued access tokens, and append immutable
   audit metadata in one PostgreSQL transaction.
+- Verified sellers publish complete draft or archived products immediately.
+  Sellers control archival; admins alone suspend and reinstate listings. Product
+  status change, audit metadata, and search outbox event commit atomically.
 - Optional OIDC integration deferred
 
 ## Public Marketplace Privacy
 
-- Public store profiles expose approved store copy and seller display name only.
+- Public store profiles expose verified store copy and seller display name only.
 - Pending and rejected stores share same not-found response as missing stores.
+- Public catalog, product detail, cart mutation, checkout, overview, and review
+  eligibility require product `published` and store `approved`; suspension cannot
+  be bypassed by seller mutations.
 - Catalog store filtering composes with search and existing filters; PostgreSQL
   remains visibility authority when search candidate service is unavailable.
 

@@ -38,9 +38,9 @@ Use these documents alongside this plan:
 
 | Area | Route | Access | Purpose |
 | --- | --- | --- | --- |
-| Public | `/` | Everyone | Landing and catalog discovery |
+| Public | `/` | Everyone | Catalog-first homepage and product discovery |
 | Public | `/products/[slug]` | Everyone | Product detail and verified reviews |
-| Public | `/stores/[slug]` | Everyone | Approved store profile and product catalog |
+| Public | `/stores/[slug]` | Everyone | Verified store profile and product catalog |
 | Identity | `/login` | Anonymous | Password and demo-role login |
 | Shared | `/notifications` | Signed-in users | Durable actor notifications |
 | Buyer | `/cart` | Buyer | Review and update cart |
@@ -97,13 +97,16 @@ Identity behavior is product-wide rather than owned by one page:
 
 ## Public Pages
 
-### `/` — Landing and Catalog
+### `/` — Catalog Homepage
 
-Purpose: explain Cartlabs quickly and let visitors discover approved products.
+Purpose: let visitors discover published products immediately, with enough
+context to explain Cartlabs without a separate marketing landing page.
 
 Required functionality:
 
-- Present product purpose and clear catalog entry.
+- Make search and published product results the primary homepage content.
+- Present a compact product-purpose introduction without a full-screen hero,
+  splash screen, or extra step before catalog discovery.
 - Search published products by query.
 - Filter by category, minimum price, maximum price, and stock availability.
 - Paginate results and keep discovery state represented in URL parameters.
@@ -116,8 +119,10 @@ API dependencies: `GET /categories`, `GET /catalog/products`.
 
 Acceptance:
 
+- Product discovery is visible on initial page load without navigating through
+  a separate landing experience.
 - Reload and share preserve active search, filters, and page.
-- Only published, approved products returned by API are displayed.
+- Only published products from verified stores returned by API are displayed.
 - Removing filters restores broader results without losing navigation.
 
 ### `/products/[slug]` — Product Detail
@@ -146,13 +151,13 @@ Acceptance:
 
 ### `/stores/[slug]` — Store Profile
 
-Purpose: let visitors understand an approved seller and browse its public
+Purpose: let visitors understand a verified seller and browse its public
 catalog.
 
 Required functionality:
 
 - Show store name, description, seller display name, and creation context.
-- List only approved, published products belonging to this store.
+- List only published products belonging to this verified store.
 - Support search, category, price, stock, and pagination while keeping store
   scope fixed.
 - Link every result to product detail.
@@ -318,10 +323,10 @@ Purpose: summarize seller readiness and route to next required work.
 
 Required functionality:
 
-- Show store existence and moderation state.
+- Show store existence and verification state.
 - Summarize owned products by lifecycle state.
 - Summarize owned orders requiring action.
-- Route seller to store creation, rejected moderation fixes, product work, or
+- Route seller to store creation, rejected verification fixes, product work, or
   fulfillment as appropriate.
 - Handle seller with no store as a first-class onboarding state.
 
@@ -330,7 +335,7 @@ API dependencies: `GET /seller/store`, `GET /seller/products`,
 
 Acceptance:
 
-- Home never assumes seller already owns an approved store.
+- Home never assumes seller already owns a verified store.
 - Every blocking state exposes a supported next action.
 
 ### `/seller/store` — Store Setup and Editing
@@ -341,9 +346,9 @@ Required functionality:
 
 - Create store with name, slug, and description when none exists.
 - Edit existing store fields.
-- Show pending, approved, or rejected moderation status and note.
-- Warn that material edits return store to pending moderation.
-- Explain that product supply requires approved store status.
+- Show pending, approved, or rejected verification status and note.
+- Explain approved edits stay public and rejected edits return to pending.
+- Explain that product supply requires verified store status.
 
 API dependencies: `GET /seller/store`, `POST /seller/store`,
 `PATCH /seller/store`.
@@ -352,7 +357,7 @@ Acceptance:
 
 - Missing store renders creation, not generic failure.
 - Saved response becomes displayed source of truth.
-- Rejected store exposes moderation note beside corrective action.
+- Rejected store exposes verification note beside corrective action.
 
 ### `/seller/products` — Product List
 
@@ -360,19 +365,19 @@ Purpose: manage seller catalog supply.
 
 Required functionality:
 
-- List owned products with image, name, category, lifecycle status, moderation
-  status, variant count, and stock summary.
-- Distinguish draft, submitted/pending, published/approved, rejected, and
-  archived states represented by API data.
+- List owned products with image, name, category, lifecycle status, variant
+  count, and stock summary.
+- Distinguish draft, published, archived, and suspended states represented by
+  API data.
 - Link to product management and draft creation.
-- Explain store approval requirement when creation is forbidden.
+- Explain store verification requirement when creation is forbidden.
 - Handle no-product and unavailable states.
 
 API dependency: `GET /seller/products`.
 
 Acceptance:
 
-- Moderation note remains discoverable for rejected products.
+- Suspended status remains visible and cannot expose seller reinstatement controls.
 - Product status is not inferred from styling alone.
 
 ### `/seller/products/new` — Create Product
@@ -383,7 +388,7 @@ Required functionality:
 
 - Collect category, name, slug, and description.
 - Validate against current contract constraints.
-- Explain approved-store prerequisite.
+- Explain verified-store prerequisite.
 - Redirect successful creation to product management.
 
 API dependencies: `GET /categories`, `POST /seller/products`.
@@ -395,7 +400,7 @@ Acceptance:
 
 ### `/seller/products/[productId]` — Product Management
 
-Purpose: prepare, submit, and maintain one owned product.
+Purpose: prepare, publish, archive, and maintain one owned product.
 
 Required functionality:
 
@@ -405,9 +410,9 @@ Required functionality:
 - Adjust inventory by non-zero delta with required reason.
 - Display existing image metadata and add image URL, alt text, and position.
 - Clearly describe URL registration; current API does not upload binary files.
-- Show lifecycle, moderation status, and moderation note.
-- Submit eligible draft for moderation.
-- Explain missing prerequisites and publish conflicts.
+- Show lifecycle status.
+- Publish eligible draft/archive immediately and archive published listing.
+- Explain missing prerequisites, suspension, and publish conflicts.
 - Avoid unsupported variant/image edit or delete controls.
 
 API dependencies: `GET /seller/products/{productId}`,
@@ -415,6 +420,7 @@ API dependencies: `GET /seller/products/{productId}`,
 `POST /seller/products/{productId}/variants`,
 `POST /seller/products/{productId}/images`,
 `POST /seller/products/{productId}/publish`,
+`POST /seller/products/{productId}/archive`,
 `PATCH /seller/variants/{variantId}/inventory`.
 
 Acceptance:
@@ -457,7 +463,7 @@ Required functionality:
 
 - Show users, approved stores, published products, purchases, active orders,
   delivered orders, and gross merchandise value returned by API.
-- Link relevant summaries to supported moderation pages.
+- Link relevant summaries to verification and enforcement pages.
 - Show data timestamp context and unavailable state without inventing trends.
 
 API dependency: `GET /admin/overview`.
@@ -467,16 +473,16 @@ Acceptance:
 - Values and currency formatting reflect API response.
 - No chart implies historical data because API exposes current totals only.
 
-### `/admin/stores` — Store Moderation
+### `/admin/stores` — Store Verification
 
 Purpose: approve or reject marketplace stores.
 
 Required functionality:
 
-- List stores with identity, description, status, moderation note, and dates.
+- List stores with identity, description, status, verification note, and dates.
 - Make pending items distinguishable and reviewable.
-- Approve or reject with moderation note.
-- Confirm consequential moderation action and reconcile returned state.
+- Verify or reject; require note for rejection.
+- Confirm consequential verification action and reconcile returned state.
 - Support empty and unavailable states.
 
 API dependencies: `GET /admin/stores`,
@@ -484,29 +490,28 @@ API dependencies: `GET /admin/stores`,
 
 Acceptance:
 
-- Pending work can be found without hiding previously moderated records.
-- Repeated or stale moderation handles server state safely.
+- Pending work can be found without hiding previous decisions.
+- Repeated or stale verification handles server state safely.
 
-### `/admin/products` — Product Moderation
+### `/admin/products` — Listing Enforcement
 
-Purpose: approve or reject submitted products.
+Purpose: suspend unsafe published listings or reinstate corrected listings.
 
 Required functionality:
 
-- List product identity, store, category, description, variants, images,
-  lifecycle state, moderation state, and note.
-- Make pending products distinguishable and fully inspectable.
-- Approve or reject with moderation note.
-- Confirm consequential moderation action and reconcile returned state.
+- List published/suspended product identity, store, category, description,
+  variants, images, lifecycle state, and latest suspension context.
+- Suspend published product or reinstate suspended product with required reason.
+- Confirm consequential enforcement action and reconcile returned state.
 - Support empty and unavailable states.
 
 API dependencies: `GET /admin/products`,
-`PATCH /admin/products/{productId}/moderation`.
+`PATCH /admin/products/{productId}/status`.
 
 Acceptance:
 
-- Admin can inspect supply details required for a moderation decision.
-- Product does not appear approved in UI before server confirmation.
+- Admin can inspect supply details and latest suspension reason/actor/time.
+- Product status does not change in UI before server confirmation.
 
 ### `/admin/users` — User Status Management
 

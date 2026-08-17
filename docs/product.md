@@ -9,7 +9,7 @@ project that friends and recruiters can explore.
 
 - **Buyer:** browse, search, manage cart, checkout, track orders, review products
 - **Seller:** manage store, products, variants, inventory, and fulfillment
-- **Admin:** moderate marketplace, manage users, and inspect platform activity
+- **Admin:** verify stores, enforce listings, manage users, and inspect platform activity
 
 Three deterministic demo accounts provide quick login for each role.
 
@@ -45,7 +45,7 @@ Three deterministic demo accounts provide quick login for each role.
 
 ### Administration
 
-- Product and store moderation
+- Store verification and reactive product listing enforcement
 - User status management
 - Marketplace overview
 - Audit trail for privileged actions

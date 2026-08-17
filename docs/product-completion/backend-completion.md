@@ -1,5 +1,10 @@
 # Backend Completion Plan
 
+> Historical completion record. Product approval behavior described below was
+> superseded by [`../risk-based-moderation-refactor.md`](../risk-based-moderation-refactor.md):
+> verified sellers now publish immediately and admins enforce listings through
+> suspension/reinstatement.
+
 ## Goal
 
 Close remaining backend gaps against the declared marketplace MVP before new

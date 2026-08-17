@@ -5,7 +5,7 @@
 | Concern | Owner |
 | --- | --- |
 | Product name, description, category text projection | Search database |
-| Product lifecycle, moderation, store approval | Catalog database |
+| Product lifecycle, listing enforcement, store verification | Catalog database |
 | Variants, price, currency, inventory, images | Catalog database |
 | Public REST response and pagination | API/catalog |
 | Protobuf RPC schema | `api/proto/search/v1/search.proto` |
@@ -17,7 +17,7 @@ visibility decisions.
 ## Data flow
 
 ```text
-seller write
+seller/admin product write
   -> catalog PostgreSQL transaction
        -> product row
        -> catalog.search.upsert.v1 outbox row

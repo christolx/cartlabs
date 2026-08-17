@@ -1,5 +1,10 @@
 # Milestones
 
+> Milestones preserve implementation history. Current marketplace behavior uses
+> store verification, immediate verified-seller publishing, and reactive listing
+> suspension/reinstatement as defined in
+> [`risk-based-moderation-refactor.md`](risk-based-moderation-refactor.md).
+
 ## Milestone 1 — Identity and Catalog
 
 **Status:** Complete (2026-08-08)
@@ -238,7 +243,7 @@ out-of-order handling, telemetry, failure fallback, and migration operations.
 Real Compose workflow created a catalog product and observed its transactional
 `catalog.search.upsert.v1` outbox row published, worker delivery metric succeed,
 and independently owned search row appear. Catalog authority kept indexed draft
-and moderation-pending product hidden, then exposed it only after approval with
+and then-current moderation-pending product hidden, then exposed it after approval with
 current price, stock, category, and shared local image. Stopping search returned
 the same product result through SQL fallback in 765 ms, incremented fallback
 telemetry, and recovered without data loss. Reindex aligned three search rows to

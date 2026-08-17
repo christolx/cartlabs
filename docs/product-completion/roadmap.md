@@ -21,7 +21,7 @@ redesigned frontend.
 ## Phase 0 - Backend Completion
 
 - [x] Add admin user listing and safe account status management.
-- [x] Add approved public store profiles and store-filtered catalog results.
+- [x] Add verified public store profiles and store-filtered catalog results.
 - [x] Add owned seller product detail endpoint.
 - [x] Synchronize OpenAPI and generated Go/TypeScript contracts.
 - [x] Pass backend unit, integration, Compose, outage, and full checks.
@@ -29,7 +29,7 @@ redesigned frontend.
 
 ## Phase 1 - Foundation
 
-- [ ] Build functional landing and login pages.
+- [ ] Build the catalog-first homepage and login page.
 - [ ] Add durable sessions, role navigation, and shared UI states.
 - [ ] Pass foundation functional QA.
 
@@ -47,7 +47,8 @@ redesigned frontend.
 
 ## Phase 4 - Admin
 
-- [ ] Build admin overview, moderation, user-management, and audit pages.
+- [ ] Build admin overview, store verification, listing enforcement,
+  user-management, and audit pages.
 - [ ] Complete admin flow through normal navigation.
 - [ ] Pass admin functional QA.
 
