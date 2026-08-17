@@ -49,9 +49,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
   const pages = catalog ? Math.max(1, Math.ceil(catalog.total / catalog.pageSize)) : 1;
 
   return <main>
-    <section className="catalog-intro shell" aria-labelledby="home-title"><div><p className="eyebrow">Verified independent stores</p><h1 id="home-title">Useful goods, live inventory.</h1></div><p>Discover approved products from independent sellers. Store moderation, stock, checkout, and fulfillment use real marketplace state.</p></section>
+    <section className="catalog-intro shell" aria-labelledby="home-title"><div><p className="eyebrow">Verified independent stores</p><h1 id="home-title">Useful goods, live inventory.</h1></div><p>Discover seller-published products from verified stores. Listing enforcement, stock, checkout, and fulfillment use real marketplace state.</p></section>
     <section id="catalog" className="catalog shell" aria-labelledby="catalog-title">
-      <div className="section-heading"><h2 id="catalog-title">Catalog</h2><p>{catalog ? `${catalog.total} published products` : "Live inventory from approved stores"}</p></div>
+      <div className="section-heading"><h2 id="catalog-title">Catalog</h2><p>{catalog ? `${catalog.total} published products` : "Live inventory from verified stores"}</p></div>
       <form className="filters" method="get" action="/">
         <div className="field search-field"><label htmlFor="q">Search products</label><input id="q" name="q" defaultValue={filters.q} maxLength={100} placeholder="Basket, lamp, textile" /></div>
         <div className="field"><label htmlFor="category">Category</label><select id="category" name="category" defaultValue={filters.category ?? ""}><option value="">All categories</option>{categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></div>

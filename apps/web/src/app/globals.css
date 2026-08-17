@@ -234,7 +234,7 @@ details summary { color: var(--accent); font-weight: 650; cursor: pointer; }
 .heading-status { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
 .heading-status h2, .heading-status h3 { margin: 0; }
 .moderation-note { color: var(--danger) !important; font-size: 13px; }
-.metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 22px 0; background: var(--line); }
+.metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 1px; margin: 22px 0; background: var(--line); }
 .metric-row div { display: grid; gap: 5px; padding: 16px; background: var(--bg); }
 .metric-row strong { font-size: 26px; }
 .metric-row span { color: var(--muted); font-size: 11px; }
