@@ -16,22 +16,42 @@ async function validateFile(file: File) {
   if (!allowedTypes.has(file.type) || file.size > maximumBytes) {
     throw new Error("Choose JPEG, PNG, WebP, or AVIF file up to 5 MB.");
   }
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = bitmap;
-  bitmap.close();
+  const { width, height } = await imageDimensions(file);
   if (width > maximumDimension || height > maximumDimension) {
     throw new Error("Image dimensions must not exceed 4096 × 4096 pixels.");
   }
 }
 
+function imageDimensions(file: File) {
+  const objectURL = URL.createObjectURL(file);
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const image = document.createElement("img");
+    const timeout = window.setTimeout(() => finish(new Error("Image could not be decoded.")), 10_000);
+    function finish(error?: Error) {
+      window.clearTimeout(timeout);
+      URL.revokeObjectURL(objectURL);
+      image.onload = null;
+      image.onerror = null;
+      if (error) reject(error);
+      else resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    }
+    image.onload = () => finish();
+    image.onerror = () => finish(new Error("Image could not be decoded."));
+    image.src = objectURL;
+  });
+}
+
 async function uploadToCloudinary(file: File, onProgress: (value: number) => void) {
   const configResponse = await fetch("/api/cloudinary-config", { cache: "no-store" });
+  if (!configResponse.ok) throw new Error("Cloudinary upload configuration is unavailable.");
   const config = await configResponse.json() as { cloudName?: string; uploadPreset?: string };
-  if (!config.cloudName || !config.uploadPreset) throw new Error("Cloudinary upload is not configured.");
+  const { cloudName, uploadPreset } = config;
+  if (!cloudName || !uploadPreset) throw new Error("Cloudinary upload is not configured.");
 
-	return new Promise<string>((resolve, reject) => {
-		const request = new XMLHttpRequest();
-		request.open("POST", `https://api.cloudinary.com/v1_1/${encodeURIComponent(config.cloudName!)}/image/upload`);
+  return new Promise<string>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`);
+    request.timeout = 30_000;
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
     });
@@ -48,9 +68,10 @@ async function uploadToCloudinary(file: File, onProgress: (value: number) => voi
       }
     });
     request.addEventListener("error", () => reject(new Error("Cloudinary upload failed.")));
+    request.addEventListener("timeout", () => reject(new Error("Cloudinary upload timed out.")));
     const form = new FormData();
     form.set("file", file);
-		form.set("upload_preset", config.uploadPreset!);
+    form.set("upload_preset", uploadPreset);
     request.send(form);
   });
 }
@@ -66,6 +87,7 @@ export function ProductImageManager({ productId, status, images, onChanged }: {
   const [preview, setPreview] = useState("");
   const [altText, setAltText] = useState("");
   const [progress, setProgress] = useState(0);
+  const [validating, setValidating] = useState(false);
   const [busy, setBusy] = useState("");
   const [message, setMessage] = useState("");
   const [replacementAlt, setReplacementAlt] = useState<Record<string, string>>({});
@@ -76,6 +98,7 @@ export function ProductImageManager({ productId, status, images, onChanged }: {
   async function selectFile(nextFile?: File) {
     setMessage("");
     if (!nextFile) return;
+    setValidating(true);
     try {
       await validateFile(nextFile);
       if (preview) URL.revokeObjectURL(preview);
@@ -85,11 +108,10 @@ export function ProductImageManager({ productId, status, images, onChanged }: {
       setFile(null);
       setPreview("");
       setMessage(errorMessage(cause, "Invalid image."));
-    }
+    } finally { setValidating(false); }
   }
 
   async function upload(fileToUpload: File, path: string, method: "POST" | "PUT", nextAltText: string) {
-    await validateFile(fileToUpload);
     const url = await uploadToCloudinary(fileToUpload, setProgress);
     await request(path, { method, body: JSON.stringify({ url, altText: nextAltText.trim() }) });
   }
@@ -113,6 +135,7 @@ export function ProductImageManager({ productId, status, images, onChanged }: {
     if (!replacement) return;
     setBusy(image.id); setMessage(""); setProgress(0);
     try {
+      await validateFile(replacement);
       await upload(replacement, `/seller/products/${productId}/images/${image.id}`, "PUT", replacementAlt[image.id] ?? image.altText);
       await onChanged(); setMessage("Image replaced.");
     } catch (cause) { setMessage(errorMessage(cause, "Image replacement failed.")); }
@@ -144,12 +167,16 @@ export function ProductImageManager({ productId, status, images, onChanged }: {
     </figure>)}</div> : <p className="empty-copy">No images uploaded.</p>}
     <form className="stack-form compact-form image-upload-form" onSubmit={addImage}>
       <div className="image-drop-zone" onDragOver={(event: DragEvent) => event.preventDefault()} onDrop={(event: DragEvent) => { event.preventDefault(); void selectFile(event.dataTransfer.files[0]); }}>
-        {preview ? <Image src={preview} alt="Selected image preview" width={240} height={180} unoptimized /> : <p>Drop image here or choose file.</p>}
-        <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={atLimit || Boolean(busy)} onChange={(event) => void selectFile(event.currentTarget.files?.[0])} />
+        {preview ? <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Blob URLs bypass Next image optimization. */}
+          <img src={preview} alt="Selected image preview" width={240} height={180} />
+        </> : <p>{validating ? "Checking image…" : "Drop image here or choose file."}</p>}
+        <label className="sr-only" htmlFor="product-image-file">Product image file</label>
+        <input id="product-image-file" ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={atLimit || validating || Boolean(busy)} onChange={(event) => void selectFile(event.currentTarget.files?.[0])} />
       </div>
-      <label><span>Alt text</span><input value={altText} onChange={(event) => setAltText(event.currentTarget.value)} maxLength={160} required disabled={atLimit || Boolean(busy)} /></label>
+      <label><span>Alt text</span><input value={altText} onChange={(event) => setAltText(event.currentTarget.value)} maxLength={160} required disabled={atLimit || validating || Boolean(busy)} /></label>
       {busy && progress ? <progress value={progress} max="100">{progress}%</progress> : null}
-      <button className="button button-primary" disabled={atLimit || !file || Boolean(busy)}>{busy === "add" ? `Uploading ${progress}%` : atLimit ? "Eight-image limit reached" : "Add image"}</button>
+      <button className="button button-primary" disabled={atLimit || !file || validating || Boolean(busy)}>{busy === "add" ? `Uploading ${progress}%` : atLimit ? "Eight-image limit reached" : "Add image"}</button>
     </form>
     {message ? <p className="form-message" role="status">{message}</p> : null}
   </section>;
