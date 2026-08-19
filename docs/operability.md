@@ -89,8 +89,9 @@ to demo users and operators.
 
 ## Incident checks
 
-1. Check `/api/v1/health/live` and `/api/v1/health/ready`; readiness names the
-   unavailable dependency.
+1. Check `/api/backend/health/live` and `/api/backend/health/ready` externally,
+   or `/api/v1/health/live` and `/api/v1/health/ready` from within cluster;
+   readiness names unavailable dependency.
 2. Open `Cartlabs Overview`; correlate elevated errors or latency with outbox
    backlog and notification outcomes.
 3. Search Tempo by service and time, then use trace ID to locate matching JSON

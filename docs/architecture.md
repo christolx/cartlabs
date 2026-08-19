@@ -58,7 +58,7 @@ explicit interfaces. No module reads another module's tables directly.
 ### HTTP
 
 - OpenAPI is written first and stored in repository.
-- Public endpoints use `/api/v1`.
+- API contract endpoints use `/api/v1` internally; browser traffic reaches them through same-origin `/api/backend` proxy routes in web.
 - TypeScript client is generated from validated specification.
 - API errors use one documented problem format.
 - Pagination, filtering, sorting, authentication, and idempotency stay consistent.
