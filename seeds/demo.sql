@@ -40,6 +40,7 @@ ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name;
 
 INSERT INTO stores (id, seller_id, name, slug, description, status)
 VALUES
+    ('01989f00-0000-7000-8000-000000000200', '01989f00-0000-7000-8000-000000000002', 'Demo Seller Store', 'demo-seller-store', 'Official demo seller store for testing products and orders.', 'approved'),
     ('01989f00-0000-7000-8000-000000000201', '01989f00-0000-7000-8000-000000000004', 'Nusantara Goods', 'nusantara-goods', 'Durable everyday goods from independent Indonesian makers.', 'approved'),
     ('01989f00-0000-7000-8000-000000000202', '01989f00-0000-7000-8000-000000000006', 'Java Loom Studio', 'java-loom-studio', 'Small-run textiles and useful woven pieces.', 'approved'),
     ('01989f00-0000-7000-8000-000000000203', '01989f00-0000-7000-8000-000000000008', 'Studio Minimal', 'studio-minimal', 'Exact lighting, clocks, and compact furniture for focused rooms.', 'approved'),
