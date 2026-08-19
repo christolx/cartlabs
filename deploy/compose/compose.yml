@@ -91,6 +91,7 @@ services:
       OTEL_TRACES_SAMPLER_ARG: "1"
       SEARCH_GRPC_ADDR: search:9092
       SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -290,6 +291,9 @@ services:
       MOCK_PAYMENT_API_KEY: cartlabs-demo-reset-api-key-not-for-production
       SEARCH_GRPC_ADDR: search:9092
       SEARCH_SERVICE_TOKEN: ${SEARCH_SERVICE_TOKEN:-cartlabs-compose-search-service-token-not-production}
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
     working_dir: /workspace
     volumes:
       - ../../migrations:/workspace/migrations:ro
@@ -331,6 +335,8 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
       API_INTERNAL_URL: http://api:8080/api/v1
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:-}
+      NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: ${NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET:-}
     ports:
       - "3000:3000"
     depends_on:

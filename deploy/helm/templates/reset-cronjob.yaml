@@ -54,6 +54,7 @@ spec:
                 - { name: SEARCH_GRPC_ADDR, value: {{ printf "%s-search:9092" (include "cartlabs.fullname" .) | quote }} }
               envFrom:
                 - secretRef: { name: {{ .Values.global.existingSecret }} }
+                - secretRef: { name: {{ .Values.demoReset.cloudinarySecret }} }
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities: { drop: ["ALL"] }

@@ -21,12 +21,23 @@ default name is `cartlabs-secrets`.
 | `RABBITMQ_DEFAULT_PASS` | Initializes the bundled RabbitMQ user |
 | `SEARCH_DATABASE_URL` | Independent search-owned PostgreSQL database URL |
 | `SEARCH_SERVICE_TOKEN` | Authenticates internal search gRPC calls |
+| `CLOUDINARY_CLOUD_NAME` | Restricts seller image URLs |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Selects browser upload account |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Selects restricted unsigned browser preset |
 | `BACKUP_S3_ENDPOINT` | S3-compatible backup endpoint |
 | `BACKUP_S3_ACCESS_KEY` | Backup access key |
 | `BACKUP_S3_SECRET_KEY` | Backup secret key |
 | `BACKUP_S3_BUCKET` | Existing backup bucket |
 | `GRAFANA_ADMIN_USER` | Internal Grafana administrator |
 | `GRAFANA_ADMIN_PASSWORD` | Internal Grafana administrator password |
+
+Create separate secret named by `demoReset.cloudinarySecret`. Only reset CronJob receives it:
+
+| Key | Purpose |
+| --- | --- |
+| `CLOUDINARY_CLOUD_NAME` | Selects cleanup account |
+| `CLOUDINARY_API_KEY` | Authenticates reset cleanup |
+| `CLOUDINARY_API_SECRET` | Authenticates reset cleanup |
 
 With release name `cartlabs`, internal hosts are `cartlabs-postgresql`,
 `cartlabs-redis`, `cartlabs-rabbitmq`, and `cartlabs-mock-payment`. Keep URLs in

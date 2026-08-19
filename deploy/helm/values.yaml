@@ -129,6 +129,7 @@ demoReset:
   enabled: true
   schedule: "0 3 * * *"
   suspend: true
+  cloudinarySecret: cartlabs-cloudinary-cleanup
 
 networkPolicy:
   enabled: true

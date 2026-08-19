@@ -50,6 +50,15 @@
         "journeyInterval": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" },
         "requestTimeout": { "type": "string", "pattern": "^[1-9][0-9]*(ms|s|m|h)$" }
       }
+    },
+    "demoReset": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "schedule": { "type": "string", "minLength": 1 },
+        "suspend": { "type": "boolean" },
+        "cloudinarySecret": { "type": "string", "minLength": 1 }
+      }
     }
   }
 }

@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
+	"github.com/christolx/cartlabs/internal/cloudinary"
 	"github.com/christolx/cartlabs/internal/config"
 	"github.com/christolx/cartlabs/internal/database"
 	searchservice "github.com/christolx/cartlabs/internal/search"
@@ -13,13 +15,21 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
 	cfg, err := config.Load()
 	if err != nil {
 		logger.Error("load configuration", "error", err)
 		os.Exit(1)
+	}
+	cleanup, cleanupErr := cloudinary.DeleteDemoUploads(ctx, http.DefaultClient, cloudinary.CleanupConfig{
+		CloudName: cfg.CloudinaryCloudName, APIKey: cfg.CloudinaryAPIKey, APISecret: cfg.CloudinaryAPISecret,
+	})
+	if cleanupErr != nil {
+		logger.Error("Cloudinary cleanup failed; database reset continuing", "error", cleanupErr)
+	} else {
+		logger.Info("Cloudinary cleanup complete", "deleted", cleanup.Deleted, "pages", cleanup.Pages)
 	}
 	pool, err := database.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
