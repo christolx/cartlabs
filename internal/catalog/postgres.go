@@ -185,12 +185,29 @@ func scanVariant(row rowScanner) (Variant, error) {
 	return value, nil
 }
 
-func (r *PostgresRepository) AddImage(ctx context.Context, productID string, value ProductImage, actorID string) (ProductImage, error) {
+func (r *PostgresRepository) AddImage(ctx context.Context, sellerID, productID string, value ProductImage, actorID string) (ProductImage, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return ProductImage{}, fmt.Errorf("begin create product image: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := tx.QueryRow(ctx, `SELECT p.id FROM products p JOIN stores s ON s.id=p.store_id WHERE p.id=$1 AND s.seller_id=$2 FOR UPDATE OF p`, productID, sellerID).Scan(&productID); errors.Is(err, pgx.ErrNoRows) {
+		return ProductImage{}, domain.ErrNotFound
+	} else if err != nil {
+		return ProductImage{}, fmt.Errorf("lock product for image add: %w", err)
+	}
+	var imageCount int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM product_images WHERE product_id=$1`, productID).Scan(&imageCount); err != nil {
+		return ProductImage{}, fmt.Errorf("count product images: %w", err)
+	}
+	if imageCount >= 8 {
+		return ProductImage{}, domain.ErrConflict
+	}
+	if value.Position < 0 {
+		value.Position = imageCount
+	} else if value.Position > imageCount {
+		return ProductImage{}, domain.ErrInvalid
+	}
 	var created ProductImage
 	err = tx.QueryRow(ctx, `INSERT INTO product_images (id,product_id,url,alt_text,position) VALUES ($1,$2,$3,$4,$5) RETURNING id::text,url,alt_text,position`,
 		value.ID, productID, value.URL, value.AltText, value.Position).Scan(&created.ID, &created.URL, &created.AltText, &created.Position)
@@ -204,6 +221,77 @@ func (r *PostgresRepository) AddImage(ctx context.Context, productID string, val
 		return ProductImage{}, fmt.Errorf("commit create product image: %w", err)
 	}
 	return created, nil
+}
+
+func (r *PostgresRepository) ReplaceImage(ctx context.Context, sellerID, productID, imageID string, value ProductImage, actorID string) (ProductImage, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return ProductImage{}, fmt.Errorf("begin replace product image: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var replaced ProductImage
+	err = tx.QueryRow(ctx, `
+		UPDATE product_images i SET url=$4,alt_text=$5
+		FROM products p JOIN stores s ON s.id=p.store_id
+		WHERE i.id=$3 AND i.product_id=p.id AND p.id=$2 AND s.seller_id=$1
+		RETURNING i.id::text,i.url,i.alt_text,i.position`, sellerID, productID, imageID, value.URL, value.AltText).
+		Scan(&replaced.ID, &replaced.URL, &replaced.AltText, &replaced.Position)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ProductImage{}, domain.ErrNotFound
+	}
+	if err != nil {
+		return ProductImage{}, mapWriteError(err)
+	}
+	if err := insertAudit(ctx, tx, actorID, "product.image.replaced", "product", productID, time.Now().UTC()); err != nil {
+		return ProductImage{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return ProductImage{}, fmt.Errorf("commit replace product image: %w", err)
+	}
+	return replaced, nil
+}
+
+func (r *PostgresRepository) DeleteImage(ctx context.Context, sellerID, productID, imageID, actorID string) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin delete product image: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	var status string
+	var imageCount int
+	if err := tx.QueryRow(ctx, `SELECT p.status::text FROM products p JOIN stores s ON s.id=p.store_id WHERE p.id=$1 AND s.seller_id=$2 FOR UPDATE OF p`, productID, sellerID).Scan(&status); errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound
+	} else if err != nil {
+		return fmt.Errorf("lock product for image delete: %w", err)
+	}
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM product_images WHERE product_id=$1`, productID).Scan(&imageCount); err != nil {
+		return fmt.Errorf("count product images: %w", err)
+	}
+	var deletedPosition int
+	if err := tx.QueryRow(ctx, `SELECT position FROM product_images WHERE id=$1 AND product_id=$2`, imageID, productID).Scan(&deletedPosition); errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrNotFound
+	} else if err != nil {
+		return fmt.Errorf("find product image for delete: %w", err)
+	}
+	if status == "published" && imageCount <= 1 {
+		return domain.ErrConflict
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM product_images WHERE id=$1 AND product_id=$2`, imageID, productID); err != nil {
+		return mapWriteError(err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE product_images SET position=position+8 WHERE product_id=$1 AND position>$2`, productID, deletedPosition); err != nil {
+		return fmt.Errorf("compact product image positions: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `UPDATE product_images SET position=position-9 WHERE product_id=$1 AND position>$2+8`, productID, deletedPosition); err != nil {
+		return fmt.Errorf("finalize product image positions: %w", err)
+	}
+	if err := insertAudit(ctx, tx, actorID, "product.image.deleted", "product", productID, time.Now().UTC()); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit delete product image: %w", err)
+	}
+	return nil
 }
 
 func (r *PostgresRepository) Publish(ctx context.Context, productID, actorID string, now time.Time) (Product, error) {

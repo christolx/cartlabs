@@ -50,8 +50,14 @@ func (f *fakeRepository) AddVariant(_ context.Context, _ string, v Variant, _ st
 	f.variant = v
 	return v, nil
 }
-func (f *fakeRepository) AddImage(_ context.Context, _ string, i ProductImage, _ string) (ProductImage, error) {
+func (f *fakeRepository) AddImage(_ context.Context, _, _ string, i ProductImage, _ string) (ProductImage, error) {
 	return i, nil
+}
+func (f *fakeRepository) ReplaceImage(_ context.Context, _, _, _ string, i ProductImage, _ string) (ProductImage, error) {
+	return i, nil
+}
+func (f *fakeRepository) DeleteImage(context.Context, string, string, string, string) error {
+	return nil
 }
 func (f *fakeRepository) Publish(_ context.Context, _ string, _ string, _ time.Time) (Product, error) {
 	f.product.Status = "published"
@@ -102,13 +108,43 @@ func TestCatalogSellerOwnershipAndValidation(t *testing.T) {
 	if variant.Currency != "IDR" || variant.Stock != 3 {
 		t.Fatalf("variant = %#v", variant)
 	}
-	image, err := service.AddImage(context.Background(), seller, product.ID, ImageInput{URL: "/images/basket.webp", AltText: "Basket", Position: 0})
+	position := 0
+	image, err := service.AddImage(context.Background(), seller, product.ID, ImageInput{URL: "/images/basket.webp", AltText: "Basket", Position: &position})
 	if err != nil || image.URL != "/images/basket.webp" {
 		t.Fatalf("image = %#v, %v", image, err)
 	}
 	buyer := identity.Principal{UserID: "buyer", Role: identity.RoleBuyer}
 	if _, err := service.Create(context.Background(), buyer, ProductInput{}); !errors.Is(err, domain.ErrForbidden) {
 		t.Fatalf("buyer error = %v", err)
+	}
+}
+
+func TestImageURLValidation(t *testing.T) {
+	productID := "01989f00-0000-7000-8000-000000000201"
+	seller := identity.Principal{UserID: "seller", Role: identity.RoleSeller}
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{name: "local seed", url: "/images/catalog-v2/basket.webp"},
+		{name: "configured cloud", url: "https://res.cloudinary.com/demo-cloud/image/upload/v1/basket.webp"},
+		{name: "wrong cloud", url: "https://res.cloudinary.com/other/image/upload/v1/basket.webp", wantErr: true},
+		{name: "wrong host", url: "https://example.com/demo-cloud/image/upload/v1/basket.webp", wantErr: true},
+		{name: "insecure", url: "http://res.cloudinary.com/demo-cloud/image/upload/v1/basket.webp", wantErr: true},
+		{name: "other local path", url: "/uploads/basket.webp", wantErr: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := NewService(&fakeRepository{product: Product{ID: productID}}, WithCloudinaryCloudName("demo-cloud"))
+			_, err := service.AddImage(context.Background(), seller, productID, ImageInput{URL: test.url, AltText: "Basket"})
+			if test.wantErr && !errors.Is(err, domain.ErrInvalid) {
+				t.Fatalf("error = %v", err)
+			}
+			if !test.wantErr && err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

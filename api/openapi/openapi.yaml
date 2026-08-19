@@ -365,6 +365,40 @@ paths:
               schema: {$ref: "#/components/schemas/ProductImage"}
         "400": {$ref: "#/components/responses/BadRequest"}
         "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
+  /seller/products/{productId}/images/{imageId}:
+    put:
+      operationId: replaceProductImage
+      summary: Replace owned product image without changing position
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+        - {$ref: "#/components/parameters/ImageId"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ImageReplacementInput"}
+      responses:
+        "200":
+          description: Replaced product image
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ProductImage"}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+    delete:
+      operationId: deleteProductImage
+      summary: Delete owned product image and compact remaining positions
+      tags: [Seller]
+      parameters:
+        - {$ref: "#/components/parameters/ProductId"}
+        - {$ref: "#/components/parameters/ImageId"}
+      responses:
+        "204": {description: Product image deleted}
+        "400": {$ref: "#/components/responses/BadRequest"}
+        "404": {$ref: "#/components/responses/NotFound"}
+        "409": {$ref: "#/components/responses/Conflict"}
   /seller/products/{productId}/publish:
     post:
       operationId: publishSellerProduct
@@ -800,6 +834,7 @@ components:
       description: Production Secure cookie with Path=/. Local HTTP uses cartlabs_refresh scoped to authentication routes.
   parameters:
     ProductId: {name: productId, in: path, required: true, schema: {type: string, format: uuid}}
+    ImageId: {name: imageId, in: path, required: true, schema: {type: string, format: uuid}}
     VariantId: {name: variantId, in: path, required: true, schema: {type: string, format: uuid}}
     StoreId: {name: storeId, in: path, required: true, schema: {type: string, format: uuid}}
     UserId: {name: userId, in: path, required: true, schema: {type: string, format: uuid}}
@@ -977,11 +1012,18 @@ components:
     ImageInput:
       type: object
       additionalProperties: false
-      required: [url, altText, position]
+      required: [url, altText]
       properties:
         url: {type: string, format: uri-reference, pattern: '^(https?://|/[^/])'}
         altText: {type: string, maxLength: 160}
         position: {type: integer, minimum: 0}
+    ImageReplacementInput:
+      type: object
+      additionalProperties: false
+      required: [url, altText]
+      properties:
+        url: {type: string, format: uri-reference, pattern: '^(https://res\.cloudinary\.com/|/images/)'}
+        altText: {type: string, maxLength: 160}
     ProductImage:
       type: object
       additionalProperties: false

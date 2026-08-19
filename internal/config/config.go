@@ -31,6 +31,9 @@ type Config struct {
 	SearchMetricsAddress string
 	SearchDatabaseURL    string
 	SearchServiceToken   string
+	CloudinaryCloudName  string
+	CloudinaryAPIKey     string
+	CloudinaryAPISecret  string
 }
 
 func Load() (Config, error) {
@@ -55,6 +58,9 @@ func Load() (Config, error) {
 		SearchMetricsAddress: envOr("SEARCH_METRICS_ADDR", ":9093"),
 		SearchDatabaseURL:    envOr("SEARCH_DATABASE_URL", "postgres://cartlabs:cartlabs@localhost:5432/cartlabs_search?sslmode=disable"),
 		SearchServiceToken:   envOr("SEARCH_SERVICE_TOKEN", "cartlabs-local-search-token-change-me"),
+		CloudinaryCloudName:  envOr("CLOUDINARY_CLOUD_NAME", envOr("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "")),
+		CloudinaryAPIKey:     envOr("CLOUDINARY_API_KEY", ""),
+		CloudinaryAPISecret:  envOr("CLOUDINARY_API_SECRET", ""),
 	}
 	var err error
 	if cfg.TraceSampleRatio, err = envFloat("OTEL_TRACES_SAMPLER_ARG", 1); err != nil {

@@ -280,6 +280,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/seller/products/{productId}/images/{imageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace owned product image without changing position */
+        put: operations["replaceProductImage"];
+        post?: never;
+        /** Delete owned product image and compact remaining positions */
+        delete: operations["deleteProductImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/seller/products/{productId}/publish": {
         parameters: {
             query?: never;
@@ -835,7 +853,12 @@ export interface components {
             /** Format: uri-reference */
             url: string;
             altText: string;
-            position: number;
+            position?: number;
+        };
+        ImageReplacementInput: {
+            /** Format: uri-reference */
+            url: string;
+            altText: string;
         };
         ProductImage: {
             /** Format: uuid */
@@ -1278,6 +1301,7 @@ export interface components {
     };
     parameters: {
         ProductId: string;
+        ImageId: string;
         VariantId: string;
         StoreId: string;
         UserId: string;
@@ -1797,6 +1821,60 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    replaceProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+                imageId: components["parameters"]["ImageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImageReplacementInput"];
+            };
+        };
+        responses: {
+            /** @description Replaced product image */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductImage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    deleteProductImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                productId: components["parameters"]["ProductId"];
+                imageId: components["parameters"]["ImageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product image deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
         };
     };
     publishSellerProduct: {

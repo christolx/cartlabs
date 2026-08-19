@@ -67,7 +67,7 @@ func main() {
 		if result == "fallback" {
 			logger.Warn("catalog search compatibility fallback")
 		}
-	})}
+	}), catalog.WithCloudinaryCloudName(cfg.CloudinaryCloudName)}
 	var searchClient *searchservice.Client
 	if cfg.SearchGRPCAddress != "" {
 		searchClient, err = searchservice.NewClient(cfg.SearchGRPCAddress, cfg.SearchServiceToken)

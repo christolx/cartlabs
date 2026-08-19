@@ -64,7 +64,12 @@ type ProductImage struct {
 type ImageInput struct {
 	URL      string `json:"url"`
 	AltText  string `json:"altText"`
-	Position int    `json:"position"`
+	Position *int   `json:"position,omitempty"`
+}
+
+type ImageReplacementInput struct {
+	URL     string `json:"url"`
+	AltText string `json:"altText"`
 }
 
 type Filters struct {

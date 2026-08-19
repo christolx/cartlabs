@@ -62,6 +62,8 @@ type CatalogService interface {
 	Update(context.Context, identity.Principal, string, catalog.ProductInput) (catalog.Product, error)
 	AddVariant(context.Context, identity.Principal, string, catalog.VariantInput) (catalog.Variant, error)
 	AddImage(context.Context, identity.Principal, string, catalog.ImageInput) (catalog.ProductImage, error)
+	ReplaceImage(context.Context, identity.Principal, string, string, catalog.ImageReplacementInput) (catalog.ProductImage, error)
+	DeleteImage(context.Context, identity.Principal, string, string) error
 	Publish(context.Context, identity.Principal, string) (catalog.Product, error)
 	Archive(context.Context, identity.Principal, string) (catalog.Product, error)
 	AdjustInventory(context.Context, identity.Principal, string, int, string) (catalog.Variant, error)
@@ -172,6 +174,8 @@ func New(checker ReadinessChecker, logger *slog.Logger, options ...Option) *Serv
 	mux.HandleFunc("PATCH /api/v1/seller/products/{productId}", application.auth(application.updateProduct))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/variants", application.auth(application.createVariant))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/images", application.auth(application.createImage))
+	mux.HandleFunc("PUT /api/v1/seller/products/{productId}/images/{imageId}", application.auth(application.replaceImage))
+	mux.HandleFunc("DELETE /api/v1/seller/products/{productId}/images/{imageId}", application.auth(application.deleteImage))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/publish", application.auth(application.publishProduct))
 	mux.HandleFunc("POST /api/v1/seller/products/{productId}/archive", application.auth(application.archiveProduct))
 	mux.HandleFunc("PATCH /api/v1/seller/variants/{variantId}/inventory", application.auth(application.adjustInventory))

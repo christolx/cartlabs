@@ -107,12 +107,41 @@ func TestProductLifecycleEnforcesOwnershipCompletenessAndAdminSuspension(t *test
 	if _, err := repository.AddVariant(ctx, product.ID, Variant{ID: variantID, SKU: "LIFE-" + variantID[:8], Name: "Default", Attributes: map[string]string{}, PriceMinor: 1000, Currency: "IDR", Stock: 2, Active: true}, sellerID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := repository.AddImage(ctx, product.ID, ProductImage{ID: imageID, URL: "/images/shared-product.webp", AltText: "Product", Position: 0}, sellerID); err != nil {
+	if _, err := repository.AddImage(ctx, sellerID, product.ID, ProductImage{ID: imageID, URL: "/images/shared-product.webp", AltText: "Product", Position: 0}, sellerID); err != nil {
 		t.Fatal(err)
 	}
 	product, err = repository.Publish(ctx, product.ID, sellerID, now.Add(2*time.Second))
 	if err != nil || product.Status != "published" {
 		t.Fatalf("published=%#v err=%v", product, err)
+	}
+	if err := repository.DeleteImage(ctx, sellerID, product.ID, imageID, sellerID); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("delete last published image error = %v", err)
+	}
+	secondImageID := uuid.NewString()
+	if _, err := repository.AddImage(ctx, sellerID, product.ID, ProductImage{ID: secondImageID, URL: "/images/shared-product.webp", AltText: "Second", Position: 1}, sellerID); err != nil {
+		t.Fatal(err)
+	}
+	replaced, err := repository.ReplaceImage(ctx, sellerID, product.ID, secondImageID, ProductImage{URL: "/images/catalog-v2/studio-tray.webp", AltText: "Replacement"}, sellerID)
+	if err != nil || replaced.Position != 1 || replaced.AltText != "Replacement" {
+		t.Fatalf("replaced=%#v err=%v", replaced, err)
+	}
+	if err := repository.DeleteImage(ctx, sellerID, product.ID, imageID, sellerID); err != nil {
+		t.Fatal(err)
+	}
+	var compactedPosition int
+	if err := pool.QueryRow(ctx, `SELECT position FROM product_images WHERE id=$1`, secondImageID).Scan(&compactedPosition); err != nil || compactedPosition != 0 {
+		t.Fatalf("compacted position=%d err=%v", compactedPosition, err)
+	}
+	for position := 1; position < 8; position++ {
+		if _, err := repository.AddImage(ctx, sellerID, product.ID, ProductImage{ID: uuid.NewString(), URL: "/images/shared-product.webp", AltText: "Extra", Position: position}, sellerID); err != nil {
+			t.Fatalf("add image %d: %v", position, err)
+		}
+	}
+	if _, err := repository.AddImage(ctx, sellerID, product.ID, ProductImage{ID: uuid.NewString(), URL: "/images/shared-product.webp", AltText: "Ninth", Position: 8}, sellerID); !errors.Is(err, domain.ErrConflict) {
+		t.Fatalf("ninth image error = %v", err)
+	}
+	if _, err := repository.AddImage(ctx, uuid.NewString(), product.ID, ProductImage{ID: uuid.NewString(), URL: "/images/shared-product.webp", AltText: "Other seller", Position: 0}, sellerID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("other seller add error = %v", err)
 	}
 	product, err = repository.UpdateStatus(ctx, product.ID, "suspended", "policy violation", adminID, now.Add(3*time.Second))
 	if err != nil || product.Status != "suspended" || product.EnforcementReason != "policy violation" || product.EnforcedBy == nil || *product.EnforcedBy != "Lifecycle Admin" {

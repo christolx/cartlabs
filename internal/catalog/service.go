@@ -22,7 +22,9 @@ type Repository interface {
 	Create(context.Context, string, Product, string) (Product, error)
 	Update(context.Context, Product, string, string) (Product, error)
 	AddVariant(context.Context, string, Variant, string) (Variant, error)
-	AddImage(context.Context, string, ProductImage, string) (ProductImage, error)
+	AddImage(context.Context, string, string, ProductImage, string) (ProductImage, error)
+	ReplaceImage(context.Context, string, string, string, ProductImage, string) (ProductImage, error)
+	DeleteImage(context.Context, string, string, string, string) error
 	Publish(context.Context, string, string, time.Time) (Product, error)
 	Archive(context.Context, string, string, time.Time) (Product, error)
 	AdjustInventory(context.Context, string, string, int, string, string, time.Time) (Variant, error)
@@ -38,6 +40,7 @@ type Service struct {
 	now        func() time.Time
 	search     CandidateSearcher
 	observe    func(string)
+	cloudName  string
 }
 
 type CandidateSearcher interface {
@@ -52,6 +55,10 @@ func WithCandidateSearcher(search CandidateSearcher) Option {
 
 func WithSearchObserver(observe func(string)) Option {
 	return func(service *Service) { service.observe = observe }
+}
+
+func WithCloudinaryCloudName(cloudName string) Option {
+	return func(service *Service) { service.cloudName = strings.TrimSpace(cloudName) }
 }
 
 func NewService(repository Repository, options ...Option) *Service {
@@ -142,20 +149,68 @@ func (s *Service) AddImage(ctx context.Context, principal identity.Principal, pr
 	if !principal.Require(identity.RoleSeller) {
 		return ProductImage{}, domain.ErrForbidden
 	}
-	if _, err := s.repository.FindForSeller(ctx, principal.UserID, productID); err != nil {
-		return ProductImage{}, err
+	if _, err := uuid.Parse(productID); err != nil {
+		return ProductImage{}, domain.ErrInvalid
 	}
-	input.URL, input.AltText = strings.TrimSpace(input.URL), strings.TrimSpace(input.AltText)
-	parsed, err := url.ParseRequestURI(input.URL)
-	validLocation := err == nil && (parsed.Scheme == "http" || parsed.Scheme == "https" || parsed.Scheme == "" && strings.HasPrefix(parsed.Path, "/") && !strings.HasPrefix(parsed.Path, "//"))
-	if !validLocation || len(input.AltText) > 160 || input.Position < 0 {
+	urlValue, altText, err := s.validateImage(input.URL, input.AltText)
+	if err != nil || input.Position != nil && *input.Position < 0 {
 		return ProductImage{}, domain.ErrInvalid
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
 		return ProductImage{}, fmt.Errorf("generate image ID: %w", err)
 	}
-	return s.repository.AddImage(ctx, productID, ProductImage{ID: id.String(), URL: input.URL, AltText: input.AltText, Position: input.Position}, principal.UserID)
+	position := -1
+	if input.Position != nil {
+		position = *input.Position
+	}
+	return s.repository.AddImage(ctx, principal.UserID, productID, ProductImage{ID: id.String(), URL: urlValue, AltText: altText, Position: position}, principal.UserID)
+}
+
+func (s *Service) ReplaceImage(ctx context.Context, principal identity.Principal, productID, imageID string, input ImageReplacementInput) (ProductImage, error) {
+	if !principal.Require(identity.RoleSeller) {
+		return ProductImage{}, domain.ErrForbidden
+	}
+	if _, err := uuid.Parse(productID); err != nil {
+		return ProductImage{}, domain.ErrInvalid
+	}
+	if _, err := uuid.Parse(imageID); err != nil {
+		return ProductImage{}, domain.ErrInvalid
+	}
+	urlValue, altText, err := s.validateImage(input.URL, input.AltText)
+	if err != nil {
+		return ProductImage{}, err
+	}
+	return s.repository.ReplaceImage(ctx, principal.UserID, productID, imageID, ProductImage{URL: urlValue, AltText: altText}, principal.UserID)
+}
+
+func (s *Service) DeleteImage(ctx context.Context, principal identity.Principal, productID, imageID string) error {
+	if !principal.Require(identity.RoleSeller) {
+		return domain.ErrForbidden
+	}
+	if _, err := uuid.Parse(productID); err != nil {
+		return domain.ErrInvalid
+	}
+	if _, err := uuid.Parse(imageID); err != nil {
+		return domain.ErrInvalid
+	}
+	return s.repository.DeleteImage(ctx, principal.UserID, productID, imageID, principal.UserID)
+}
+
+func (s *Service) validateImage(rawURL, rawAltText string) (string, string, error) {
+	urlValue, altText := strings.TrimSpace(rawURL), strings.TrimSpace(rawAltText)
+	if len(altText) > 160 {
+		return "", "", domain.ErrInvalid
+	}
+	if strings.HasPrefix(urlValue, "/images/") && !strings.Contains(urlValue, "..") {
+		return urlValue, altText, nil
+	}
+	parsed, err := url.ParseRequestURI(urlValue)
+	expectedPrefix := "/" + s.cloudName + "/image/upload/"
+	if err != nil || parsed.Scheme != "https" || parsed.Hostname() != "res.cloudinary.com" || parsed.Port() != "" || parsed.User != nil || parsed.Fragment != "" || s.cloudName == "" || !strings.HasPrefix(parsed.EscapedPath(), expectedPrefix) {
+		return "", "", domain.ErrInvalid
+	}
+	return urlValue, altText, nil
 }
 
 func (s *Service) Publish(ctx context.Context, principal identity.Principal, productID string) (Product, error) {

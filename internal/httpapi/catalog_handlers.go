@@ -225,6 +225,33 @@ func (a *api) createImage(w http.ResponseWriter, r *http.Request, principal iden
 	writeJSON(w, http.StatusCreated, response)
 }
 
+func (a *api) replaceImage(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	var input contract.ImageReplacementInput
+	if err := decodeJSON(w, r, &input); err != nil {
+		writeError(w, err)
+		return
+	}
+	value, err := a.config.catalog.ReplaceImage(r.Context(), principal, r.PathValue("productId"), r.PathValue("imageId"), catalog.ImageReplacementInput{URL: input.Url, AltText: input.AltText})
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	response, err := toContractProductImage(value)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, response)
+}
+
+func (a *api) deleteImage(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
+	if err := a.config.catalog.DeleteImage(r.Context(), principal, r.PathValue("productId"), r.PathValue("imageId")); err != nil {
+		writeError(w, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (a *api) publishProduct(w http.ResponseWriter, r *http.Request, principal identity.Principal) {
 	value, err := a.config.catalog.Publish(r.Context(), principal, r.PathValue("productId"))
 	if err != nil {
