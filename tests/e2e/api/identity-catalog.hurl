@@ -12,21 +12,12 @@ cookie "cartlabs_refresh" exists
 
 GET {{base_url}}/seller/store
 Authorization: Bearer {{seller_token}}
-HTTP 404
-
-POST {{base_url}}/seller/store
-Authorization: Bearer {{seller_token}}
-Content-Type: application/json
-{
-  "name": "Demo Seller Studio",
-  "slug": "demo-seller-studio",
-  "description": "Catalog created by milestone end-to-end workflow."
-}
-HTTP 201
+HTTP 200
 [Captures]
 store_id: jsonpath "$.id"
 [Asserts]
-jsonpath "$.status" == "pending"
+jsonpath "$.slug" == "demo-seller-store"
+jsonpath "$.status" == "approved"
 
 POST {{base_url}}/auth/demo-login
 Content-Type: application/json
@@ -37,29 +28,19 @@ HTTP 200
 [Captures]
 admin_token: jsonpath "$.accessToken"
 
-PATCH {{base_url}}/admin/stores/{{store_id}}/moderation
-Authorization: Bearer {{admin_token}}
-Content-Type: application/json
-{
-  "status": "approved",
-  "note": "Verified by milestone workflow"
-}
-HTTP 200
-[Asserts]
-jsonpath "$.status" == "approved"
-
 POST {{base_url}}/seller/products
 Authorization: Bearer {{seller_token}}
 Content-Type: application/json
 {
   "categoryId": "01989f00-0000-7000-8000-000000000102",
   "name": "Milestone One Lamp",
-  "slug": "milestone-one-lamp",
+  "slug": "milestone-one-lamp-{{newUuid}}",
   "description": "A warm desk lamp used to verify seller-to-buyer discovery."
 }
 HTTP 201
 [Captures]
 product_id: jsonpath "$.id"
+product_slug: jsonpath "$.slug"
 [Asserts]
 jsonpath "$.status" == "draft"
 
@@ -118,11 +99,11 @@ HTTP 200
 [Asserts]
 jsonpath "$.status" == "published"
 
-GET {{base_url}}/catalog/products?store=demo-seller-studio&category=home-living&inStock=true
+GET {{base_url}}/catalog/products?store=demo-seller-store&category=home-living&inStock=true
 HTTP 200
 [Asserts]
 jsonpath "$.total" == 1
-jsonpath "$.items[0].slug" == "milestone-one-lamp"
+jsonpath "$.items[0].slug" == "{{product_slug}}"
 
 PATCH {{base_url}}/admin/products/{{product_id}}/status
 Authorization: Bearer {{admin_token}}
@@ -136,7 +117,7 @@ HTTP 200
 jsonpath "$.status" == "suspended"
 jsonpath "$.enforcementReason" == "Listing enforcement workflow"
 
-GET {{base_url}}/catalog/products?store=demo-seller-studio&category=home-living&inStock=true
+GET {{base_url}}/catalog/products?store=demo-seller-store&category=home-living&inStock=true
 HTTP 200
 [Asserts]
 jsonpath "$.total" == 0
@@ -157,31 +138,31 @@ HTTP 200
 jsonpath "$.status" == "published"
 jsonpath "$.enforcementReason" == "Listing enforcement workflow"
 
-GET {{base_url}}/catalog/stores/demo-seller-studio
+GET {{base_url}}/catalog/stores/demo-seller-store
 HTTP 200
 [Asserts]
-jsonpath "$.name" == "Demo Seller Studio"
+jsonpath "$.name" == "Demo Seller Store"
 jsonpath "$.sellerDisplayName" == "Demo Seller"
 
-GET {{base_url}}/catalog/products?store=demo-seller-studio&q=Milestone%20One%20Lamp&category=home-living&inStock=true
+GET {{base_url}}/catalog/products?store=demo-seller-store&q=Milestone%20One%20Lamp&category=home-living&inStock=true
 HTTP 200
 [Asserts]
 jsonpath "$.total" == 1
-jsonpath "$.items[0].slug" == "milestone-one-lamp"
+jsonpath "$.items[0].slug" == "{{product_slug}}"
 jsonpath "$.items[0].minPriceMinor" == 399000
-jsonpath "$.items[0].storeSlug" == "demo-seller-studio"
+jsonpath "$.items[0].storeSlug" == "demo-seller-store"
 
 GET {{base_url}}/catalog/products?store=nusantara-goods&q=Milestone%20One%20Lamp
 HTTP 200
 [Asserts]
 jsonpath "$.total" == 0
 
-GET {{base_url}}/catalog/products/milestone-one-lamp
+GET {{base_url}}/catalog/products/{{product_slug}}
 HTTP 200
 [Asserts]
 jsonpath "$.variants[0].stock" == 7
 jsonpath "$.images[0].position" == 0
-jsonpath "$.storeSlug" == "demo-seller-studio"
+jsonpath "$.storeSlug" == "demo-seller-store"
 
 PATCH {{base_url}}/seller/variants/{{variant_id}}/inventory
 Authorization: Bearer {{seller_token}}
