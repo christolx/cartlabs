@@ -262,6 +262,14 @@ details summary { color: var(--accent); font-weight: 650; cursor: pointer; }
 .image-management-grid figure { margin: 0; }
 .image-management-grid img { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 8px; object-fit: cover; background: var(--surface); }
 .image-management-grid figcaption { margin-top: 7px; color: var(--muted); font-size: 11px; }
+.image-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }
+.image-actions label { cursor: pointer; }
+.image-actions input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.image-upload-form { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.image-drop-zone { display: grid; min-height: 150px; place-items: center; gap: 12px; padding: 16px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface); text-align: center; }
+.image-drop-zone p { margin: 0; color: var(--muted); font-size: 13px; }
+.image-drop-zone img { max-width: 240px; height: 150px; border-radius: 8px; object-fit: cover; }
+.image-upload-form progress { width: 100%; accent-color: var(--accent); }
 .submit-panel { grid-column: 1 / -1; }
 .seller-order-cards { display: grid; gap: 18px; }
 .seller-order-cards > article { padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-raised); }
