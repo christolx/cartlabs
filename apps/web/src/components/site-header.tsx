@@ -6,7 +6,7 @@ import { actorHome, useSession } from "@/components/session-provider";
 const roleLinks = {
   buyer: [["Cart", "/cart"], ["Purchases", "/purchases"], ["Notifications", "/notifications"]],
   seller: [["Home", "/seller"], ["Store", "/seller/store"], ["Products", "/seller/products"], ["Orders", "/seller/orders"], ["Notifications", "/notifications"]],
-  admin: [["Overview", "/admin"], ["Stores", "/admin/stores"], ["Products", "/admin/products"], ["Users", "/admin/users"], ["Audit", "/admin/audit"], ["Notifications", "/notifications"]],
+  admin: [["Overview", "/admin"], ["Stores", "/admin/stores"], ["Products", "/admin/products"], ["Users", "/admin/users"], ["Audit", "/admin/audit"]],
 } as const;
 
 export function SiteHeader() {
