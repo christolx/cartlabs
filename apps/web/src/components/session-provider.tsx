@@ -33,6 +33,22 @@ export function SessionProvider({ children, demoEnabled }: { children: ReactNode
   const tokenRef = useRef("");
   const refreshRef = useRef<Promise<string> | null>(null);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const usePointer = () => { root.dataset.focusModality = "pointer"; };
+    const useKeyboard = (event: KeyboardEvent) => {
+      if (event.key === "Tab") root.dataset.focusModality = "keyboard";
+    };
+
+    window.addEventListener("pointerdown", usePointer, true);
+    window.addEventListener("keydown", useKeyboard, true);
+    return () => {
+      window.removeEventListener("pointerdown", usePointer, true);
+      window.removeEventListener("keydown", useKeyboard, true);
+      delete root.dataset.focusModality;
+    };
+  }, []);
+
   const clearSession = useCallback(() => {
     tokenRef.current = "";
     setUser(null);

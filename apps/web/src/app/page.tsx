@@ -1,8 +1,28 @@
+import Image from "next/image";
 import Link from "next/link";
-import { ProductCard } from "@/components/product-card";
+import { loadCatalogPage } from "@/app/catalog-actions";
+import { CatalogProductList } from "@/components/catalog-product-list";
 import { apiGet, type Category, type ProductPage } from "@/lib/api/client";
 
-type Search = { q?: string; category?: string; minPrice?: string; maxPrice?: string; inStock?: string; page?: string };
+type Search = {
+  q?: string;
+  category?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  inStock?: string;
+  page?: string;
+};
+
+const featuredSlugs = [
+  "arc-task-lamp",
+  "handwoven-market-basket",
+  "compact-digital-camera",
+  "waxed-utility-jacket",
+  "field-bottle",
+  "stoneware-dinner-set",
+  "portable-radio",
+  "canvas-tote",
+];
 
 function positiveInteger(value: string | undefined, fallback: number) {
   if (!value) return fallback;
@@ -10,24 +30,37 @@ function positiveInteger(value: string | undefined, fallback: number) {
   return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : Number.NaN;
 }
 
-function pageHref(filters: Search, page: number) {
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) if (value && key !== "page") query.set(key, value);
-  query.set("page", String(page));
-  return `/?${query.toString()}#catalog`;
-}
-
-export default async function Home({ searchParams }: { searchParams: Promise<Search> }) {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}) {
   const filters = await searchParams;
   const minPrice = positiveInteger(filters.minPrice, 0);
-  const maxPrice = filters.maxPrice ? positiveInteger(filters.maxPrice, 0) : undefined;
+  const maxPrice = filters.maxPrice
+    ? positiveInteger(filters.maxPrice, 0)
+    : undefined;
   const page = positiveInteger(filters.page, 1);
-  const invalidFilters = Number.isNaN(minPrice) || Number.isNaN(page) || page < 1 || (maxPrice !== undefined && (Number.isNaN(maxPrice) || maxPrice < minPrice));
-  const query = new URLSearchParams({ pageSize: "20" });
+  const invalidFilters =
+    Number.isNaN(minPrice) ||
+    Number.isNaN(page) ||
+    page < 1 ||
+    (maxPrice !== undefined && (Number.isNaN(maxPrice) || maxPrice < minPrice));
+  const hasFilters = Boolean(
+    filters.q?.trim() ||
+    filters.category ||
+    filters.minPrice ||
+    filters.maxPrice ||
+    filters.inStock,
+  );
+  const pagedCatalog = hasFilters || page > 1;
+  const query = new URLSearchParams({ pageSize: pagedCatalog ? "8" : "50" });
   if (filters.q?.trim()) query.set("q", filters.q.trim());
   if (filters.category) query.set("category", filters.category);
-  if (!Number.isNaN(minPrice) && minPrice > 0) query.set("minPrice", String(minPrice));
-  if (maxPrice !== undefined && !Number.isNaN(maxPrice)) query.set("maxPrice", String(maxPrice));
+  if (!Number.isNaN(minPrice) && minPrice > 0)
+    query.set("minPrice", String(minPrice));
+  if (maxPrice !== undefined && !Number.isNaN(maxPrice))
+    query.set("maxPrice", String(maxPrice));
   if (filters.inStock === "true") query.set("inStock", "true");
   if (!Number.isNaN(page) && page > 1) query.set("page", String(page));
 
@@ -46,21 +79,175 @@ export default async function Home({ searchParams }: { searchParams: Promise<Sea
       loadError = true;
     }
   }
-  const pages = catalog ? Math.max(1, Math.ceil(catalog.total / catalog.pageSize)) : 1;
+  const visibleProducts = catalog
+    ? pagedCatalog
+      ? catalog.items.slice(0, 8)
+      : featuredSlugs
+          .map((slug) => catalog.items.find((product) => product.slug === slug))
+          .filter((product): product is ProductPage["items"][number] =>
+            Boolean(product),
+          )
+    : [];
+  const pages = catalog
+    ? Math.max(1, Math.ceil(catalog.total / catalog.pageSize))
+    : 1;
+  const hasNextPage = Boolean(
+    catalog && ((!pagedCatalog && catalog.total > 8) || catalog.page < pages),
+  );
+  const loadMoreQuery = new URLSearchParams(query);
+  loadMoreQuery.delete("page");
+  loadMoreQuery.delete("pageSize");
+  const catalogKey = query.toString();
+  const filterFormKey = JSON.stringify(filters);
 
-  return <main>
-    <section className="catalog-intro shell" aria-labelledby="home-title"><div><p className="eyebrow">Verified independent stores</p><h1 id="home-title">Useful goods, live inventory.</h1></div><p>Discover seller-published products from verified stores. Listing enforcement, stock, checkout, and fulfillment use real marketplace state.</p></section>
-    <section id="catalog" className="catalog shell" aria-labelledby="catalog-title">
-      <div className="section-heading"><h2 id="catalog-title">Catalog</h2><p>{catalog ? `${catalog.total} published products` : "Live inventory from verified stores"}</p></div>
-      <form className="filters" method="get" action="/">
-        <div className="field search-field"><label htmlFor="q">Search products</label><input id="q" name="q" defaultValue={filters.q} maxLength={100} placeholder="Basket, lamp, textile" /></div>
-        <div className="field"><label htmlFor="category">Category</label><select id="category" name="category" defaultValue={filters.category ?? ""}><option value="">All categories</option>{categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}</select></div>
-        <div className="field"><label htmlFor="minPrice">Minimum price (IDR)</label><input id="minPrice" name="minPrice" type="number" min="0" defaultValue={filters.minPrice} /></div>
-        <div className="field"><label htmlFor="maxPrice">Maximum price (IDR)</label><input id="maxPrice" name="maxPrice" type="number" min="0" defaultValue={filters.maxPrice} /></div>
-        <label className="check-field"><input type="checkbox" name="inStock" value="true" defaultChecked={filters.inStock === "true"} />In stock only</label>
-        <div className="filter-actions"><button className="button button-primary" type="submit">Apply filters</button><Link className="button button-secondary" href="/#catalog">Clear</Link></div>
-      </form>
-      {invalidFilters ? <div className="state-panel" role="alert"><h2>Invalid filters</h2><p>Use positive prices, minimum not above maximum, and page 1 or higher.</p><Link className="button button-secondary" href="/#catalog">Clear filters</Link></div> : loadError ? <div className="state-panel" role="alert"><h2>Catalog unavailable</h2><p>API could not be reached. Start local services, then reload.</p></div> : catalog && catalog.items.length > 0 ? <><div className="product-grid">{catalog.items.map((product) => <ProductCard key={product.id} product={product} />)}</div><nav className="pagination" aria-label="Catalog pages"><Link className="button button-secondary" aria-disabled={catalog.page <= 1} href={catalog.page <= 1 ? pageHref(filters, 1) : pageHref(filters, catalog.page - 1)}>Previous</Link><span>Page {catalog.page} of {pages}</span><Link className="button button-secondary" aria-disabled={catalog.page >= pages} href={catalog.page >= pages ? pageHref(filters, pages) : pageHref(filters, catalog.page + 1)}>Next</Link></nav></> : <div className="state-panel"><h2>No products match</h2><p>Clear filters or use another search term.</p><Link className="button button-secondary" href="/#catalog">Reset catalog</Link></div>}
-    </section>
-  </main>;
+  return (
+    <main className="home-page">
+      <section className="home-hero" aria-labelledby="home-title">
+        <aside className="hero-kicker" aria-hidden="true">
+          <span>Curated goods</span>
+          <i />
+          <b>01</b>
+        </aside>
+        <div className="hero-copy">
+          <h1 id="home-title">
+            Good things.
+            <br />
+            Still in
+            <br />
+            stock.
+          </h1>
+          <p>
+            Independent stores.
+            <br />
+            Verified sellers.
+            <br />
+            Live inventory.
+          </p>
+        </div>
+        <div className="hero-visual">
+          <Image
+            src="/images/home-hero-collage-v3.webp"
+            alt="Task lamp, woven basket, camera, and waxed jacket"
+            fill
+            priority
+            sizes="55vw"
+          />
+        </div>
+        <aside className="hero-pages" aria-label="Featured collections">
+          <span className="active">01</span>
+          <span>XX</span>
+          <span>XX</span>
+        </aside>
+      </section>
+      <section
+        id="catalog"
+        className="catalog home-catalog"
+        aria-labelledby="catalog-title"
+      >
+        <h2 id="catalog-title" className="sr-only">
+          Catalog
+        </h2>
+        <form key={filterFormKey} className="filters" method="get" action="/">
+          <div className="field search-field">
+            <label className="search-icon" htmlFor="q" aria-label="Search">
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <circle cx="10.5" cy="10.5" r="6.5" />
+                <path d="m15.5 15.5 5 5" />
+              </svg>
+            </label>
+            <input
+              id="q"
+              name="q"
+              defaultValue={filters.q}
+              maxLength={100}
+              placeholder="Search products"
+            />
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="category">
+              Category
+            </label>
+            <select
+              id="category"
+              name="category"
+              defaultValue={filters.category ?? ""}
+            >
+              <option value="">All categories</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label className="sr-only" htmlFor="maxPrice">
+              Price
+            </label>
+            <select
+              id="maxPrice"
+              name="maxPrice"
+              defaultValue={filters.maxPrice ?? ""}
+            >
+              <option value="">All prices</option>
+              <option value="500000">Up to IDR 500.000</option>
+              <option value="1000000">Up to IDR 1.000.000</option>
+              <option value="2500000">Up to IDR 2.500.000</option>
+            </select>
+          </div>
+          <label className="check-field">
+            <input
+              type="checkbox"
+              name="inStock"
+              value="true"
+              defaultChecked={filters.inStock === "true"}
+            />
+            In stock only
+          </label>
+          <div className="filter-actions">
+            <button className="button button-primary" type="submit">
+              Apply filters <span>→</span>
+            </button>
+            <Link className="button button-secondary" href="/" scroll={false}>
+              Clear
+            </Link>
+          </div>
+        </form>
+        {invalidFilters ? (
+          <div className="state-panel" role="alert">
+            <h2>Invalid filters</h2>
+            <p>
+              Use positive prices, minimum not above maximum, and page 1 or
+              higher.
+            </p>
+            <Link className="button button-secondary" href="/" scroll={false}>
+              Clear filters
+            </Link>
+          </div>
+        ) : loadError ? (
+          <div className="state-panel" role="alert">
+            <h2>Catalog unavailable</h2>
+            <p>API could not be reached. Start local services, then reload.</p>
+          </div>
+        ) : visibleProducts.length > 0 && catalog ? (
+          <CatalogProductList
+            initialProducts={visibleProducts}
+            initialPosition={(pagedCatalog ? page - 1 : 0) * 8}
+            initialHasMore={hasNextPage}
+            filterQuery={loadMoreQuery.toString()}
+            catalogKey={catalogKey}
+            loadPage={loadCatalogPage}
+          />
+        ) : (
+          <div className="state-panel">
+            <h2>No products match</h2>
+            <p>Clear filters or use another search term.</p>
+            <Link className="button button-secondary" href="/" scroll={false}>
+              Reset catalog
+            </Link>
+          </div>
+        )}
+      </section>
+    </main>
+  );
 }

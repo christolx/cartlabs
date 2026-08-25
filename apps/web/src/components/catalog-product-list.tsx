@@ -19,12 +19,14 @@ function initializeCatalogDepth() {
 
 export function CatalogProductList({
   initialProducts,
+  initialPosition,
   initialHasMore,
   filterQuery,
   catalogKey,
   loadPage,
 }: {
   initialProducts: Product[];
+  initialPosition: number;
   initialHasMore: boolean;
   filterQuery: string;
   catalogKey: string;
@@ -108,7 +110,7 @@ export function CatalogProductList({
 
   return <>
     <div className="product-grid home-product-grid">
-      {products.map((product) => <ProductCard key={product.id} product={product} />)}
+      {products.map((product, index) => <ProductCard key={product.id} product={product} position={initialPosition + index + 1} editorial />)}
     </div>
     {error ? <p className="load-more-error" role="alert">{error}</p> : null}
     {hasMore ? <nav className="pagination" aria-label="Catalog pages">

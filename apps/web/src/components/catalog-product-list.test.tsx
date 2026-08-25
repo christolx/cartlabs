@@ -30,7 +30,7 @@ it("appends eight products per click below current rows", async () => {
     .mockResolvedValueOnce({ items: products(9, 8), hasMore: true })
     .mockResolvedValueOnce({ items: products(17, 2), hasMore: false });
 
-  const { container } = render(<CatalogProductList initialProducts={products(1, 8)} initialHasMore filterQuery="category=category" catalogKey="category=category" loadPage={loadPage} />);
+  const { container } = render(<CatalogProductList initialProducts={products(1, 8)} initialPosition={0} initialHasMore filterQuery="category=category" catalogKey="category=category" loadPage={loadPage} />);
 
   fireEvent.click(screen.getByRole("button", { name: /load more/i }));
   await waitFor(() => expect(container.querySelectorAll(".product-card")).toHaveLength(16));
@@ -47,11 +47,11 @@ it("rebuilds changed catalogs in new order while preserving loaded depth", async
     .mockResolvedValueOnce({ items: products(9, 8), hasMore: true })
     .mockResolvedValueOnce({ items: products(109, 8), hasMore: true });
 
-  const { container, rerender } = render(<CatalogProductList initialProducts={products(1, 8)} initialHasMore filterQuery="category=category" catalogKey="category=category" loadPage={loadPage} />);
+  const { container, rerender } = render(<CatalogProductList initialProducts={products(1, 8)} initialPosition={0} initialHasMore filterQuery="category=category" catalogKey="category=category" loadPage={loadPage} />);
   fireEvent.click(screen.getByRole("button", { name: /load more/i }));
   await waitFor(() => expect(container.querySelectorAll(".product-card")).toHaveLength(16));
 
-  rerender(<CatalogProductList initialProducts={products(101, 8)} initialHasMore filterQuery="" catalogKey="default" loadPage={loadPage} />);
+  rerender(<CatalogProductList initialProducts={products(101, 8)} initialPosition={0} initialHasMore filterQuery="" catalogKey="default" loadPage={loadPage} />);
 
   await waitFor(() => expect(screen.getByRole("heading", { name: "Product 116" })).toBeTruthy());
   expect(container.querySelectorAll(".product-card")).toHaveLength(16);

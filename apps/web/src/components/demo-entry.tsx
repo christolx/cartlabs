@@ -9,9 +9,9 @@ import { errorMessage } from "@/lib/api/browser";
 type Role = components["schemas"]["Role"];
 
 const accounts: { role: Role; email: string; purpose: string }[] = [
+  { role: "buyer", email: "buyer@demo.cartlabs.local", purpose: "Discover products, checkout, pay, track, and review." },
   { role: "seller", email: "seller@demo.cartlabs.local", purpose: "Create store, products, inventory, and fulfill orders." },
   { role: "admin", email: "admin@demo.cartlabs.local", purpose: "Approve supply, manage users, and inspect audit history." },
-  { role: "buyer", email: "buyer@demo.cartlabs.local", purpose: "Discover products, checkout, pay, track, and review." },
 ];
 
 export function DemoEntry() {

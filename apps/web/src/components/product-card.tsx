@@ -5,14 +5,27 @@ import { formatMoney } from "@/lib/api/client";
 
 type Product = components["schemas"]["ProductSummary"];
 
-export function ProductCard({ product }: { product: Product }) {
+const editorialImages: Record<string, string> = {
+  "arc-task-lamp": "/images/catalog-home/arc-task-lamp-editorial.webp",
+  "canvas-tote": "/images/catalog-home/canvas-tote-editorial.webp",
+  "compact-digital-camera": "/images/catalog-home/compact-digital-camera-editorial.webp",
+  "field-bottle": "/images/catalog-home/field-bottle-editorial.webp",
+  "handwoven-market-basket": "/images/catalog-home/handwoven-market-basket-editorial.webp",
+  "portable-radio": "/images/catalog-home/portable-radio-editorial.webp",
+  "stoneware-dinner-set": "/images/catalog-home/stoneware-dinner-set-editorial.webp",
+  "waxed-utility-jacket": "/images/catalog-home/waxed-utility-jacket-editorial.webp",
+};
+
+export function ProductCard({ product, position, editorial = false }: { product: Product; position?: number; editorial?: boolean }) {
+  const imageUrl = editorialImages[product.slug] ?? product.imageUrl;
   return (
-    <article className="product-card">
+    <article className={`product-card${editorial ? " editorial-card" : ""}`}>
       <Link href={`/products/${product.slug}`} className="product-image-link" aria-label={`View ${product.name}`}>
         <div className="product-image">
-          {product.imageUrl ? (
+          {position ? <span className="product-number" aria-hidden="true">{String(position).padStart(2, "0")}</span> : null}
+          {imageUrl ? (
             <Image
-              src={product.imageUrl}
+              src={imageUrl}
               alt=""
               fill
               sizes="(max-width: 767px) 100vw, (max-width: 1199px) 50vw, 25vw"
@@ -23,15 +36,17 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       </Link>
       <div className="product-copy">
-        <p className="product-store"><Link href={`/stores/${product.storeSlug}`}>{product.storeName}</Link></p>
         <h3>
           <Link href={`/products/${product.slug}`}>{product.name}</Link>
         </h3>
+        <p className="product-store"><Link href={`/stores/${product.storeSlug}`}>{product.storeName}</Link></p>
         <div className="product-meta">
           <span>{formatMoney(product.minPriceMinor, product.currency)}</span>
-          <span className={product.inStock ? "stock-good" : "stock-empty"}>
-            {product.inStock ? "In stock" : "Sold out"}
-          </span>
+          {product.inStock ? (
+            <Link className="stock-good" href={`/products/${product.slug}`}>In stock&nbsp; →</Link>
+          ) : (
+            <span className="stock-empty">Sold out</span>
+          )}
         </div>
       </div>
     </article>

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Anton, Geist, Geist_Mono, Roboto_Mono } from "next/font/google";
 import { SessionProvider } from "@/components/session-provider";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -15,6 +15,17 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const anton = Anton({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: "400",
+});
+
+const robotoMono = Roboto_Mono({
+  variable: "--font-ui",
+  subsets: ["latin"],
+});
+
 export const metadata: Metadata = {
   title: { default: "Cartlabs Market", template: "%s | Cartlabs" },
   description: "Verified independent stores, live SKU inventory, and a tested multi-vendor marketplace.",
@@ -26,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="id"
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${anton.variable} ${robotoMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <SessionProvider demoEnabled={demoEnabled}>
