@@ -2,12 +2,15 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/christolx/cartlabs/internal/catalog"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 )
 
@@ -31,6 +34,7 @@ func TestOpenAPIRequestValidation(t *testing.T) {
 		{name: "body below minimum", method: http.MethodPut, path: "/api/v1/cart/items/01989f00-0000-7000-8000-000000000001", body: `{"quantity":0}`, contentType: "application/json"},
 		{name: "invalid slug pattern", method: http.MethodPost, path: "/api/v1/seller/products", body: `{"categoryId":"01989f00-0000-7000-8000-000000000001","name":"Lamp","slug":"Bad Slug","description":"Desk lamp"}`, contentType: "application/json"},
 		{name: "query below minimum", method: http.MethodGet, path: "/api/v1/catalog/products?page=0"},
+		{name: "invalid numeric query", method: http.MethodGet, path: "/api/v1/catalog/products?maxPrice=not-a-number"},
 		{name: "invalid store filter", method: http.MethodGet, path: "/api/v1/catalog/products?store=Bad%20Store"},
 		{name: "invalid user status", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"deleted","reason":"policy"}`, contentType: "application/json"},
 		{name: "blank status reason", method: http.MethodPatch, path: "/api/v1/admin/users/01989f00-0000-7000-8000-000000000001/status", body: `{"status":"suspended","reason":"   "}`, contentType: "application/json"},
@@ -56,6 +60,53 @@ func TestOpenAPIRequestValidation(t *testing.T) {
 				t.Fatalf("content type = %q", response.Header().Get("Content-Type"))
 			}
 		})
+	}
+}
+
+type recordingCatalogService struct {
+	CatalogService
+	received catalog.Filters
+}
+
+func (s *recordingCatalogService) ListPublic(_ context.Context, filters catalog.Filters) (catalog.Page, error) {
+	s.received = filters
+	return catalog.Page{Page: filters.Page, PageSize: filters.PageSize}, nil
+}
+
+func TestCatalogPriceFiltersPassValidationAndReachHandler(t *testing.T) {
+	recorder := &recordingCatalogService{}
+	server := New(
+		fakeChecker{ready: true},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		WithServices(fakeIdentity{}, nil, recorder),
+	)
+	request := httptest.NewRequest(http.MethodGet, "/api/v1/catalog/products?minPrice=100000&maxPrice=500000&page=1&inStock=true", nil)
+	response := httptest.NewRecorder()
+
+	server.Handler().ServeHTTP(response, request)
+
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
+	}
+	if recorder.received.MinPrice == nil || *recorder.received.MinPrice != 100000 {
+		t.Fatalf("min price = %v, want 100000", recorder.received.MinPrice)
+	}
+	if recorder.received.MaxPrice == nil || *recorder.received.MaxPrice != 500000 {
+		t.Fatalf("max price = %v, want 500000", recorder.received.MaxPrice)
+	}
+	if !recorder.received.InStock {
+		t.Fatal("in-stock filter = false, want true")
+	}
+}
+
+func TestParseParameterValuePreservesStrings(t *testing.T) {
+	schema := &openapi3.Schema{Type: &openapi3.Types{openapi3.TypeString}}
+	value, err := parseParameterValue(schema, "01989f00-0000-7000-8000-000000000001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value != "01989f00-0000-7000-8000-000000000001" {
+		t.Fatalf("value = %#v, want original string", value)
 	}
 }
 

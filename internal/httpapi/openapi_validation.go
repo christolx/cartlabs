@@ -89,7 +89,11 @@ func validateRequestFormats(r *http.Request, route *routers.Route, pathParams ma
 			value = r.Header.Get(parameter.Name)
 		}
 		if value != "" {
-			if err := parameter.Schema.Value.VisitJSON(value, openapi3.EnableFormatValidation()); err != nil {
+			parsedValue, err := parseParameterValue(parameter.Schema.Value, value)
+			if err != nil {
+				return fmt.Errorf("parse %s value: %w", parameter.Name, err)
+			}
+			if err := parameter.Schema.Value.VisitJSON(parsedValue, openapi3.EnableFormatValidation()); err != nil {
 				return fmt.Errorf("validate %s format: %w", parameter.Name, err)
 			}
 		}
@@ -120,4 +124,16 @@ func validateRequestFormats(r *http.Request, route *routers.Route, pathParams ma
 		return err
 	}
 	return mediaType.Schema.Value.VisitJSON(document, openapi3.VisitAsRequest(), openapi3.EnableFormatValidation())
+}
+
+func parseParameterValue(schema *openapi3.Schema, value string) (any, error) {
+	if schema.Type.Permits(openapi3.TypeString) {
+		return value, nil
+	}
+
+	var parsed any
+	if err := json.Unmarshal([]byte(value), &parsed); err != nil {
+		return nil, err
+	}
+	return parsed, nil
 }
