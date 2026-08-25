@@ -1,6 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { components } from "@/lib/api/schema";
 import { BrowserAPIError, browserRequest } from "@/lib/api/browser";
 
@@ -27,7 +36,13 @@ export function actorHome(role: Role) {
   return "/";
 }
 
-export function SessionProvider({ children, demoEnabled }: { children: ReactNode; demoEnabled: boolean }) {
+export function SessionProvider({
+  children,
+  demoEnabled,
+}: {
+  children: ReactNode;
+  demoEnabled: boolean;
+}) {
   const [status, setStatus] = useState<SessionStatus>("loading");
   const [user, setUser] = useState<User | null>(null);
   const tokenRef = useRef("");
@@ -35,7 +50,9 @@ export function SessionProvider({ children, demoEnabled }: { children: ReactNode
 
   useEffect(() => {
     const root = document.documentElement;
-    const usePointer = () => { root.dataset.focusModality = "pointer"; };
+    const usePointer = () => {
+      root.dataset.focusModality = "pointer";
+    };
     const useKeyboard = (event: KeyboardEvent) => {
       if (event.key === "Tab") root.dataset.focusModality = "keyboard";
     };
@@ -67,7 +84,11 @@ export function SessionProvider({ children, demoEnabled }: { children: ReactNode
     if (refreshRef.current) return refreshRef.current;
     refreshRef.current = (async () => {
       try {
-        const session = await browserRequest<Session>("/auth/refresh", undefined, { method: "POST" });
+        const session = await browserRequest<Session>(
+          "/auth/refresh",
+          undefined,
+          { method: "POST" },
+        );
         await acceptSession(session);
         return session.accessToken;
       } catch (error) {
@@ -84,55 +105,81 @@ export function SessionProvider({ children, demoEnabled }: { children: ReactNode
     void refresh().catch(() => undefined);
   }, [refresh]);
 
-  const request = useCallback(async <T,>(path: string, init?: RequestInit) => {
-    try {
-      return await browserRequest<T>(path, tokenRef.current, init);
-    } catch (error) {
-      if (!(error instanceof BrowserAPIError) || error.status !== 401 || path.startsWith("/auth/")) throw error;
-      const token = await refresh();
-      return browserRequest<T>(path, token, init);
-    }
-  }, [refresh]);
+  const request = useCallback(
+    async <T,>(path: string, init?: RequestInit) => {
+      try {
+        return await browserRequest<T>(path, tokenRef.current, init);
+      } catch (error) {
+        if (
+          !(error instanceof BrowserAPIError) ||
+          error.status !== 401 ||
+          path.startsWith("/auth/")
+        )
+          throw error;
+        const token = await refresh();
+        return browserRequest<T>(path, token, init);
+      }
+    },
+    [refresh],
+  );
 
-  const login = useCallback(async (email: string, password: string) => {
-    const session = await browserRequest<Session>("/auth/login", undefined, {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    return acceptSession(session);
-  }, [acceptSession]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const session = await browserRequest<Session>("/auth/login", undefined, {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      return acceptSession(session);
+    },
+    [acceptSession],
+  );
 
-  const demoLogin = useCallback(async (role: Role) => {
-    const session = await browserRequest<Session>("/auth/demo-login", undefined, {
-      method: "POST",
-      body: JSON.stringify({ role }),
-    });
-    return acceptSession(session);
-  }, [acceptSession]);
+  const demoLogin = useCallback(
+    async (role: Role) => {
+      const session = await browserRequest<Session>(
+        "/auth/demo-login",
+        undefined,
+        {
+          method: "POST",
+          body: JSON.stringify({ role }),
+        },
+      );
+      return acceptSession(session);
+    },
+    [acceptSession],
+  );
 
   const logout = useCallback(async () => {
     try {
-      await browserRequest<void>("/auth/logout", tokenRef.current, { method: "POST" });
+      await browserRequest<void>("/auth/logout", tokenRef.current, {
+        method: "POST",
+      });
     } finally {
       clearSession();
     }
   }, [clearSession]);
 
-  const value = useMemo<SessionContextValue>(() => ({
-    demoEnabled,
-    status,
-    user,
-    login,
-    demoLogin,
-    logout,
-    request,
-  }), [demoEnabled, status, user, login, demoLogin, logout, request]);
+  const value = useMemo<SessionContextValue>(
+    () => ({
+      demoEnabled,
+      status,
+      user,
+      login,
+      demoLogin,
+      logout,
+      request,
+    }),
+    [demoEnabled, status, user, login, demoLogin, logout, request],
+  );
 
-  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
+  return (
+    <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
+  );
 }
 
 export function useSession() {
   const context = useContext(SessionContext);
-  if (!context) throw new Error("useSession must be used inside SessionProvider");
+  if (!context)
+    throw new Error("useSession must be used inside SessionProvider");
   return context;
 }

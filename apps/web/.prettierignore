@@ -1,0 +1,10 @@
+# Dependencies and build output
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+
+# Generated files
+next-env.d.ts
+src/lib/api/schema.d.ts

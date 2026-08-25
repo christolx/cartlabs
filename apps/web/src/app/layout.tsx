@@ -28,11 +28,14 @@ const robotoMono = Roboto_Mono({
 
 export const metadata: Metadata = {
   title: { default: "Cartlabs Market", template: "%s | Cartlabs" },
-  description: "Verified independent stores, live SKU inventory, and a tested multi-vendor marketplace.",
+  description:
+    "Verified independent stores, live SKU inventory, and a tested multi-vendor marketplace.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
-  const demoEnabled = process.env.DEMO_MODE === "true" || process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const demoEnabled =
+    process.env.DEMO_MODE === "true" ||
+    process.env.NEXT_PUBLIC_DEMO_MODE === "true";
   return (
     <html
       lang="id"

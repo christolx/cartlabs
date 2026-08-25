@@ -18,15 +18,106 @@ function ProductsContent() {
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setItems((await request<{ items: Product[] }>("/seller/products")).items); }
-    catch (cause) { setError(errorMessage(cause, "Products unavailable.")); }
+    try {
+      setItems((await request<{ items: Product[] }>("/seller/products")).items);
+    } catch (cause) {
+      setError(errorMessage(cause, "Products unavailable."));
+    }
   }, [request]);
-  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
-  if (error) return <ErrorState title="Products unavailable" message={error} retry={() => void load()} />;
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+  if (error)
+    return (
+      <ErrorState
+        title="Products unavailable"
+        message={error}
+        retry={() => void load()}
+      />
+    );
   if (!items) return <LoadingState label="Loading seller products" />;
-  return <><PageHeading title="Products" description="Owned product lifecycle, variants, and current stock." actions={<Link className="button button-primary" href="/seller/products/new">Create draft</Link>} />{!items.length ? <EmptyState title="No products" message="Verified store owners can create first product draft." href="/seller/products/new" action="Create draft" /> : <div className="seller-product-list">{items.map((product) => { const stock = product.variants.reduce((total, variant) => total + variant.stock, 0); const lowest = product.variants.reduce<number | null>((value, variant) => value === null || variant.priceMinor < value ? variant.priceMinor : value, null); return <article key={product.id}>{product.images[0] ? <Image src={product.images[0].url} alt={product.images[0].altText} width={120} height={90} /> : <div className="line-image-fallback">No image</div>}<div className="seller-product-copy"><div className="heading-status"><h2>{product.name}</h2><Status value={product.status} /></div><p>{product.category.name}. {product.variants.length} variants. {stock} units in stock{lowest !== null ? <>. From <Money value={lowest} /></> : null}.</p><Link className="text-link" href={`/seller/products/${product.id}`}>Manage product</Link></div></article>; })}</div>}</>;
+  return (
+    <>
+      <PageHeading
+        title="Products"
+        description="Owned product lifecycle, variants, and current stock."
+        actions={
+          <Link className="button button-primary" href="/seller/products/new">
+            Create draft
+          </Link>
+        }
+      />
+      {!items.length ? (
+        <EmptyState
+          title="No products"
+          message="Verified store owners can create first product draft."
+          href="/seller/products/new"
+          action="Create draft"
+        />
+      ) : (
+        <div className="seller-product-list">
+          {items.map((product) => {
+            const stock = product.variants.reduce(
+              (total, variant) => total + variant.stock,
+              0,
+            );
+            const lowest = product.variants.reduce<number | null>(
+              (value, variant) =>
+                value === null || variant.priceMinor < value
+                  ? variant.priceMinor
+                  : value,
+              null,
+            );
+            return (
+              <article key={product.id}>
+                {product.images[0] ? (
+                  <Image
+                    src={product.images[0].url}
+                    alt={product.images[0].altText}
+                    width={120}
+                    height={90}
+                  />
+                ) : (
+                  <div className="line-image-fallback">No image</div>
+                )}
+                <div className="seller-product-copy">
+                  <div className="heading-status">
+                    <h2>{product.name}</h2>
+                    <Status value={product.status} />
+                  </div>
+                  <p>
+                    {product.category.name}. {product.variants.length} variants.{" "}
+                    {stock} units in stock
+                    {lowest !== null ? (
+                      <>
+                        . From <Money value={lowest} />
+                      </>
+                    ) : null}
+                    .
+                  </p>
+                  <Link
+                    className="text-link"
+                    href={`/seller/products/${product.id}`}
+                  >
+                    Manage product
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
 }
 
 export default function SellerProductsPage() {
-  return <main className="workspace-page shell"><RequireRole role="seller"><ProductsContent /></RequireRole></main>;
+  return (
+    <main className="workspace-page shell">
+      <RequireRole role="seller">
+        <ProductsContent />
+      </RequireRole>
+    </main>
+  );
 }

@@ -9,8 +9,17 @@ it("exposes accessible loading state", () => {
 });
 
 it("renders useful empty action", () => {
-  render(<EmptyState title="No purchases" message="Browse first." href="/" action="Browse catalog" />);
-  expect(screen.getByRole("link", { name: "Browse catalog" }).getAttribute("href")).toBe("/");
+  render(
+    <EmptyState
+      title="No purchases"
+      message="Browse first."
+      href="/"
+      action="Browse catalog"
+    />,
+  );
+  expect(
+    screen.getByRole("link", { name: "Browse catalog" }).getAttribute("href"),
+  ).toBe("/");
 });
 
 it("retries contextual errors", () => {

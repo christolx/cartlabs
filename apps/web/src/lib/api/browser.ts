@@ -13,11 +13,16 @@ export class BrowserAPIError extends Error {
   }
 }
 
-export async function browserRequest<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
+export async function browserRequest<T>(
+  path: string,
+  token?: string,
+  init?: RequestInit,
+): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set("Accept", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (init?.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (init?.body && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
 
   let response: Response;
   try {
@@ -27,7 +32,10 @@ export async function browserRequest<T>(path: string, token?: string, init?: Req
       credentials: "same-origin",
     });
   } catch {
-    throw new BrowserAPIError(503, "API unavailable. Check service connection and try again.");
+    throw new BrowserAPIError(
+      503,
+      "API unavailable. Check service connection and try again.",
+    );
   }
 
   if (!response.ok) {

@@ -84,12 +84,14 @@ generate: ## Generate Go and TypeScript code from OpenAPI and protobuf contracts
 		--go-grpc_out=. --go-grpc_opt=module=github.com/christolx/cartlabs \
 		api/proto/search/v1/search.proto
 
-fmt: ## Format Go source
+fmt: ## Format Go and web source
 	gofmt -w $$(find apps internal -name '*.go' -type f)
+	pnpm web:format
 
 lint: ## Run format, static, frontend, and OpenAPI checks
 	@test -z "$$(gofmt -l $$(find apps internal -name '*.go' -type f))"
 	go vet ./...
+	pnpm web:format:check
 	pnpm web:lint
 	pnpm openapi:lint
 

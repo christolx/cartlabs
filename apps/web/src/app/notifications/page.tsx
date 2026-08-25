@@ -16,15 +16,64 @@ function NotificationsContent() {
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
-    try { setItems((await request<{ items: Notification[] }>("/notifications")).items); }
-    catch (cause) { setError(errorMessage(cause, "Notifications unavailable.")); }
+    try {
+      setItems(
+        (await request<{ items: Notification[] }>("/notifications")).items,
+      );
+    } catch (cause) {
+      setError(errorMessage(cause, "Notifications unavailable."));
+    }
   }, [request]);
-  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
-  if (error) return <ErrorState title="Notifications unavailable" message={error} retry={() => void load()} />;
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+  if (error)
+    return (
+      <ErrorState
+        title="Notifications unavailable"
+        message={error}
+        retry={() => void load()}
+      />
+    );
   if (!items) return <LoadingState label="Loading notifications" />;
-  return <><PageHeading title="Notifications" description="Durable events for current account, newest first." />{!items.length ? <EmptyState title="No notifications" message="Marketplace events for your account appear here." /> : <div className="notification-feed">{items.map((item) => <article key={item.id}><div><span>{item.kind.replaceAll("_", " ")}</span><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></div><h2>{item.title}</h2><p>{item.body}</p></article>)}</div>}</>;
+  return (
+    <>
+      <PageHeading
+        title="Notifications"
+        description="Durable events for current account, newest first."
+      />
+      {!items.length ? (
+        <EmptyState
+          title="No notifications"
+          message="Marketplace events for your account appear here."
+        />
+      ) : (
+        <div className="notification-feed">
+          {items.map((item) => (
+            <article key={item.id}>
+              <div>
+                <span>{item.kind.replaceAll("_", " ")}</span>
+                <time dateTime={item.createdAt}>
+                  {formatDate(item.createdAt)}
+                </time>
+              </div>
+              <h2>{item.title}</h2>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }
 
 export default function NotificationsPage() {
-  return <main className="workspace-page shell"><RequireAuth><NotificationsContent /></RequireAuth></main>;
+  return (
+    <main className="workspace-page shell">
+      <RequireAuth>
+        <NotificationsContent />
+      </RequireAuth>
+    </main>
+  );
 }

@@ -26,35 +26,81 @@ function products(start: number, count: number): Product[] {
 }
 
 it("appends eight products per click below current rows", async () => {
-  const loadPage = vi.fn()
+  const loadPage = vi
+    .fn()
     .mockResolvedValueOnce({ items: products(9, 8), hasMore: true })
     .mockResolvedValueOnce({ items: products(17, 2), hasMore: false });
 
-  const { container } = render(<CatalogProductList initialProducts={products(1, 8)} initialPosition={0} initialHasMore filterQuery="category=category" catalogKey="category=category" loadPage={loadPage} />);
+  const { container } = render(
+    <CatalogProductList
+      initialProducts={products(1, 8)}
+      initialPosition={0}
+      initialHasMore
+      filterQuery="category=category"
+      catalogKey="category=category"
+      loadPage={loadPage}
+    />,
+  );
 
   fireEvent.click(screen.getByRole("button", { name: /load more/i }));
-  await waitFor(() => expect(container.querySelectorAll(".product-card")).toHaveLength(16));
-  expect(loadPage).toHaveBeenLastCalledWith("category=category", products(1, 8).map((product) => product.id));
+  await waitFor(() =>
+    expect(container.querySelectorAll(".product-card")).toHaveLength(16),
+  );
+  expect(loadPage).toHaveBeenLastCalledWith(
+    "category=category",
+    products(1, 8).map((product) => product.id),
+  );
 
   fireEvent.click(screen.getByRole("button", { name: /load more/i }));
-  await waitFor(() => expect(container.querySelectorAll(".product-card")).toHaveLength(18));
-  expect(loadPage).toHaveBeenLastCalledWith("category=category", products(1, 16).map((product) => product.id));
+  await waitFor(() =>
+    expect(container.querySelectorAll(".product-card")).toHaveLength(18),
+  );
+  expect(loadPage).toHaveBeenLastCalledWith(
+    "category=category",
+    products(1, 16).map((product) => product.id),
+  );
   expect(screen.queryByRole("button", { name: /load more/i })).toBeNull();
 });
 
 it("rebuilds changed catalogs in new order while preserving loaded depth", async () => {
-  const loadPage = vi.fn()
+  const loadPage = vi
+    .fn()
     .mockResolvedValueOnce({ items: products(9, 8), hasMore: true })
     .mockResolvedValueOnce({ items: products(109, 8), hasMore: true });
 
-  const { container, rerender } = render(<CatalogProductList initialProducts={products(1, 8)} initialPosition={0} initialHasMore filterQuery="category=category" catalogKey="category=category" loadPage={loadPage} />);
+  const { container, rerender } = render(
+    <CatalogProductList
+      initialProducts={products(1, 8)}
+      initialPosition={0}
+      initialHasMore
+      filterQuery="category=category"
+      catalogKey="category=category"
+      loadPage={loadPage}
+    />,
+  );
   fireEvent.click(screen.getByRole("button", { name: /load more/i }));
-  await waitFor(() => expect(container.querySelectorAll(".product-card")).toHaveLength(16));
+  await waitFor(() =>
+    expect(container.querySelectorAll(".product-card")).toHaveLength(16),
+  );
 
-  rerender(<CatalogProductList initialProducts={products(101, 8)} initialPosition={0} initialHasMore filterQuery="" catalogKey="default" loadPage={loadPage} />);
+  rerender(
+    <CatalogProductList
+      initialProducts={products(101, 8)}
+      initialPosition={0}
+      initialHasMore
+      filterQuery=""
+      catalogKey="default"
+      loadPage={loadPage}
+    />,
+  );
 
-  await waitFor(() => expect(screen.getByRole("heading", { name: "Product 116" })).toBeTruthy());
+  await waitFor(() =>
+    expect(screen.getByRole("heading", { name: "Product 116" })).toBeTruthy(),
+  );
   expect(container.querySelectorAll(".product-card")).toHaveLength(16);
   expect(screen.queryByRole("heading", { name: "Product 1" })).toBeNull();
-  expect(loadPage).toHaveBeenLastCalledWith("", products(101, 8).map((product) => product.id));
+  expect(loadPage).toHaveBeenLastCalledWith(
+    "",
+    products(101, 8).map((product) => product.id),
+  );
 });
