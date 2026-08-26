@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { components } from "@/lib/api/schema";
 import { LoadingState } from "@/components/async-state";
 import { actorHome, useSession } from "@/components/session-provider";
+import { WorkspaceNav } from "@/components/workspace-nav";
 
 type Role = components["schemas"]["Role"];
 
@@ -46,11 +47,16 @@ export function RequireRole({
       </div>
     );
   }
-  return children;
+  return (
+    <>
+      <WorkspaceNav role={role} />
+      {children}
+    </>
+  );
 }
 
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status } = useSession();
+  const { status, user } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -63,5 +69,10 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 
   if (status !== "authenticated")
     return <LoadingState label="Checking access" />;
-  return children;
+  return (
+    <>
+      {user ? <WorkspaceNav role={user.role} /> : null}
+      {children}
+    </>
+  );
 }
