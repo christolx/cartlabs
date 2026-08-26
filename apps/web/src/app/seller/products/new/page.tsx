@@ -74,61 +74,102 @@ function NewProductContent() {
       <PageHeading
         title="Create product draft"
         description="Add basic identity first. Variants, images, inventory, and publication follow on product page."
+        family="SELLER / NEW PRODUCT"
+        index="03"
       />
-      <section className="form-panel">
-        <form className="stack-form" onSubmit={submit}>
-          <label>
-            <span>Category</span>
-            <select name="categoryId" required disabled={busy}>
-              <option value="">Choose category</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Product name</span>
-            <input
-              name="name"
-              minLength={2}
-              maxLength={160}
-              required
-              disabled={busy}
-            />
-          </label>
-          <label>
-            <span>Product slug</span>
-            <input
-              name="slug"
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-              maxLength={120}
-              required
-              disabled={busy}
-            />
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea
-              name="description"
-              minLength={2}
-              maxLength={4000}
-              rows={7}
-              required
-              disabled={busy}
-            />
-          </label>
-          {message ? (
-            <p className="form-message error-message" role="alert">
-              {message}
-            </p>
-          ) : null}
-          <button className="button button-primary" disabled={busy}>
-            {busy ? "Creating" : "Create draft"}
-          </button>
-        </form>
-      </section>
+      <div className="seller-create-layout">
+        <div>
+          <div className="form-progress" aria-label="Product setup steps">
+            <span className="is-active">
+              <b>01</b> Identity
+            </span>
+            <span>
+              <b>02</b> Supply
+            </span>
+            <span>
+              <b>03</b> Media
+            </span>
+            <span>
+              <b>04</b> Publish
+            </span>
+          </div>
+          <section className="form-panel">
+            <form className="stack-form" onSubmit={submit}>
+              <label>
+                <span>Category</span>
+                <select name="categoryId" required disabled={busy}>
+                  <option value="">Choose category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Product name</span>
+                <input
+                  name="name"
+                  minLength={2}
+                  maxLength={160}
+                  required
+                  disabled={busy}
+                />
+              </label>
+              <label>
+                <span>Product slug</span>
+                <input
+                  name="slug"
+                  pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                  maxLength={120}
+                  required
+                  disabled={busy}
+                />
+              </label>
+              <label>
+                <span>Description</span>
+                <textarea
+                  name="description"
+                  minLength={2}
+                  maxLength={4000}
+                  rows={7}
+                  required
+                  disabled={busy}
+                />
+              </label>
+              {message ? (
+                <p className="form-message error-message" role="alert">
+                  {message}
+                </p>
+              ) : null}
+              <button className="button button-primary" disabled={busy}>
+                {busy ? "Creating" : "Create draft"}
+              </button>
+            </form>
+          </section>
+        </div>
+        <aside className="workspace-panel next-steps-panel">
+          <h2>What happens next</h2>
+          <p className="helper-text">
+            Draft stays private until supply and media meet publish
+            requirements.
+          </p>
+          <ol className="next-steps-list">
+            <li>
+              <strong>Add variants</strong>
+              <span>SKU, price, attributes, stock.</span>
+            </li>
+            <li>
+              <strong>Add media</strong>
+              <span>One image minimum.</span>
+            </li>
+            <li>
+              <strong>Publish</strong>
+              <span>Active stock + image required.</span>
+            </li>
+          </ol>
+        </aside>
+      </div>
     </>
   );
 }

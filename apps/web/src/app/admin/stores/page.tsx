@@ -75,6 +75,14 @@ function StoreModerationContent() {
       <PageHeading
         title="Store verification"
         description="Pending stores appear first. Previous decisions remain visible."
+        family="ADMIN / STORES"
+        index="03"
+        meta={
+          <span>
+            {sorted.filter((store) => store.status === "pending").length}{" "}
+            pending / {sorted.length} loaded stores
+          </span>
+        }
       />
       {message ? (
         <p className="action-message" role="status">
@@ -106,11 +114,24 @@ function StoreModerationContent() {
                 </p>
               ) : null}
               <div className="moderation-actions">
-                {(["approved", "rejected"] as ModerationStatus[]).map(
-                  (status) => (
+                {store.status === "approved" ? (
+                  <span className="helper-text">
+                    Approved store. No moderation action required.
+                  </span>
+                ) : (
+                  (
+                    [
+                      "approved",
+                      ...(store.status === "pending" ? ["rejected"] : []),
+                    ] as ModerationStatus[]
+                  ).map((status) => (
                     <details key={status}>
                       <summary>
-                        {status === "approved" ? "Verify" : "Reject"}
+                        {status === "approved"
+                          ? store.status === "rejected"
+                            ? "Re-verify"
+                            : "Verify"
+                          : "Reject"}
                       </summary>
                       <form
                         className="stack-form compact-form"
@@ -145,7 +166,7 @@ function StoreModerationContent() {
                         </button>
                       </form>
                     </details>
-                  ),
+                  ))
                 )}
               </div>
             </article>

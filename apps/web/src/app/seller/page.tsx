@@ -61,40 +61,95 @@ function SellerHomeContent() {
   const actionable = data.orders.filter((order) =>
     ["paid", "processing", "shipped"].includes(order.status),
   );
+  const readiness = [
+    {
+      label: "Store approved",
+      complete: data.store?.status === "approved",
+      href: "/seller/store",
+      note: data.store
+        ? data.store.status.replaceAll("_", " ")
+        : "Create store",
+    },
+    {
+      label: "Product identity",
+      complete: data.products.length > 0,
+      href: "/seller/products",
+      note: `${data.products.length} product${data.products.length === 1 ? "" : "s"}`,
+    },
+    {
+      label: "Variant and stock",
+      complete: data.products.some((product) =>
+        product.variants.some((variant) => variant.active && variant.stock > 0),
+      ),
+      href: "/seller/products",
+      note: "Active inventory",
+    },
+    {
+      label: "Product media",
+      complete: data.products.some((product) => product.images.length > 0),
+      href: "/seller/products",
+      note: "At least one image",
+    },
+    {
+      label: "Published listing",
+      complete: data.products.some((product) => product.status === "published"),
+      href: "/seller/products",
+      note: `${lifecycle.published ?? 0} published`,
+    },
+  ];
   return (
     <>
       <PageHeading
         title="Seller home"
         description="Store readiness, catalog supply, and owned fulfillment."
+        family="SELLER / OPERATIONS"
+        index="01"
+        meta={
+          <span>
+            {actionable.length} order{actionable.length === 1 ? "" : "s"}{" "}
+            needing action
+          </span>
+        }
       />
       <div className="seller-home-grid">
         <section className="workspace-panel seller-readiness">
-          <h2>Store readiness</h2>
-          {!data.store ? (
-            <>
-              <p>No store exists. Create store before adding product supply.</p>
-              <Link className="button button-primary" href="/seller/store">
-                Create store
+          <div className="heading-status">
+            <div>
+              <h2>Store readiness</h2>
+              <p className="helper-text">
+                {data.store?.name ?? "No store created"}
+              </p>
+            </div>
+            {data.store ? <Status value={data.store.status} /> : null}
+          </div>
+          {data.store?.status === "rejected" ? (
+            <p className="moderation-note">
+              Verification note:{" "}
+              {data.store.moderationNote || "No note provided."}
+            </p>
+          ) : null}
+          <div
+            className="readiness-list"
+            aria-label="Store publishing readiness"
+          >
+            {readiness.map((item) => (
+              <Link
+                className={item.complete ? "is-complete" : ""}
+                href={item.href}
+                key={item.label}
+              >
+                <i aria-hidden="true">{item.complete ? "✓" : "!"}</i>
+                <strong>{item.label}</strong>
+                <small>{item.note}</small>
               </Link>
-            </>
-          ) : (
-            <>
-              <div className="heading-status">
-                <strong>{data.store.name}</strong>
-                <Status value={data.store.status} />
-              </div>
-              <p>{data.store.description}</p>
-              {data.store.status === "rejected" ? (
-                <p className="moderation-note">
-                  Verification note:{" "}
-                  {data.store.moderationNote || "No note provided."}
-                </p>
-              ) : null}
-              <Link className="button button-secondary" href="/seller/store">
-                Manage store
-              </Link>
-            </>
-          )}
+            ))}
+          </div>
+          <Link
+            className="button button-primary"
+            href={data.store ? "/seller/products" : "/seller/store"}
+          >
+            {data.store ? "Review next step" : "Create store"}
+          </Link>
         </section>
         <section className="workspace-panel">
           <h2>Product supply</h2>

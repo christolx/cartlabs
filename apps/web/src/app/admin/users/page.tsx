@@ -103,6 +103,13 @@ function UserManagementContent() {
       <PageHeading
         title="User management"
         description="Suspension revokes current access and refresh sessions. Reactivation requires fresh login."
+        family="ADMIN / USERS"
+        index="04"
+        meta={
+          <span>
+            {filtered.length} users / {activeAdmins} active admins
+          </span>
+        }
       />
       <div className="notice notice-danger">
         <strong>Account access control</strong>
@@ -145,6 +152,11 @@ function UserManagementContent() {
           </select>
         </label>
       </div>
+      <p className="filter-summary">
+        {items.filter((item) => item.role === "buyer").length} buyers /{" "}
+        {items.filter((item) => item.role === "seller").length} sellers /{" "}
+        {items.filter((item) => item.role === "admin").length} admins
+      </p>
       {message ? (
         <p className="action-message" role="status">
           {message}
@@ -181,14 +193,20 @@ function UserManagementContent() {
                   <strong>{item.displayName}</strong>
                   <span>{item.email}</span>
                 </div>
-                <span role="cell">{item.role}</span>
-                <span role="cell">
+                <span role="cell" data-label="Role">
+                  {item.role}
+                </span>
+                <span role="cell" data-label="Status">
                   <Status value={item.status} />
                 </span>
-                <time role="cell" dateTime={item.createdAt}>
+                <time
+                  role="cell"
+                  data-label="Created"
+                  dateTime={item.createdAt}
+                >
                   {formatDate(item.createdAt)}
                 </time>
-                <div role="cell">
+                <div role="cell" data-label="Action">
                   {blocked ? (
                     <span className="helper-text">
                       {self ? "Current account" : "Last active admin"}

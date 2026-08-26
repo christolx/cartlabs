@@ -41,6 +41,9 @@ function AdminOverviewContent() {
       <PageHeading
         title="Marketplace overview"
         description={`Current operating totals as of ${new Date().toLocaleString("id-ID")}. No historical trend data.`}
+        family="ADMIN / OVERVIEW"
+        index="01"
+        meta={<span>Live operating totals</span>}
       />
       <div className="admin-metrics">
         <Link href="/admin/users">
@@ -77,6 +80,33 @@ function AdminOverviewContent() {
           </strong>
         </div>
       </div>
+      <section
+        className="admin-action-queues"
+        aria-labelledby="admin-queues-heading"
+      >
+        <div className="panel-heading-row">
+          <div>
+            <h2 id="admin-queues-heading">Operating queues</h2>
+            <p>
+              Open source records where action can change marketplace state.
+            </p>
+          </div>
+        </div>
+        <div className="admin-queue-grid">
+          <Link href="/admin/stores">
+            <strong>01 / Store verification</strong>
+            <span>Review pending and rejected stores.</span>
+          </Link>
+          <Link href="/admin/products">
+            <strong>02 / Listing enforcement</strong>
+            <span>Inspect published or suspended products.</span>
+          </Link>
+          <Link href="/admin/users">
+            <strong>03 / Account access</strong>
+            <span>Manage active and suspended users.</span>
+          </Link>
+        </div>
+      </section>
     </>
   );
 }

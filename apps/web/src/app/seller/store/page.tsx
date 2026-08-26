@@ -71,6 +71,8 @@ function StoreContent() {
       <PageHeading
         title={store ? "Manage store" : "Create store"}
         description="Verified store status is required before product supply can be created."
+        family="SELLER / STORE"
+        index="05"
         actions={store ? <Status value={store.status} /> : undefined}
       />
       {store?.status === "rejected" ? (
@@ -84,58 +86,86 @@ function StoreContent() {
           <p>Products cannot be created until admin verifies this store.</p>
         </div>
       ) : null}
-      <section className="form-panel">
-        <form className="stack-form" onSubmit={submit}>
-          <label>
-            <span>Store name</span>
-            <input
-              name="name"
-              minLength={2}
-              maxLength={120}
-              defaultValue={store?.name}
-              required
-              disabled={busy}
-            />
-          </label>
-          <label>
-            <span>Store slug</span>
-            <input
-              name="slug"
-              pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-              maxLength={80}
-              defaultValue={store?.slug}
-              required
-              disabled={busy}
-            />
-          </label>
-          <label>
-            <span>Description</span>
-            <textarea
-              name="description"
-              minLength={2}
-              maxLength={2000}
-              rows={6}
-              defaultValue={store?.description}
-              required
-              disabled={busy}
-            />
-          </label>
-          {store ? (
-            <p className="helper-text">
-              Approved stores stay public after profile edits. Rejected edits
-              return to pending verification.
-            </p>
-          ) : null}
-          {message ? (
-            <p className="form-message" role="status">
-              {message}
-            </p>
-          ) : null}
-          <button className="button button-primary" disabled={busy}>
-            {busy ? "Saving" : store ? "Save store" : "Create store"}
-          </button>
-        </form>
-      </section>
+      <div className="seller-store-layout">
+        <section className="form-panel">
+          <form className="stack-form" onSubmit={submit}>
+            <label>
+              <span>Store name</span>
+              <input
+                name="name"
+                minLength={2}
+                maxLength={120}
+                defaultValue={store?.name}
+                required
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>Store slug</span>
+              <input
+                name="slug"
+                pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+                maxLength={80}
+                defaultValue={store?.slug}
+                required
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>Description</span>
+              <textarea
+                name="description"
+                minLength={2}
+                maxLength={2000}
+                rows={6}
+                defaultValue={store?.description}
+                required
+                disabled={busy}
+              />
+            </label>
+            {store ? (
+              <p className="helper-text">
+                Approved stores stay public after profile edits. Rejected edits
+                return to pending verification.
+              </p>
+            ) : null}
+            {message ? (
+              <p className="form-message" role="status">
+                {message}
+              </p>
+            ) : null}
+            <button className="button button-primary" disabled={busy}>
+              {busy ? "Saving" : store ? "Save store" : "Create store"}
+            </button>
+          </form>
+        </section>
+        <aside className="workspace-panel store-preview-panel">
+          <span className="eyebrow">Public profile preview</span>
+          <div className="store-preview-mark">
+            {store?.status === "approved" ? "LIVE" : "DRAFT"}
+          </div>
+          <h2>{store?.name || "Your store name"}</h2>
+          <p>
+            {store?.description || "Store description appears here after save."}
+          </p>
+          <dl>
+            <div>
+              <dt>Slug</dt>
+              <dd>/{store?.slug || "your-store"}</dd>
+            </div>
+            <div>
+              <dt>Visibility</dt>
+              <dd>
+                {store?.status === "approved" ? "Public" : "Pending review"}
+              </dd>
+            </div>
+          </dl>
+          <p className="helper-text">
+            Approved edits remain public. Rejected edits return to pending
+            verification.
+          </p>
+        </aside>
+      </div>
     </>
   );
 }

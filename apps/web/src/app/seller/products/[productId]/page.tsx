@@ -13,6 +13,55 @@ import { errorMessage } from "@/lib/api/browser";
 type Product = components["schemas"]["ProductDetail"];
 type Category = components["schemas"]["Category"];
 
+function VariantAttributeFields() {
+  const [rows, setRows] = useState([{ id: 0, key: "", value: "" }]);
+  return (
+    <div className="attribute-fields">
+      <span>Attributes</span>
+      {rows.map((row, index) => (
+        <div className="attribute-row" key={row.id}>
+          <input
+            name="attributeKey"
+            aria-label={`Attribute ${index + 1} name`}
+            placeholder="Name"
+          />
+          <input
+            name="attributeValue"
+            aria-label={`Attribute ${index + 1} value`}
+            placeholder="Value"
+          />
+          {rows.length > 1 ? (
+            <button
+              className="text-button"
+              type="button"
+              aria-label={`Remove attribute ${index + 1}`}
+              onClick={() =>
+                setRows((current) =>
+                  current.filter((item) => item.id !== row.id),
+                )
+              }
+            >
+              −
+            </button>
+          ) : null}
+        </div>
+      ))}
+      <button
+        className="text-button attribute-add"
+        type="button"
+        onClick={() =>
+          setRows((current) => [
+            ...current,
+            { id: Date.now(), key: "", value: "" },
+          ])
+        }
+      >
+        + Add attribute
+      </button>
+    </div>
+  );
+}
+
 function ProductManagementContent() {
   const { productId } = useParams<{ productId: string }>();
   const { request } = useSession();
@@ -72,22 +121,16 @@ function ProductManagementContent() {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    let attributes: Record<string, string> = {};
-    try {
-      const parsed = JSON.parse(
-        String(data.get("attributes") || "{}"),
-      ) as unknown;
-      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object")
-        throw new Error();
-      attributes = Object.fromEntries(
-        Object.entries(parsed).map(([key, value]) => [key, String(value)]),
-      );
-    } catch {
-      setMessage(
-        'Attributes must be a JSON object, for example {"color":"green"}.',
-      );
-      return;
-    }
+    const attributeKeys = data.getAll("attributeKey").map(String);
+    const attributeValues = data.getAll("attributeValue").map(String);
+    const attributes = Object.fromEntries(
+      attributeKeys
+        .map((key, index) => [
+          key.trim(),
+          (attributeValues[index] ?? "").trim(),
+        ])
+        .filter(([key, value]) => Boolean(key && value)),
+    );
     await run("variant", `/seller/products/${productId}/variants`, {
       method: "POST",
       body: JSON.stringify({
@@ -131,11 +174,27 @@ function ProductManagementContent() {
     (product.status === "draft" || product.status === "archived") &&
     product.variants.some((variant) => variant.active && variant.stock > 0) &&
     product.images.length > 0;
+  const readiness = [
+    ["Identity", true],
+    [
+      "Variant + stock",
+      product.variants.some((variant) => variant.active && variant.stock > 0),
+    ],
+    ["Media", product.images.length > 0],
+    ["Publish", product.status === "published"],
+  ] as const;
   return (
     <>
       <PageHeading
         title={product.name}
         description="Owned product detail, supply, inventory, images, and publication."
+        family="SELLER / PRODUCT EDITOR"
+        index="04"
+        meta={
+          <span>
+            Updated {new Date(product.updatedAt).toLocaleDateString("id-ID")}
+          </span>
+        }
         actions={<Status value={product.status} />}
       />
       {product.status === "suspended" ? (
@@ -152,8 +211,22 @@ function ProductManagementContent() {
           {message}
         </p>
       ) : null}
+      <nav className="editor-section-nav" aria-label="Product editor sections">
+        <a href="#identity">01 Identity</a>
+        <a href="#variants">02 Variants & stock</a>
+        <a href="#media">03 Media</a>
+        <a href="#publication">04 Publication</a>
+      </nav>
+      <div className="editor-readiness-rail" aria-label="Publication readiness">
+        {readiness.map(([label, complete]) => (
+          <span className={complete ? "is-complete" : ""} key={label}>
+            <i aria-hidden="true">{complete ? "✓" : "!"}</i>
+            {label}
+          </span>
+        ))}
+      </div>
       <div className="management-grid">
-        <section className="form-panel">
+        <section className="form-panel" id="identity">
           <h2>Product identity</h2>
           <form className="stack-form" onSubmit={updateProduct}>
             <label>
@@ -205,7 +278,7 @@ function ProductManagementContent() {
             </button>
           </form>
         </section>
-        <section className="form-panel">
+        <section className="form-panel" id="variants">
           <div className="panel-heading-row">
             <div>
               <h2>Variants and inventory</h2>
@@ -293,10 +366,7 @@ function ProductManagementContent() {
                 <span>Initial stock</span>
                 <input name="stock" type="number" min="0" required />
               </label>
-              <label className="form-wide">
-                <span>Attributes JSON</span>
-                <input name="attributes" defaultValue="{}" />
-              </label>
+              <VariantAttributeFields />
               <button
                 className="button button-primary form-wide"
                 disabled={Boolean(busy)}
@@ -306,13 +376,15 @@ function ProductManagementContent() {
             </form>
           </details>
         </section>
-        <ProductImageManager
-          productId={productId}
-          status={product.status}
-          images={product.images}
-          onChanged={load}
-        />
-        <section className="form-panel submit-panel">
+        <div id="media" className="editor-media-section">
+          <ProductImageManager
+            productId={productId}
+            status={product.status}
+            images={product.images}
+            onChanged={load}
+          />
+        </div>
+        <section className="form-panel submit-panel" id="publication">
           <h2>Listing status</h2>
           {product.status === "published" ? (
             <>

@@ -25,6 +25,7 @@ const nextStatus: Partial<Record<Order["status"], NextStatus>> = {
 function OrdersContent() {
   const { request } = useSession();
   const [items, setItems] = useState<Order[] | null>(null);
+  const [queue, setQueue] = useState("action");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
@@ -40,6 +41,12 @@ function OrdersContent() {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+  const visible = (items ?? []).filter((order) => {
+    if (queue === "all") return true;
+    if (queue === "action")
+      return ["paid", "processing", "shipped"].includes(order.status);
+    return order.status === queue;
+  });
 
   async function update(orderId: string, status: NextStatus, reason = "") {
     setBusy(orderId);
@@ -79,6 +86,13 @@ function OrdersContent() {
       <PageHeading
         title="Fulfillment"
         description="Only orders belonging to your store appear here. Server validates every transition."
+        family="SELLER / ORDERS"
+        index="06"
+        meta={
+          <span>
+            {visible.length} of {items.length} orders
+          </span>
+        }
       />
       {message ? (
         <p className="action-message" role="status">
@@ -91,96 +105,139 @@ function OrdersContent() {
           message="Paid buyer orders for your store appear here."
         />
       ) : (
-        <div className="seller-order-cards">
-          {items.map((order) => {
-            const advance = nextStatus[order.status];
-            const cancellable = ["paid", "processing"].includes(order.status);
-            return (
-              <article key={order.id}>
-                <header>
-                  <div>
-                    <h2>{order.reference}</h2>
-                    <span>
-                      Purchase {order.purchaseId} /{" "}
-                      {formatDate(order.createdAt)}
-                    </span>
-                  </div>
-                  <Status value={order.status} />
-                </header>
-                <div className="order-items">
-                  {order.items.map((item) => (
-                    <div key={item.id}>
+        <>
+          <div
+            className="product-status-tabs"
+            role="tablist"
+            aria-label="Order queues"
+          >
+            {[
+              "action",
+              "all",
+              "paid",
+              "processing",
+              "shipped",
+              "delivered",
+              "cancelled",
+            ].map((status) => (
+              <button
+                className={queue === status ? "is-active" : ""}
+                key={status}
+                type="button"
+                role="tab"
+                aria-selected={queue === status}
+                onClick={() => setQueue(status)}
+              >
+                {status === "action" ? "Action needed" : status}
+              </button>
+            ))}
+          </div>
+          {!visible.length ? (
+            <EmptyState
+              title="No orders in queue"
+              message={
+                queue === "action"
+                  ? "No fulfillment action currently needs attention."
+                  : "No order history in this queue."
+              }
+            />
+          ) : (
+            <div className="seller-order-cards">
+              {visible.map((order) => {
+                const advance = nextStatus[order.status];
+                const cancellable = ["paid", "processing"].includes(
+                  order.status,
+                );
+                return (
+                  <article key={order.id}>
+                    <header>
                       <div>
-                        <strong>{item.productName}</strong>
+                        <h2>{order.reference}</h2>
                         <span>
-                          {item.variantName} / {item.sku} / quantity{" "}
-                          {item.quantity}
+                          Purchase {order.purchaseId} /{" "}
+                          {formatDate(order.createdAt)}
                         </span>
                       </div>
-                      <Money value={item.lineTotalMinor} />
+                      <Status value={order.status} />
+                    </header>
+                    <div className="order-items">
+                      {order.items.map((item) => (
+                        <div key={item.id}>
+                          <div>
+                            <strong>{item.productName}</strong>
+                            <span>
+                              {item.variantName} / {item.sku} / quantity{" "}
+                              {item.quantity}
+                            </span>
+                          </div>
+                          <Money value={item.lineTotalMinor} />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <footer>
-                  <strong>
-                    <Money value={order.subtotalMinor} />
-                  </strong>
-                  <div className="row-actions">
-                    {advance ? (
-                      <button
-                        className="button button-primary"
-                        type="button"
-                        disabled={busy === order.id}
-                        onClick={() => void update(order.id, advance)}
-                      >
-                        Mark {advance}
-                      </button>
-                    ) : null}
-                    {cancellable ? (
-                      <details className="inline-disclosure">
-                        <summary>Cancel order</summary>
-                        <form
-                          className="inline-form"
-                          onSubmit={(event: FormEvent<HTMLFormElement>) => {
-                            event.preventDefault();
-                            void update(
-                              order.id,
-                              "cancelled",
-                              String(
-                                new FormData(event.currentTarget).get("reason"),
-                              ),
-                            );
-                          }}
-                        >
-                          <label>
-                            <span>Reason</span>
-                            <input
-                              name="reason"
-                              minLength={2}
-                              maxLength={500}
-                              required
-                            />
-                          </label>
+                    <footer>
+                      <strong>
+                        <Money value={order.subtotalMinor} />
+                      </strong>
+                      <div className="row-actions">
+                        {advance ? (
                           <button
-                            className="button button-danger"
+                            className="button button-primary"
+                            type="button"
                             disabled={busy === order.id}
+                            onClick={() => void update(order.id, advance)}
                           >
-                            Confirm
+                            Mark {advance}
                           </button>
-                        </form>
-                      </details>
+                        ) : null}
+                        {cancellable ? (
+                          <details className="inline-disclosure">
+                            <summary>Cancel order</summary>
+                            <form
+                              className="inline-form"
+                              onSubmit={(event: FormEvent<HTMLFormElement>) => {
+                                event.preventDefault();
+                                void update(
+                                  order.id,
+                                  "cancelled",
+                                  String(
+                                    new FormData(event.currentTarget).get(
+                                      "reason",
+                                    ),
+                                  ),
+                                );
+                              }}
+                            >
+                              <label>
+                                <span>Reason</span>
+                                <input
+                                  name="reason"
+                                  minLength={2}
+                                  maxLength={500}
+                                  required
+                                />
+                              </label>
+                              <button
+                                className="button button-danger"
+                                disabled={busy === order.id}
+                              >
+                                Confirm
+                              </button>
+                            </form>
+                          </details>
+                        ) : null}
+                      </div>
+                    </footer>
+                    {order.cancellationReason ? (
+                      <p className="moderation-note">
+                        Cancellation reason: {order.cancellationReason}
+                      </p>
                     ) : null}
-                  </div>
-                </footer>
-                {order.cancellationReason ? (
-                  <p className="moderation-note">
-                    Cancellation reason: {order.cancellationReason}
-                  </p>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </>
   );
