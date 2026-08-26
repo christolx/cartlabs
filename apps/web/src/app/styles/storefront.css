@@ -35,6 +35,56 @@
   gap: clamp(36px, 6vw, 90px);
   align-items: start;
 }
+
+.detail-gallery {
+  min-width: 0;
+}
+
+.media-count {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 12px;
+  padding: 7px 9px;
+  background: var(--color-white);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.detail-thumbnail-rail {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.detail-thumbnail {
+  position: relative;
+  flex: none;
+  width: 88px;
+  height: 68px;
+  border: var(--keyline);
+  background: var(--color-image);
+}
+
+.detail-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-thumbnail span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 4px 6px;
+  background: var(--color-black);
+  color: var(--color-white);
+  font-family: var(--font-data), monospace;
+  font-size: 9px;
+}
 .detail-media {
   position: relative;
   aspect-ratio: 5 / 4;
@@ -56,6 +106,41 @@
   font-weight: 640;
   letter-spacing: -0.06em;
   line-height: 1;
+}
+
+.detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 18px 22px 0;
+  border: var(--keyline);
+  background: var(--color-border);
+}
+
+.detail-facts div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  background: var(--color-surface);
+}
+
+.detail-facts dt,
+.detail-facts dd {
+  overflow: hidden;
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.detail-facts dt {
+  color: var(--color-ink-muted);
+}
+
+.detail-facts dd {
+  margin: 0;
 }
 .detail-description {
   margin: 24px 0 0;
@@ -210,6 +295,18 @@
   font-size: 18px;
   line-height: 1.65;
 }
+
+.store-browse-action {
+  grid-column: 2;
+  align-self: end;
+  justify-self: start;
+  margin: 0 24px 18px;
+  color: var(--color-action);
+  font-family: var(--font-data), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
 .store-profile dl {
   display: flex;
   flex-wrap: wrap;
@@ -227,6 +324,336 @@
 .store-profile dd {
   margin: 0;
   font-weight: 650;
+}
+
+/* Storefront route composition */
+.product-page {
+  padding-block: 28px 96px;
+}
+
+.back-link {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-bottom: 18px;
+  color: var(--color-action);
+  font-family: var(--font-data), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.product-detail {
+  grid-template-columns: minmax(0, 1.4fr) minmax(340px, 0.8fr);
+  gap: 24px;
+}
+
+.detail-media {
+  aspect-ratio: 1 / 1;
+  border: var(--keyline);
+  background: var(--color-image);
+}
+
+.detail-media::before {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  background: var(--color-black);
+  color: var(--color-white);
+  content: "01";
+  font-family: var(--font-data), monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.detail-copy {
+  position: sticky;
+  top: 78px;
+  min-width: 0;
+  padding: 0;
+  border: var(--keyline);
+  background: var(--color-surface-raised);
+}
+
+.detail-copy > .product-store,
+.detail-copy > h1,
+.detail-copy > .detail-description,
+.detail-copy > .detail-price,
+.detail-copy > .variant-list,
+.detail-copy > .purchase-box {
+  margin-inline: 22px;
+}
+
+.detail-copy > .product-store {
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.detail-copy h1 {
+  margin-top: 0;
+  font-family: var(--font-heading), Impact, sans-serif;
+  font-size: clamp(42px, 5.2vw, 72px);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.93;
+  text-transform: uppercase;
+}
+
+.detail-description {
+  margin-top: 18px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.detail-price {
+  margin-top: 20px;
+  margin-bottom: 18px;
+  font-family: var(--font-data), monospace;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.variant-list {
+  border: var(--keyline);
+}
+
+.variant-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 66px;
+  gap: 14px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--color-gray-300);
+}
+
+.variant-row:last-child {
+  border-bottom: 0;
+}
+
+.variant-row strong,
+.variant-row span {
+  font-family: var(--font-data), monospace;
+}
+
+.variant-row strong {
+  font-size: 12px;
+}
+
+.variant-row span {
+  font-size: 10px;
+}
+
+.purchase-box {
+  grid-template-columns: minmax(0, 1fr) 100px;
+  gap: 10px;
+  margin-top: 18px;
+  margin-bottom: 22px;
+  padding: 16px 0 0;
+  border-top: var(--keyline);
+}
+
+.purchase-box label span {
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.purchase-box .button {
+  min-height: 48px;
+  font-size: 11px;
+}
+
+.seller-trust-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 0 22px 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-gray-300);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.seller-trust-strip span {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.seller-trust-strip a {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seller-trust-strip a:hover {
+  color: var(--color-action);
+}
+
+.seller-trust-strip small {
+  color: var(--color-action);
+}
+
+.review-section {
+  margin-top: 56px;
+  padding-top: 28px;
+}
+
+.review-heading h2 {
+  font-family: var(--font-heading), Impact, sans-serif;
+  font-size: clamp(36px, 5vw, 60px);
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.review-score {
+  padding: 12px 16px;
+  border: var(--keyline);
+  background: var(--color-black);
+  color: var(--color-white);
+}
+
+.review-score strong {
+  font-family: var(--font-heading), Impact, sans-serif;
+  font-size: 34px;
+  font-weight: 400;
+}
+
+.review-score span {
+  color: var(--color-white);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.public-review-list article {
+  padding: 18px;
+}
+
+.public-review-list article p,
+.public-review-list footer {
+  font-family: var(--font-data), monospace;
+  font-size: 11px;
+}
+
+.store-page {
+  padding-block: 28px 96px;
+}
+
+.store-profile {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) minmax(230px, 0.45fr);
+  min-height: 220px;
+  max-width: none;
+  border-block: var(--keyline);
+}
+
+.store-profile::before {
+  display: grid;
+  place-items: center;
+  border-right: var(--keyline);
+  background: var(--color-black);
+  color: var(--color-white);
+  content: "VERIFIED STORE";
+  font-family: var(--font-data), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: center;
+  writing-mode: vertical-rl;
+}
+
+.store-profile > .eyebrow,
+.store-profile > h1,
+.store-profile > p:not(.eyebrow) {
+  grid-column: 2;
+  margin-inline: 24px;
+}
+
+.store-profile > .eyebrow {
+  align-self: end;
+  margin-bottom: 10px;
+}
+
+.store-profile h1 {
+  align-self: center;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-family: var(--font-heading), Impact, sans-serif;
+  font-size: clamp(50px, 8vw, 100px);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.store-profile > p:not(.eyebrow) {
+  align-self: start;
+  margin-top: 16px;
+  margin-bottom: 20px;
+  font-family: var(--font-data), monospace;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.store-profile dl {
+  display: grid;
+  align-content: center;
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  gap: 0;
+  margin: 0;
+  border-left: var(--keyline);
+  background: var(--color-surface);
+}
+
+.store-profile dl div {
+  display: grid;
+  gap: 7px;
+  min-height: 62px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-gray-300);
+}
+
+.store-profile dl div:last-child {
+  border-bottom: 0;
+}
+
+.store-profile dt,
+.store-profile dd {
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.store-profile dd {
+  margin: 0;
+}
+
+.store-page .catalog {
+  padding-block: 40px 0;
+}
+
+.store-page .section-heading h2 {
+  font-family: var(--font-heading), Impact, sans-serif;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.store-page .filters {
+  margin-bottom: 28px;
 }
 .home-page {
   background: var(--color-white);

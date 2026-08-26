@@ -100,6 +100,9 @@ export default async function StorePage({
         <p className="eyebrow">Verified store</p>
         <h1>{store.name}</h1>
         <p>{store.description}</p>
+        <a className="store-browse-action" href="#store-catalog">
+          Browse store ↓
+        </a>
         <dl>
           <div>
             <dt>Seller</dt>
@@ -108,6 +111,10 @@ export default async function StorePage({
           <div>
             <dt>On Cartlabs since</dt>
             <dd>{new Date(store.createdAt).toLocaleDateString("id-ID")}</dd>
+          </div>
+          <div>
+            <dt>Published products</dt>
+            <dd>{catalog?.total ?? "—"}</dd>
           </div>
         </dl>
       </section>
@@ -191,7 +198,7 @@ export default async function StorePage({
           <>
             <div className="product-grid">
               {catalog.items.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} editorial />
               ))}
             </div>
             <nav className="pagination" aria-label="Store catalog pages">

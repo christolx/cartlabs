@@ -49,6 +49,10 @@ export default async function ProductPage({
   }
   const firstVariant = product.variants[0];
   const firstImage = product.images[0];
+  const totalStock = product.variants.reduce(
+    (total, variant) => total + variant.stock,
+    0,
+  );
 
   return (
     <main className="product-page shell">
@@ -56,18 +60,34 @@ export default async function ProductPage({
         Back to catalog
       </Link>
       <article className="product-detail">
-        <div className="detail-media">
-          {firstImage ? (
-            <Image
-              src={firstImage.url}
-              alt={firstImage.altText}
-              fill
-              priority
-              sizes="(max-width: 767px) 100vw, 58vw"
-            />
-          ) : (
-            <div className="image-fallback">Image pending</div>
-          )}
+        <div className="detail-gallery">
+          <div className="detail-media">
+            {firstImage ? (
+              <Image
+                src={firstImage.url}
+                alt={firstImage.altText}
+                fill
+                priority
+                sizes="(max-width: 767px) 100vw, 58vw"
+              />
+            ) : (
+              <div className="image-fallback">Image pending</div>
+            )}
+            <span className="media-count">
+              {product.images.length || 0} image
+              {product.images.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {product.images.length > 1 ? (
+            <div className="detail-thumbnail-rail" aria-label="Product images">
+              {product.images.map((image, index) => (
+                <div className="detail-thumbnail" key={image.id}>
+                  <Image src={image.url} alt="" width={96} height={72} />
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="detail-copy">
           <p className="product-store">
@@ -77,6 +97,24 @@ export default async function ProductPage({
             / {product.category.name}
           </p>
           <h1>{product.name}</h1>
+          <dl className="detail-facts">
+            <div>
+              <dt>Store</dt>
+              <dd>{product.storeName}</dd>
+            </div>
+            <div>
+              <dt>Category</dt>
+              <dd>{product.category.name}</dd>
+            </div>
+            <div>
+              <dt>Reference</dt>
+              <dd>{product.slug}</dd>
+            </div>
+            <div>
+              <dt>Stock</dt>
+              <dd>{totalStock} units</dd>
+            </div>
+          </dl>
           <p className="detail-description">{product.description}</p>
           {firstVariant && (
             <p className="detail-price">
@@ -115,6 +153,13 @@ export default async function ProductPage({
             ))}
           </div>
           <AddToCart product={product} />
+          <div className="seller-trust-strip">
+            <span>Verified seller</span>
+            <Link href={`/stores/${product.storeSlug}`}>
+              {product.storeName}
+            </Link>
+            <small>View store →</small>
+          </div>
         </div>
       </article>
       <section className="review-section" aria-labelledby="reviews-heading">
