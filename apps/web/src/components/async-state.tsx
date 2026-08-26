@@ -9,6 +9,9 @@ export function LoadingState({ label = "Loading" }: { label?: string }) {
       aria-live="polite"
       aria-busy="true"
     >
+      <span className="state-index" aria-hidden="true">
+        00
+      </span>
       <span className="skeleton-line" />
       <span className="skeleton-line short" />
       <span className="sr-only">{label}</span>
@@ -29,6 +32,9 @@ export function EmptyState({
 }) {
   return (
     <div className="state-panel">
+      <span className="state-index" aria-hidden="true">
+        00
+      </span>
       <h2>{title}</h2>
       <p>{message}</p>
       {href && action ? (
@@ -51,6 +57,9 @@ export function ErrorState({
 }) {
   return (
     <div className="state-panel" role="alert">
+      <span className="state-index" aria-hidden="true">
+        !
+      </span>
       <h2>{title}</h2>
       <p>{message}</p>
       {retry ? (
