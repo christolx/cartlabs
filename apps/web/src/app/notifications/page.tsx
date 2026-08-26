@@ -42,6 +42,13 @@ function NotificationsContent() {
       <PageHeading
         title="Notifications"
         description="Durable events for current account, newest first."
+        family="ACCOUNT / EVENTS"
+        index="01"
+        meta={
+          <span>
+            {items.length} event{items.length === 1 ? "" : "s"}
+          </span>
+        }
       />
       {!items.length ? (
         <EmptyState
@@ -50,16 +57,24 @@ function NotificationsContent() {
         />
       ) : (
         <div className="notification-feed">
+          <h2 className="notification-day">
+            Newest first / {items.length} events
+          </h2>
           {items.map((item) => (
-            <article key={item.id}>
+            <article className={item.readAt ? "" : "is-unread"} key={item.id}>
               <div>
                 <span>{item.kind.replaceAll("_", " ")}</span>
                 <time dateTime={item.createdAt}>
                   {formatDate(item.createdAt)}
                 </time>
               </div>
-              <h2>{item.title}</h2>
-              <p>{item.body}</p>
+              <div>
+                <h2>{item.title}</h2>
+                <p>{item.body}</p>
+              </div>
+              <span className="notification-read-state">
+                {item.readAt ? "Read" : "New"}
+              </span>
             </article>
           ))}
         </div>

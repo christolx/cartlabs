@@ -12,6 +12,14 @@ import { errorMessage } from "@/lib/api/browser";
 
 type Cart = components["schemas"]["Cart"];
 
+function announceCart(cart: Cart) {
+  window.dispatchEvent(
+    new CustomEvent("cart:updated", {
+      detail: { quantity: cart.totalQuantity },
+    }),
+  );
+}
+
 function CartContent() {
   const { request } = useSession();
   const [cart, setCart] = useState<Cart | null>(null);
@@ -21,7 +29,9 @@ function CartContent() {
   const load = useCallback(async () => {
     setError("");
     try {
-      setCart(await request<Cart>("/cart"));
+      const next = await request<Cart>("/cart");
+      setCart(next);
+      announceCart(next);
     } catch (cause) {
       setError(errorMessage(cause, "Cart unavailable."));
     }
@@ -42,6 +52,7 @@ function CartContent() {
           : { method: "DELETE" },
       );
       setCart(next);
+      announceCart(next);
       setMessage(quantity > 0 ? "Quantity updated." : "Item removed.");
     } catch (cause) {
       setMessage(errorMessage(cause, "Cart update failed."));
@@ -62,8 +73,20 @@ function CartContent() {
   return (
     <>
       <PageHeading
-        title="Your cart"
+        title="Your bag"
         description="Live price and inventory are checked again at checkout."
+        family="COMMERCE / BAG"
+        index="01"
+        meta={
+          <>
+            <span>
+              {cart.totalQuantity} item{cart.totalQuantity === 1 ? "" : "s"}
+            </span>
+            <span>
+              {cart.stores.length} seller{cart.stores.length === 1 ? "" : "s"}
+            </span>
+          </>
+        }
         actions={
           cart.totalQuantity ? (
             <Link className="button button-primary" href="/checkout">
@@ -90,7 +113,12 @@ function CartContent() {
             {cart.stores.map((store) => (
               <section className="cart-store-section" key={store.storeId}>
                 <div className="cart-store-heading">
-                  <h2>{store.storeName}</h2>
+                  <h2>
+                    <span className="section-index">
+                      /{String(cart.stores.indexOf(store) + 1).padStart(2, "0")}
+                    </span>{" "}
+                    {store.storeName}
+                  </h2>
                   <strong>
                     <Money value={store.subtotalMinor} />
                   </strong>
@@ -149,7 +177,7 @@ function CartContent() {
                         disabled={busyId === item.variantId}
                         onClick={() => void update(item.variantId, 0)}
                       >
-                        Remove
+                        Remove item
                       </button>
                     </div>
                   </article>

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import type { components } from "@/lib/api/schema";
@@ -105,9 +106,23 @@ function PurchaseContent() {
     );
   return (
     <>
+      <Link className="purchase-detail-back" href="/purchases">
+        ← Back to purchases
+      </Link>
       <PageHeading
         title={purchase.reference}
         description={`Created ${formatDate(purchase.createdAt)}. Reservation expires ${formatDate(purchase.reservationExpiresAt)}.`}
+        family="COMMERCE / PURCHASE"
+        index="03"
+        meta={
+          <>
+            <span>Payment intent {purchase.paymentIntentId}</span>
+            <span>
+              {purchase.sellerOrders.length} seller order
+              {purchase.sellerOrders.length === 1 ? "" : "s"}
+            </span>
+          </>
+        }
         actions={
           <div className="status-pair">
             <Status value={purchase.status} />
@@ -126,7 +141,15 @@ function PurchaseContent() {
             <section className="purchase-order" key={order.id}>
               <header>
                 <div>
-                  <h2>{order.storeName}</h2>
+                  <h2>
+                    <span className="section-index">
+                      /
+                      {String(
+                        purchase.sellerOrders.indexOf(order) + 1,
+                      ).padStart(2, "0")}
+                    </span>{" "}
+                    {order.storeName}
+                  </h2>
                   <span>{order.reference}</span>
                 </div>
                 <Status value={order.status} />

@@ -46,10 +46,15 @@ export function AddToCart({ product }: { product: Product }) {
     }
     setBusy(true);
     try {
-      await request<Cart>(`/cart/items/${selected.id}`, {
+      const cart = await request<Cart>(`/cart/items/${selected.id}`, {
         method: "PUT",
         body: JSON.stringify({ quantity }),
       });
+      window.dispatchEvent(
+        new CustomEvent("cart:updated", {
+          detail: { quantity: cart.totalQuantity },
+        }),
+      );
       setAdded(true);
       setMessage(`${quantity} item${quantity === 1 ? "" : "s"} added to cart.`);
     } catch (error) {

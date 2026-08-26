@@ -43,6 +43,9 @@ function CheckoutContent() {
         method: "POST",
         headers: { "Idempotency-Key": keyRef.current },
       });
+      window.dispatchEvent(
+        new CustomEvent("cart:updated", { detail: { quantity: 0 } }),
+      );
       router.replace(`/purchases/${purchase.id}`);
     } catch (cause) {
       setMessage(
@@ -69,6 +72,8 @@ function CheckoutContent() {
         <PageHeading
           title="Checkout"
           description="Confirm current cart before purchase creation."
+          family="COMMERCE / CHECKOUT"
+          index="01"
         />
         <EmptyState
           title="Nothing to check out"
@@ -88,19 +93,39 @@ function CheckoutContent() {
       <PageHeading
         title="Confirm checkout"
         description="One purchase is created. Each store fulfills its own seller order."
+        family="COMMERCE / CHECKOUT"
+        index="01"
       />
+      <div className="checkout-steps" aria-label="Checkout progress">
+        <div className="checkout-step is-active">
+          <strong>01</strong>
+          <span>Review bag</span>
+        </div>
+        <div className="checkout-step">
+          <strong>02</strong>
+          <span>Purchase created</span>
+        </div>
+      </div>
       <div className="checkout-layout">
         <div className="checkout-groups">
           {cart.stores.map((store) => (
             <section key={store.storeId}>
               <h2>{store.storeName}</h2>
               {store.items.map((item) => (
-                <div className="checkout-line" key={item.variantId}>
+                <div
+                  className={`checkout-line${item.quantity > item.availableStock ? " is-invalid" : ""}`}
+                  key={item.variantId}
+                >
                   <div>
                     <strong>{item.productName}</strong>
                     <span>
                       {item.variantName} x {item.quantity}
                     </span>
+                    {item.quantity > item.availableStock ? (
+                      <span className="error-message">
+                        Stock changed: {item.availableStock} available.
+                      </span>
+                    ) : null}
                   </div>
                   <Money value={item.lineTotalMinor} />
                 </div>
@@ -128,7 +153,9 @@ function CheckoutContent() {
               </dd>
             </div>
           </dl>
-          <p>
+          <p className="notice commerce-notice">
+            <strong>Demo checkout</strong>
+            <br />
             No address, shipping quote, tax, or real payment is collected in
             this demo.
           </p>
@@ -143,7 +170,7 @@ function CheckoutContent() {
             disabled={busy || invalid}
             onClick={() => void submit()}
           >
-            {busy ? "Creating purchase" : "Create purchase"}
+            {busy ? "Confirming purchase" : "Confirm purchase"}
           </button>
           {invalid ? (
             <p className="error-message">

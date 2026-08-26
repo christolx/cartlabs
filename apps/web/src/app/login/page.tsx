@@ -82,6 +82,20 @@ export default function LoginPage() {
           Buyers manage purchases. Sellers manage supply. Admins operate
           marketplace trust.
         </p>
+        <div className="role-index-list" aria-label="Account roles">
+          <div>
+            <span>01</span>
+            <strong>Buyer / purchase</strong>
+          </div>
+          <div>
+            <span>02</span>
+            <strong>Seller / supply</strong>
+          </div>
+          <div>
+            <span>03</span>
+            <strong>Admin / trust</strong>
+          </div>
+        </div>
       </section>
       <section className="auth-panel" aria-labelledby="login-heading">
         <h2 id="login-heading">Email and password</h2>
