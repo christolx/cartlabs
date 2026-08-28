@@ -387,7 +387,7 @@ details summary {
 .cart-store-heading h2,
 .checkout-groups h2,
 .purchase-order h2 {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 22px;
   font-weight: 400;
   letter-spacing: 0.02em;
@@ -407,7 +407,7 @@ details summary {
 
 .cart-line-copy h3,
 .purchase-item h3 {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 18px;
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -437,7 +437,7 @@ details summary {
 }
 
 .order-summary h2 {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 26px;
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -505,7 +505,7 @@ details summary {
 }
 
 .checkout-line strong {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 16px;
   font-weight: 400;
   text-transform: uppercase;
@@ -608,7 +608,7 @@ details summary {
 .purchase-ledger-row strong {
   display: block;
   margin-bottom: 4px;
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 18px;
   font-weight: 400;
   text-transform: uppercase;
@@ -737,7 +737,7 @@ details summary {
 
 .notification-feed h2 {
   margin: 0 0 8px;
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 20px;
   font-weight: 400;
   text-transform: uppercase;
@@ -761,7 +761,7 @@ details summary {
 }
 
 .auth-copy h1 {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: clamp(52px, 8vw, 96px);
   font-weight: 400;
   letter-spacing: 0.01em;
@@ -799,7 +799,7 @@ details summary {
 
 .role-index-list strong {
   padding-inline: 14px;
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 17px;
   font-weight: 400;
   text-transform: uppercase;
@@ -811,9 +811,10 @@ details summary {
 
 .auth-panel h2,
 .demo-login h2 {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 25px;
   font-weight: 400;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
 }
 
@@ -838,7 +839,7 @@ details summary {
 
 .demo-intro h1 {
   margin: 0;
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: clamp(48px, 8vw, 90px);
   font-weight: 400;
   text-transform: uppercase;

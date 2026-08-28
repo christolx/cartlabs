@@ -77,7 +77,7 @@
 .header-login {
   min-height: 38px;
   padding-inline: 14px;
-  font-size: 13px;
+  font-size: 17px;
 }
 .site-footer {
   border-top: 1px solid var(--color-border);
@@ -326,7 +326,7 @@ body {
   gap: 10px;
   padding-inline: 12px 20px;
   border-right: var(--keyline);
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 18px;
   letter-spacing: 0.04em;
 }
@@ -412,7 +412,7 @@ body {
 .page-heading h1,
 .route-masthead h1 {
   margin: 0;
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: var(--text-page-title);
   font-weight: 400;
   letter-spacing: 0.005em;
@@ -550,7 +550,7 @@ body {
 .workspace-panel h2,
 .form-panel h2,
 .panel-heading-row h2 {
-  font-family: var(--font-heading), Impact, sans-serif;
+  font-family: var(--font-heading);
   font-size: 25px;
   font-weight: 400;
   letter-spacing: 0.01em;
