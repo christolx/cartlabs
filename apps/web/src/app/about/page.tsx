@@ -1,212 +1,483 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { PageHeading } from "@/components/marketplace-ui";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "How Cartlabs handles multi-seller checkout and marketplace operations.",
+    "An engineering overview of Cartlabs: transactional checkout, role isolation, generated contracts, and observable services.",
 };
 
-const decisions = [
+const transactionPath = [
   [
-    "Order splitting",
-    "One purchase becomes one seller order per store. Each seller fulfills only its own lines.",
+    "Read authoritative state",
+    "Reload published products, approved stores, prices, and available stock from PostgreSQL.",
   ],
   [
-    "Inventory reservation",
-    "Checkout atomically reserves each variant. Failed, expired, or eligible cancelled purchases release stock once.",
+    "Reserve under lock",
+    "Use row-level locks and atomic updates so concurrent checkout cannot oversell inventory.",
   ],
   [
-    "Idempotent payments",
-    "Checkout keys prevent duplicate reservation. Signed webhooks validate amount, currency, reference, freshness, and provider event ID.",
+    "Create the order graph",
+    "Create one parent purchase and one seller order per store, with immutable item snapshots.",
   ],
   [
-    "Async work",
-    "A transactional outbox commits domain facts with state changes. RabbitMQ workers retry delivery and route exhausted messages to dead-letter queues.",
+    "Verify payment",
+    "Validate the mock provider signature, timestamp, reference, amount, currency, and event ID.",
   ],
   [
-    "Role isolation",
-    "Buyer, seller, and admin routes enforce role and ownership checks at HTTP and domain boundaries.",
+    "Publish and fulfill",
+    "Commit domain state with an outbox fact, then let workers deliver events while sellers advance owned orders.",
+  ],
+] as const;
+
+const engineeringHighlights = [
+  [
+    "Atomic checkout",
+    "PostgreSQL transactions reserve SKU inventory and reject underflow before creating purchase state.",
   ],
   [
-    "Search extraction",
-    "A gRPC search service returns candidate IDs. PostgreSQL still decides visibility and provides fallback search when RPC fails.",
+    "Idempotent mutations",
+    "Idempotency keys and provider-event deduplication make retries safe across checkout and payment.",
+  ],
+  [
+    "Seller isolation",
+    "Transport and domain checks enforce role boundaries and prevent sellers from crossing store ownership.",
+  ],
+  [
+    "Order state machines",
+    "Purchase and seller-order transitions reject invalid moves with explicit conflict responses.",
+  ],
+  [
+    "Resilient search",
+    "The gRPC search service retrieves matching product IDs; PostgreSQL applies visibility and remains the fallback.",
+  ],
+  [
+    "Verified reviews",
+    "Only buyers with delivered items can review, and duplicate submissions are rejected.",
+  ],
+] as const;
+
+const platformQualities = [
+  [
+    "Security",
+    "Argon2id passwords, short-lived access tokens, rotating refresh cookies, rate limits, and immutable admin audit facts.",
+  ],
+  [
+    "Contracts",
+    "OpenAPI is the source of truth for generated Go and TypeScript types. CI rejects contract drift.",
+  ],
+  [
+    "Observability",
+    "OpenTelemetry traces, Prometheus metrics, structured logs, and dependency-aware health probes cover runtime behavior.",
+  ],
+  [
+    "Deployment",
+    "Docker images and Helm charts run the stack on a self-hosted single-node k3s cluster with migrations, probes, and optional telemetry.",
   ],
 ] as const;
 
 export default function AboutPage() {
   return (
-    <main className="info-page">
-      <header className="info-hero">
-        <p className="info-kicker">Marketplace engineering / 01</p>
-        <h1>
-          One checkout.
-          <br />
-          Many independent sellers.
-        </h1>
-        <p className="info-lede">
-          Cartlabs keeps buyer payment unified while inventory, fulfillment, and
-          ownership remain explicit per seller.
-        </p>
-      </header>
+    <main className="workspace-page shell info-page about-page">
+      <PageHeading
+        family="ABOUT / ENGINEERING"
+        index="01"
+        title="A multi-vendor marketplace case study."
+        description="Cartlabs is a deployable full-stack system running on self-hosted Kubernetes, built to explore transactional checkout, authorization, service boundaries, and operational recovery."
+        meta={
+          <>
+            <span>Next.js + Go</span>
+            <span>PostgreSQL + RabbitMQ</span>
+            <span>Self-hosted k3s</span>
+          </>
+        }
+      />
 
-      <section className="lifecycle" aria-labelledby="lifecycle-title">
-        <div className="section-heading">
-          <span>01</span>
-          <h2 id="lifecycle-title">Checkout lifecycle</h2>
-        </div>
-        <ol className="lifecycle-track">
-          <li>
-            <b>01</b>
-            <strong>Validate cart</strong>
-            <p>
-              Reload published products, approved stores, prices, and available
-              stock.
-            </p>
-          </li>
-          <li>
-            <b>02</b>
-            <strong>Reserve inventory</strong>
-            <p>
-              Lock variants and record time-bound reservations in one
-              transaction.
-            </p>
-          </li>
-          <li>
-            <b>03</b>
-            <strong>Split by seller</strong>
-            <p>
-              Create one purchase plus independently fulfilled seller orders.
-            </p>
-          </li>
-          <li>
-            <b>04</b>
-            <strong>Complete payment</strong>
-            <p>Mock provider sends signed success or failure webhook.</p>
-          </li>
-          <li>
-            <b>05</b>
-            <strong>Fulfill separately</strong>
-            <p>
-              Each seller moves paid orders through processing, shipped, and
-              delivered.
-            </p>
-          </li>
-        </ol>
-      </section>
-
-      <section className="decision-section" aria-labelledby="decisions-title">
-        <div className="section-heading">
-          <span>02</span>
-          <h2 id="decisions-title">Implemented decisions</h2>
-        </div>
-        <div className="decision-grid">
-          {decisions.map(([title, body], index) => (
-            <article key={title}>
-              <b>{String(index + 1).padStart(2, "0")}</b>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="architecture-section"
-        aria-labelledby="architecture-title"
-      >
-        <div className="section-heading">
-          <span>03</span>
-          <h2 id="architecture-title">Platform shape</h2>
-        </div>
-        <div
-          className="architecture-map"
-          role="img"
-          aria-label="Browser connects to Next.js web and Go API. API uses catalog PostgreSQL, Redis, RabbitMQ workers, and gRPC search. Mock payment sends signed webhooks to API."
+      <div className="info-stack">
+        <section
+          className="workspace-panel info-panel"
+          aria-labelledby="architecture-title"
         >
-          <div className="arch-node arch-browser">Browser</div>
-          <span aria-hidden="true">→</span>
-          <div className="arch-node">Next.js web</div>
-          <span aria-hidden="true">→</span>
-          <div className="arch-node arch-core">Go REST API</div>
-          <span aria-hidden="true">→</span>
-          <div className="arch-branches">
-            <div className="arch-node">Catalog PostgreSQL</div>
-            <div className="arch-node">Redis</div>
-            <div className="arch-node">RabbitMQ + worker</div>
-            <div className="arch-node">gRPC search + PostgreSQL</div>
-            <div className="arch-node">Mock payment webhook</div>
+          <div className="panel-heading-row">
+            <div>
+              <span className="route-family">Service boundary</span>
+              <h2 id="architecture-title">
+                Modular core, measured extraction.
+              </h2>
+              <p>
+                The commerce core stays transactional. Search is the first
+                extracted boundary because it tolerates eventual consistency.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
+          <figure
+            className="info-architecture"
+            aria-labelledby="architecture-figure-title"
+          >
+            <figcaption className="info-architecture-caption">
+              <div>
+                <span className="route-family">Runtime shape</span>
+                <h3 id="architecture-figure-title">
+                  Request, state, events, extraction.
+                </h3>
+              </div>
+              <p>
+                Deployables run inside self-hosted k3s. Synchronous commerce
+                stays authoritative in PostgreSQL; projections and delivery move
+                through explicit boundaries.
+              </p>
+            </figcaption>
 
-      <section className="operations" aria-labelledby="operations-title">
-        <div className="section-heading">
-          <span>04</span>
-          <h2 id="operations-title">Operating profile</h2>
-        </div>
-        <div className="operations-grid">
-          <article>
-            <h3>Reliability</h3>
-            <p>
-              Atomic inventory changes, transactional outbox, idempotent
-              consumers, bounded retries, health probes, metrics, traces, and
-              structured logs.
-            </p>
-          </article>
-          <article>
-            <h3>Security</h3>
-            <p>
-              Argon2id passwords, short-lived access tokens, rotating refresh
-              cookies, rate limits, resource ownership, immutable admin audit
-              facts.
-            </p>
-          </article>
-          <article>
-            <h3>Stack</h3>
-            <p>
-              Next.js, strict TypeScript, Go, PostgreSQL, Redis, RabbitMQ, MinIO
-              or Cloudinary, OpenAPI, protobuf, OpenTelemetry, Prometheus.
-            </p>
-          </article>
-          <article>
-            <h3>Deployment</h3>
-            <p>
-              Docker images and Helm charts target a single-node k3s demo
-              platform with ingress, migrations, probes, and optional
-              observability.
-            </p>
-          </article>
-        </div>
-      </section>
+            <div
+              className="info-architecture-legend"
+              aria-label="Diagram legend"
+            >
+              <span>
+                <i
+                  className="info-architecture-legend-swatch info-architecture-legend-swatch--request"
+                  aria-hidden="true"
+                />
+                HTTP / gRPC
+              </span>
+              <span>
+                <i
+                  className="info-architecture-legend-swatch info-architecture-legend-swatch--event"
+                  aria-hidden="true"
+                />
+                versioned events
+              </span>
+              <span>
+                <i
+                  className="info-architecture-legend-swatch info-architecture-legend-swatch--authority"
+                  aria-hidden="true"
+                />
+                final authority
+              </span>
+            </div>
 
-      <section className="boundaries" aria-labelledby="boundaries-title">
-        <div>
-          <h2 id="boundaries-title">Current boundaries</h2>
-          <p>
-            This project demonstrates marketplace mechanics, not production
-            commerce coverage.
-          </p>
-        </div>
-        <ul>
-          <li>Payments use an internal mock provider.</li>
-          <li>Money and checkout support IDR only.</li>
-          <li>Quick-login exists only when demo mode is explicitly enabled.</li>
-        </ul>
-      </section>
+            <div className="info-architecture-runtime">
+              <div className="info-architecture-runtime-head">
+                <div>
+                  <span className="route-family">Deployment boundary</span>
+                  <strong>Self-hosted k3s + Helm</strong>
+                </div>
+                <span className="count-badge">05 deployables</span>
+              </div>
+              <p className="info-architecture-runtime-components">
+                web · api · worker · search · mock payment
+              </p>
 
-      <nav className="doc-links" aria-label="Repository documentation">
-        <a href="https://github.com/christolx/cartlabs/blob/main/docs/architecture.md">
-          Architecture
-        </a>
-        <a href="https://github.com/christolx/cartlabs/blob/main/docs/fulfillment.md">
-          Fulfillment
-        </a>
-        <a href="https://github.com/christolx/cartlabs/blob/main/docs/e2e-flow.md">
-          Role journeys
-        </a>
-        <Link href="/docs">Use Cartlabs</Link>
-      </nav>
+              <div className="info-architecture-map">
+                <div className="info-architecture-lane">
+                  <div className="info-architecture-lane-heading">
+                    <span className="info-architecture-lane-index">01</span>
+                    <div>
+                      <h4>Request path</h4>
+                      <p>Browser traffic stays REST at platform edge.</p>
+                    </div>
+                  </div>
+                  <div className="info-architecture-lane-body">
+                    <div className="info-architecture-flow info-architecture-flow--request">
+                      <div className="info-architecture-node">
+                        <span>Client</span>
+                        <strong>Browser</strong>
+                        <small>Same-origin app traffic</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>HTTP</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node">
+                        <span>Web</span>
+                        <strong>Next.js</strong>
+                        <small>Generated TS + REST proxy</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>REST</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node info-architecture-node--accent">
+                        <span>Core</span>
+                        <strong>Go REST API</strong>
+                        <small>Modules + authorization</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="info-architecture-lane">
+                  <div className="info-architecture-lane-heading">
+                    <span className="info-architecture-lane-index">02</span>
+                    <div>
+                      <h4>State plane</h4>
+                      <p>Commerce state and short-lived coordination.</p>
+                    </div>
+                  </div>
+                  <div className="info-architecture-lane-body">
+                    <div className="info-architecture-flow info-architecture-flow--dependency">
+                      <div className="info-architecture-node">
+                        <span>Core dependency</span>
+                        <strong>Go REST API</strong>
+                        <small>Queries, writes, visibility checks</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>SQL + cache</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-targets">
+                        <div className="info-architecture-node info-architecture-node--authority">
+                          <span>Authority</span>
+                          <strong>Catalog PostgreSQL</strong>
+                          <small>Orders, inventory, users, stores</small>
+                        </div>
+                        <div className="info-architecture-node">
+                          <span>Coordination</span>
+                          <strong>Redis</strong>
+                          <small>Cache, limits, short-lived state</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="info-architecture-lane">
+                  <div className="info-architecture-lane-heading">
+                    <span className="info-architecture-lane-index">03</span>
+                    <div>
+                      <h4>Async delivery</h4>
+                      <p>Committed facts leave the request path safely.</p>
+                    </div>
+                  </div>
+                  <div className="info-architecture-lane-body">
+                    <div className="info-architecture-flow info-architecture-flow--async">
+                      <div className="info-architecture-node">
+                        <span>Commit boundary</span>
+                        <strong>Transactional outbox</strong>
+                        <small>Publishes after database commit</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>publish</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node">
+                        <span>Broker</span>
+                        <strong>RabbitMQ</strong>
+                        <small>Retries + dead-letter queues</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>consume</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node">
+                        <span>Runtime</span>
+                        <strong>Go worker</strong>
+                        <small>Idempotent jobs and events</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="info-architecture-lane">
+                  <div className="info-architecture-lane-heading">
+                    <span className="info-architecture-lane-index">04</span>
+                    <div>
+                      <h4>Search boundary</h4>
+                      <p>
+                        Extracted retrieval, PostgreSQL visibility authority.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="info-architecture-lane-body">
+                    <div className="info-architecture-flow info-architecture-flow--search">
+                      <div className="info-architecture-node">
+                        <span>Caller</span>
+                        <strong>Go REST API</strong>
+                        <small>Filters final visible records</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>protobuf / gRPC</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node info-architecture-node--accent-soft">
+                        <span>Independent service</span>
+                        <strong>Search microservice</strong>
+                        <small>Candidate retrieval + projection owner</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>projection</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node">
+                        <span>Read model</span>
+                        <strong>Search PostgreSQL</strong>
+                        <small>Text projection, not commerce authority</small>
+                      </div>
+                    </div>
+                    <p className="info-architecture-note">
+                      Worker-published catalog events update the projection. If
+                      gRPC is unavailable, API falls back to PostgreSQL text
+                      search.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="info-architecture-lane">
+                  <div className="info-architecture-lane-heading">
+                    <span className="info-architecture-lane-index">05</span>
+                    <div>
+                      <h4>Payment callback</h4>
+                      <p>External behavior stays behind a signed interface.</p>
+                    </div>
+                  </div>
+                  <div className="info-architecture-lane-body">
+                    <div className="info-architecture-flow info-architecture-flow--payment">
+                      <div className="info-architecture-node">
+                        <span>Gateway simulator</span>
+                        <strong>Mock payment</strong>
+                        <small>Intent completion + retryable callback</small>
+                      </div>
+                      <span className="info-architecture-connector">
+                        <small>signed webhook</small>
+                        <b aria-hidden="true">→</b>
+                      </span>
+                      <div className="info-architecture-node info-architecture-node--accent">
+                        <span>Verifier</span>
+                        <strong>Go REST API</strong>
+                        <small>Signature, amount, event dedupe</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="info-architecture-ops">
+                <div className="info-architecture-ops-item">
+                  <span className="route-family">Observability rail</span>
+                  <strong>OpenTelemetry + Prometheus/Grafana</strong>
+                  <small>
+                    Traces, metrics, structured logs, health probes.
+                  </small>
+                </div>
+                <div className="info-architecture-ops-item">
+                  <span className="route-family">Operational boundary</span>
+                  <strong>Helm-managed recovery</strong>
+                  <small>
+                    Migrations, readiness checks, and restartable services.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </figure>
+        </section>
+
+        <section
+          className="workspace-panel info-panel"
+          aria-labelledby="transaction-title"
+        >
+          <div className="panel-heading-row">
+            <div>
+              <span className="route-family">Transaction path</span>
+              <h2 id="transaction-title">Checkout under contention.</h2>
+              <p>
+                One checkout crosses inventory, payment, orders, and async
+                delivery without losing state between boundaries.
+              </p>
+            </div>
+            <span className="count-badge">05 boundaries</span>
+          </div>
+          <ol className="record-list info-step-list">
+            {transactionPath.map(([title, body], index) => (
+              <li className="record-row info-step-row" key={title}>
+                <span className="info-step-number" aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <strong>{title}</strong>
+                  <span>{body}</span>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <div className="info-grid">
+          <section
+            className="workspace-panel info-panel"
+            aria-labelledby="highlights-title"
+          >
+            <div className="panel-heading-row">
+              <div>
+                <span className="route-family">Feature surface</span>
+                <h2 id="highlights-title">What to inspect</h2>
+                <p>The mechanics that make this more than a catalog mockup.</p>
+              </div>
+              <span className="count-badge">06 areas</span>
+            </div>
+            <div className="record-list">
+              {engineeringHighlights.map(([title, body]) => (
+                <article className="record-row info-detail-row" key={title}>
+                  <div>
+                    <strong>{title}</strong>
+                    <span>{body}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section
+            className="workspace-panel info-panel"
+            aria-labelledby="qualities-title"
+          >
+            <div className="panel-heading-row">
+              <div>
+                <span className="route-family">System qualities</span>
+                <h2 id="qualities-title">Built for inspection.</h2>
+                <p>
+                  Cross-cutting choices keep behavior testable and explainable.
+                </p>
+              </div>
+              <span className="count-badge">04 areas</span>
+            </div>
+            <div className="record-list">
+              {platformQualities.map(([title, body]) => (
+                <article className="record-row info-detail-row" key={title}>
+                  <div>
+                    <strong>{title}</strong>
+                    <span>{body}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <section
+          className="workspace-panel info-boundaries"
+          aria-labelledby="boundaries-title"
+        >
+          <div>
+            <span className="route-family">Scope</span>
+            <h2 id="boundaries-title">Explicitly not production commerce.</h2>
+            <p>
+              The project demonstrates credible system behavior while keeping
+              external integrations and operational scope honest.
+            </p>
+          </div>
+          <ul>
+            <li>
+              Payment is simulated; no live financial provider is connected.
+            </li>
+            <li>
+              IDR only; shipping, email, refunds, and promotions are deferred.
+            </li>
+            <li>
+              Search is a read projection; PostgreSQL remains final authority.
+            </li>
+            <li>Seeded demo data is resettable and quick-login is opt-in.</li>
+          </ul>
+        </section>
+      </div>
     </main>
   );
 }
