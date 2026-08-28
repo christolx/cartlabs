@@ -17,6 +17,16 @@ export function RequireRole({
   role: Role;
   children: ReactNode;
 }) {
+  return <RequireRoles roles={[role]}>{children}</RequireRoles>;
+}
+
+export function RequireRoles({
+  roles,
+  children,
+}: {
+  roles: readonly Role[];
+  children: ReactNode;
+}) {
   const { status, user } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -30,12 +40,13 @@ export function RequireRole({
 
   if (status === "loading" || status === "anonymous")
     return <LoadingState label="Checking access" />;
-  if (!user || user.role !== role) {
+  if (!user || !roles.includes(user.role)) {
+    const requiredAccess = roles.join(" or ");
     return (
       <div className="state-panel forbidden-state">
         <h1>Access restricted</h1>
         <p>
-          This page requires {role} access. Signed in as{" "}
+          This page requires {requiredAccess} access. Signed in as{" "}
           {user?.role ?? "another role"}.
         </p>
         <Link
@@ -49,7 +60,7 @@ export function RequireRole({
   }
   return (
     <>
-      <WorkspaceNav role={role} />
+      <WorkspaceNav role={user.role} />
       {children}
     </>
   );

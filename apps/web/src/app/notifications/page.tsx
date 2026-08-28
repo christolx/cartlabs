@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { components } from "@/lib/api/schema";
-import { RequireAuth } from "@/components/require-role";
+import { RequireRoles } from "@/components/require-role";
 import { useSession } from "@/components/session-provider";
 import { EmptyState, ErrorState, LoadingState } from "@/components/async-state";
 import { formatDate, PageHeading } from "@/components/marketplace-ui";
@@ -86,9 +86,9 @@ function NotificationsContent() {
 export default function NotificationsPage() {
   return (
     <main className="workspace-page shell">
-      <RequireAuth>
+      <RequireRoles roles={["buyer", "seller"]}>
         <NotificationsContent />
-      </RequireAuth>
+      </RequireRoles>
     </main>
   );
 }

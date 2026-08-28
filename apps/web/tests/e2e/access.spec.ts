@@ -74,6 +74,30 @@ test("wrong role direct URL renders forbidden without protected request", async 
   expect(adminDataRequested).toBe(false);
 });
 
+test("admin notifications route offers workspace without retrying forbidden request", async ({
+  page,
+}) => {
+  let notificationsRequested = false;
+  await page.route("**/api/backend/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/auth/refresh"))
+      return json(route, session("admin"));
+    if (url.pathname.endsWith("/me")) return json(route, users.admin);
+    if (url.pathname.endsWith("/notifications")) notificationsRequested = true;
+    return json(route, { title: "Forbidden", status: 403 }, 403);
+  });
+
+  await page.goto("/notifications");
+
+  await expect(
+    page.getByRole("heading", { name: "Access restricted" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Go to your workspace" }),
+  ).toHaveAttribute("href", "/admin");
+  expect(notificationsRequested).toBe(false);
+});
+
 test("demo quick login enters normal seller page", async ({ page }) => {
   await page.route("**/api/backend/**", async (route) => {
     const url = new URL(route.request().url());
