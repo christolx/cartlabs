@@ -7,4 +7,5 @@
 @import "./styles/commerce-account.css" layer(pages);
 @import "./styles/workspace-admin.css" layer(pages);
 @import "./styles/system-states.css" layer(pages);
+@import "./styles/editorial-info.css" layer(pages);
 @import "./styles/responsive.css" layer(responsive);

@@ -66,7 +66,8 @@ export function SiteHeader() {
     ? roleLinks[user.role]
     : ([
         ["Browse", "/#catalog"],
-        ["Stores", "/#catalog"],
+        ["About", "/about"],
+        ["Docs", "/docs"],
       ] as const);
 
   function scrollToCatalog(event: MouseEvent<HTMLAnchorElement>) {
