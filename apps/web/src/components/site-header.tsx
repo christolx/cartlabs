@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { actorHome, useSession } from "@/components/session-provider";
 
@@ -68,6 +68,23 @@ export function SiteHeader() {
         ["Browse", "/#catalog"],
         ["Stores", "/#catalog"],
       ] as const);
+
+  function scrollToCatalog(event: MouseEvent<HTMLAnchorElement>) {
+    if (pathname !== "/") return;
+    const catalog = document.getElementById("catalog");
+    if (!catalog) return;
+
+    event.preventDefault();
+    catalog.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "start",
+    });
+    if (window.location.hash !== "#catalog")
+      window.history.replaceState(window.history.state, "", "#catalog");
+  }
+
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -83,6 +100,7 @@ export function SiteHeader() {
             <Link
               key={label}
               href={href}
+              onClick={href === "/#catalog" ? scrollToCatalog : undefined}
               aria-current={
                 href !== "/#catalog" &&
                 (pathname === href || pathname.startsWith(`${href}/`))

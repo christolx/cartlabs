@@ -74,6 +74,21 @@ test("wrong role direct URL renders forbidden without protected request", async 
   expect(adminDataRequested).toBe(false);
 });
 
+test("catalog navigation scrolls when hash already targets catalog", async ({
+  page,
+}) => {
+  await mockAnonymous(page);
+  await page.goto("/#catalog");
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+
+  await page.getByRole("link", { name: "Browse", exact: true }).click();
+
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(0);
+});
+
 test("admin notifications route offers workspace without retrying forbidden request", async ({
   page,
 }) => {
