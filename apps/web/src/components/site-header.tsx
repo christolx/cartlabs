@@ -67,7 +67,6 @@ export function SiteHeader() {
     : ([
         ["Browse", "/#catalog"],
         ["Stores", "/#catalog"],
-        ["Demo", "/demo"],
       ] as const);
   return (
     <header className="site-header">

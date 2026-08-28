@@ -91,11 +91,11 @@ test("demo quick login enters normal seller page", async ({ page }) => {
       return json(route, { items: [] });
     return json(route, { title: "Not found", status: 404 }, 404);
   });
-  await page.goto("/demo");
-  await page.getByRole("button", { name: "Enter seller" }).click();
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Enter as seller" }).click();
   await expect(page).toHaveURL(/\/seller$/);
   await expect(
     page.getByRole("heading", { name: "Seller home" }),
   ).toBeVisible();
-  await expect(page.getByText("No store exists.")).toBeVisible();
+  await expect(page.getByText("No store created")).toBeVisible();
 });

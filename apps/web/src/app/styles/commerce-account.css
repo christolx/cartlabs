@@ -827,20 +827,3 @@ details summary {
 .demo-login .button-row .button {
   min-height: 44px;
 }
-
-.demo-page {
-  padding-block: 48px 96px;
-}
-
-.demo-intro {
-  max-width: 780px;
-  margin-bottom: 32px;
-}
-
-.demo-intro h1 {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: clamp(48px, 8vw, 90px);
-  font-weight: 400;
-  text-transform: uppercase;
-}

@@ -123,7 +123,7 @@ or worker republishes do not create duplicate user notifications.
 
 1. Set `DEMO_MODE=true`.
 2. Start services and seed data; see repository [README](../README.md).
-3. Open `/demo`.
+3. Open `/login`.
 4. Run roles in order: seller store -> admin verification -> seller publish -> buyer purchase ->
    seller fulfillment -> buyer review.
 

@@ -66,15 +66,6 @@
   .user-table-row > div:last-child {
     grid-column: 1 / -1;
   }
-  .demo-flow {
-    grid-template-columns: 1fr;
-  }
-  .demo-flow article {
-    min-height: 0;
-  }
-  .demo-flow dl {
-    margin-top: 20px;
-  }
 }
 
 @media (max-width: 767px) {
@@ -454,6 +445,7 @@
     border-top: 1px solid var(--color-border);
   }
   .footer-social {
+    grid-column: 1 / -1;
     border-top: 1px solid var(--color-border);
     border-right: 0;
   }
@@ -736,14 +728,6 @@
 
   .auth-copy .role-index-list {
     margin-top: 24px;
-  }
-
-  .demo-page {
-    padding-block: 32px 64px;
-  }
-
-  .demo-intro h1 {
-    font-size: clamp(48px, 14vw, 70px);
   }
 }
 

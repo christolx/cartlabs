@@ -67,6 +67,6 @@ INTEGRATION_DATABASE_URL='postgres://cartlabs:cartlabs@localhost:5432/cartlabs?s
 make check
 ```
 
-Demo web workflow lives at `http://localhost:3000/demo`. Choose buyer, add products
+Demo web workflow starts at `http://localhost:3000/login`. Choose buyer, add products
 from two stores, reserve checkout, complete payment, then switch to participating
 seller to inspect paid order and notification.

@@ -19,11 +19,6 @@ export function SiteFooter() {
           <Link href="/#catalog">All categories</Link>
           <Link href="/#catalog">Stores</Link>
         </nav>
-        <nav aria-label="Company links">
-          <Link href="/demo">About</Link>
-          <Link href="/demo">Help</Link>
-          <Link href="/demo">Contact</Link>
-        </nav>
         <button className="footer-region" type="button">
           INDONESIA (IDR)
         </button>
