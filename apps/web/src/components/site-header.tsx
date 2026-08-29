@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { actorHome, useSession } from "@/components/session-provider";
+
+const publicLinks = [
+  ["Home", "/"],
+  ["About", "/about"],
+  ["Docs", "/docs"],
+] as const;
 
 const roleLinks = {
   buyer: [
@@ -62,28 +68,28 @@ export function SiteHeader() {
       window.removeEventListener("cart:updated", onCartUpdate);
     };
   }, [request, status, user?.role]);
-  const links = user
-    ? roleLinks[user.role]
-    : ([
-        ["Browse", "/#catalog"],
-        ["About", "/about"],
-        ["Docs", "/docs"],
-      ] as const);
-
-  function scrollToCatalog(event: MouseEvent<HTMLAnchorElement>) {
-    if (pathname !== "/") return;
-    const catalog = document.getElementById("catalog");
-    if (!catalog) return;
-
-    event.preventDefault();
-    catalog.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: "start",
-    });
-    if (window.location.hash !== "#catalog")
-      window.history.replaceState(window.history.state, "", "#catalog");
+  function renderNavLink(
+    [label, href]: readonly [string, string],
+    matchDescendants = true,
+  ) {
+    return (
+      <Link
+        key={label}
+        href={href}
+        aria-current={
+          href === "/"
+            ? pathname === "/"
+              ? "page"
+              : undefined
+            : pathname === href ||
+                (matchDescendants && pathname.startsWith(`${href}/`))
+              ? "page"
+              : undefined
+        }
+      >
+        {label}
+      </Link>
+    );
   }
 
   return (
@@ -97,21 +103,21 @@ export function SiteHeader() {
           <span className="wordmark-text">Cartlabs</span>
         </Link>
         <nav aria-label="Primary navigation">
-          {links.map(([label, href]) => (
-            <Link
-              key={label}
-              href={href}
-              onClick={href === "/#catalog" ? scrollToCatalog : undefined}
-              aria-current={
-                href !== "/#catalog" &&
-                (pathname === href || pathname.startsWith(`${href}/`))
-                  ? "page"
-                  : undefined
-              }
+          <div className="nav-global">
+            {publicLinks.map((link) => renderNavLink(link))}
+          </div>
+          {user ? (
+            <div
+              className="nav-workspace"
+              role="group"
+              aria-label={`${user.role} workspace`}
             >
-              {label}
-            </Link>
-          ))}
+              <span className="nav-role-label">{user.role}</span>
+              {roleLinks[user.role].map((link, index) =>
+                renderNavLink(link, index > 0),
+              )}
+            </div>
+          ) : null}
         </nav>
         <div className="session-nav">
           {status === "loading" ? (
@@ -131,7 +137,11 @@ export function SiteHeader() {
               </button>
             </>
           ) : (
-            <Link className="header-login" href="/login">
+            <Link
+              className="header-login"
+              href="/login"
+              aria-current={pathname === "/login" ? "page" : undefined}
+            >
               Sign in
             </Link>
           )}

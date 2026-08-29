@@ -142,6 +142,37 @@
 .site-header nav a:hover {
   color: var(--color-action);
 }
+.site-header nav {
+  gap: 0;
+}
+.nav-global,
+.nav-workspace {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+.nav-global {
+  gap: 32px;
+}
+.site-header nav a[aria-current="page"] {
+  color: var(--color-action);
+}
+.nav-workspace {
+  gap: 32px;
+  margin-left: 28px;
+  padding-left: 28px;
+  border-left: 3px solid var(--color-action);
+}
+.nav-role-label {
+  display: inline-flex;
+  align-items: center;
+  padding-right: 28px;
+  border-right: 3px solid var(--color-action);
+  color: var(--color-ink);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
 .session-nav {
   height: 100%;
   padding: 0 50px 0 34px;
@@ -155,6 +186,9 @@
   display: flex;
   align-items: center;
   min-height: 100%;
+}
+.header-login[aria-current="page"] {
+  color: var(--color-action);
 }
 .session-nav .text-button {
   color: var(--color-action);
