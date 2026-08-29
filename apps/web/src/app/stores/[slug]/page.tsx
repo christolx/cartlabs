@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/product-card";
 import {
   APIError,
   apiGet,
+  formatMoney,
   type Category,
   type ProductPage,
 } from "@/lib/api/client";
@@ -94,15 +96,53 @@ export default async function StorePage({
   const pages = catalog
     ? Math.max(1, Math.ceil(catalog.total / catalog.pageSize))
     : 1;
+  const featuredProduct = catalog?.items[0] ?? null;
   return (
     <main className="store-page shell">
-      <section className="store-profile">
-        <p className="eyebrow">Verified store</p>
-        <h1>{store.name}</h1>
-        <p>{store.description}</p>
-        <a className="store-browse-action" href="#store-catalog">
-          Browse store ↓
-        </a>
+      <section className="store-profile" aria-labelledby="store-profile-title">
+        <div className="store-profile-copy">
+          <p className="eyebrow">Verified store</p>
+          <h1 id="store-profile-title">{store.name}</h1>
+          <p>{store.description}</p>
+          <a className="store-browse-action" href="#store-catalog">
+            Browse products →
+          </a>
+        </div>
+        <div className="store-profile-feature">
+          <div className="store-profile-image">
+            {featuredProduct?.imageUrl ? (
+              <Image
+                src={featuredProduct.imageUrl}
+                alt={`Featured product from ${store.name}: ${featuredProduct.name}`}
+                fill
+                sizes="(max-width: 767px) 112px, (max-width: 1023px) 180px, 14vw"
+              />
+            ) : (
+              <div className="image-fallback">Image pending</div>
+            )}
+          </div>
+          <div className="store-profile-feature-meta">
+            <span>Featured product</span>
+            {featuredProduct ? (
+              <>
+                <Link
+                  className="store-profile-product-link"
+                  href={`/products/${featuredProduct.slug}`}
+                >
+                  {featuredProduct.name}
+                </Link>
+                <strong>
+                  {formatMoney(
+                    featuredProduct.minPriceMinor,
+                    featuredProduct.currency,
+                  )}
+                </strong>
+              </>
+            ) : (
+              <strong>Catalog unavailable</strong>
+            )}
+          </div>
+        </div>
         <dl>
           <div>
             <dt>Seller</dt>
@@ -114,7 +154,7 @@ export default async function StorePage({
           </div>
           <div>
             <dt>Published products</dt>
-            <dd>{catalog?.total ?? "—"}</dd>
+            <dd>{catalog?.total ?? "N/A"}</dd>
           </div>
         </dl>
       </section>
