@@ -129,6 +129,7 @@ type PurchaseItem struct {
 	UnitPriceMinor int64  `json:"unitPriceMinor"`
 	LineTotalMinor int64  `json:"lineTotalMinor"`
 	Currency       string `json:"currency"`
+	Reviewed       bool   `json:"reviewed"`
 }
 
 type Notification struct {

@@ -522,7 +522,8 @@ func loadSellerOrders(ctx context.Context, db queryer, purchaseID, sellerID stri
 func loadPurchaseItems(ctx context.Context, db queryer, orderID string) ([]PurchaseItem, error) {
 	rows, err := db.Query(ctx, `
 		SELECT id::text,product_id::text,variant_id::text,product_name,variant_name,sku,image_url,quantity,
-			unit_price_minor,line_total_minor,currency
+			unit_price_minor,line_total_minor,currency,
+			EXISTS (SELECT 1 FROM reviews WHERE reviews.purchase_item_id=purchase_items.id)
 		FROM purchase_items WHERE seller_order_id=$1 ORDER BY product_name,variant_name`, orderID)
 	if err != nil {
 		return nil, fmt.Errorf("list purchase items: %w", err)
@@ -532,7 +533,8 @@ func loadPurchaseItems(ctx context.Context, db queryer, orderID string) ([]Purch
 	for rows.Next() {
 		var item PurchaseItem
 		if err := rows.Scan(&item.ID, &item.ProductID, &item.VariantID, &item.ProductName, &item.VariantName,
-			&item.SKU, &item.ImageURL, &item.Quantity, &item.UnitPriceMinor, &item.LineTotalMinor, &item.Currency); err != nil {
+			&item.SKU, &item.ImageURL, &item.Quantity, &item.UnitPriceMinor, &item.LineTotalMinor, &item.Currency,
+			&item.Reviewed); err != nil {
 			return nil, fmt.Errorf("scan purchase item: %w", err)
 		}
 		items = append(items, item)

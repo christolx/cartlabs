@@ -58,7 +58,7 @@ func TestResponseMappersMatchOpenAPIComponents(t *testing.T) {
 	purchaseItem := purchase.PurchaseItem{
 		ID: contractID1, ProductID: contractID4, VariantID: contractID2, ProductName: "Lamp",
 		VariantName: "Brass", SKU: "LAMP-01", ImageURL: "/images/lamp.webp", Quantity: 1,
-		UnitPriceMinor: 249000, LineTotalMinor: 249000, Currency: "IDR",
+		UnitPriceMinor: 249000, LineTotalMinor: 249000, Currency: "IDR", Reviewed: true,
 	}
 	order := purchase.SellerOrder{
 		ID: contractID2, PurchaseID: contractID3, Reference: "ORDER-1", StoreID: contractID1,

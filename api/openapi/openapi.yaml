@@ -1160,7 +1160,7 @@ components:
     SellerOrderStatus: {type: string, enum: [pending_payment, paid, processing, shipped, delivered, cancelled]}
     PurchaseItem:
       type: object
-      required: [id, productId, variantId, productName, variantName, sku, imageUrl, quantity, unitPriceMinor, lineTotalMinor, currency]
+      required: [id, productId, variantId, productName, variantName, sku, imageUrl, quantity, unitPriceMinor, lineTotalMinor, currency, reviewed]
       properties:
         id: {type: string, format: uuid}
         productId: {type: string, format: uuid}
@@ -1173,6 +1173,7 @@ components:
         unitPriceMinor: {type: integer, format: int64, minimum: 0}
         lineTotalMinor: {type: integer, format: int64, minimum: 0}
         currency: {type: string, enum: [IDR]}
+        reviewed: {type: boolean}
     SellerOrder:
       type: object
       required: [id, purchaseId, reference, storeId, storeName, status, currency, subtotalMinor, items, cancellationReason, createdAt, updatedAt]

@@ -14,7 +14,7 @@ import {
   PageHeading,
   Status,
 } from "@/components/marketplace-ui";
-import { errorMessage } from "@/lib/api/browser";
+import { BrowserAPIError, errorMessage } from "@/lib/api/browser";
 
 type Purchase = components["schemas"]["Purchase"];
 type Review = components["schemas"]["Review"];
@@ -26,7 +26,6 @@ function PurchaseContent() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
-  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
   const load = useCallback(async () => {
     setError("");
     try {
@@ -80,10 +79,29 @@ function PurchaseContent() {
           body: data.get("body"),
         }),
       });
-      setReviewed((current) => new Set(current).add(purchaseItemId));
+      setPurchase((current) =>
+        current
+          ? {
+              ...current,
+              sellerOrders: current.sellerOrders.map((order) => ({
+                ...order,
+                items: order.items.map((item) =>
+                  item.id === purchaseItemId
+                    ? { ...item, reviewed: true }
+                    : item,
+                ),
+              })),
+            }
+          : current,
+      );
       setMessage("Verified review published.");
     } catch (cause) {
-      setMessage(errorMessage(cause, "Review failed."));
+      if (cause instanceof BrowserAPIError && cause.status === 409) {
+        setMessage("This item has already been reviewed.");
+        await load();
+      } else {
+        setMessage(errorMessage(cause, "Review failed."));
+      }
     } finally {
       setBusy("");
     }
@@ -188,7 +206,7 @@ function PurchaseContent() {
                       <Money value={item.lineTotalMinor} />
                     </strong>
                   </div>
-                  {order.status === "delivered" && !reviewed.has(item.id) ? (
+                  {order.status === "delivered" && !item.reviewed ? (
                     <details className="review-disclosure">
                       <summary>Write review</summary>
                       <form

@@ -89,7 +89,7 @@ func toContractPurchaseItem(value purchase.PurchaseItem) (contract.PurchaseItem,
 		Id: id, ProductId: productID, VariantId: variantID, ProductName: value.ProductName,
 		VariantName: value.VariantName, Sku: value.SKU, ImageUrl: value.ImageURL,
 		Quantity: value.Quantity, UnitPriceMinor: value.UnitPriceMinor,
-		LineTotalMinor: value.LineTotalMinor, Currency: currency,
+		LineTotalMinor: value.LineTotalMinor, Currency: currency, Reviewed: value.Reviewed,
 	}, nil
 }
 

@@ -1014,6 +1014,7 @@ export interface components {
             lineTotalMinor: number;
             /** @enum {string} */
             currency: "IDR";
+            reviewed: boolean;
         };
         SellerOrder: {
             /** Format: uuid */

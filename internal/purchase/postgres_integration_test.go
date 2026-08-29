@@ -201,6 +201,9 @@ func TestFulfillmentCancellationAndVerifiedReviews(t *testing.T) {
 	if firstOrder.ID == "" || secondOrder.ID == "" {
 		t.Fatalf("seller split missing: %#v", purchase.SellerOrders)
 	}
+	if firstOrder.Items[0].Reviewed {
+		t.Fatal("unreviewed purchase item reported as reviewed")
+	}
 	if _, err := repository.UpdateSellerOrder(ctx, secondSellerID, firstOrder.ID, "processing", "", now); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("wrong seller error=%v", err)
 	}
@@ -232,6 +235,18 @@ func TestFulfillmentCancellationAndVerifiedReviews(t *testing.T) {
 	}
 	if _, err := repository.CreateReview(ctx, buyerID, reviewInput, now); !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("duplicate review error=%v", err)
+	}
+	purchase, err = repository.FindPurchase(ctx, buyerID, purchase.ID)
+	var persistedReviewed bool
+	for _, order := range purchase.SellerOrders {
+		for _, item := range order.Items {
+			if item.ID == reviewInput.PurchaseItemID {
+				persistedReviewed = item.Reviewed
+			}
+		}
+	}
+	if err != nil || !persistedReviewed {
+		t.Fatalf("persisted review state purchase=%#v err=%v", purchase, err)
 	}
 	if _, err := repository.CreateReview(ctx, buyerID, ReviewInput{PurchaseItemID: secondOrder.Items[0].ID, Rating: 4, Title: "No delivery", Body: "Must be rejected."}, now); !errors.Is(err, domain.ErrForbidden) {
 		t.Fatalf("cancelled order review error=%v", err)
