@@ -20,6 +20,9 @@ setup: ## Install dependencies and generate API types
 	go mod download
 	$(MAKE) generate
 
+DEMO_MODE ?= true
+export DEMO_MODE
+
 dev: ## Run web, API, worker, search, and mock payment locally
 	@set -a; \
 	if [ -f .env ]; then . ./.env || exit 1; fi; \
