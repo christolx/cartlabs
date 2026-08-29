@@ -2,10 +2,13 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ProductCard } from "@/components/product-card";
+import {
+  catalogDepthKey,
+  catalogDepthResetEvent,
+} from "@/components/catalog-depth";
 import type { ProductPage } from "@/lib/api/client";
 
 type Product = ProductPage["items"][number];
-const catalogDepthKey = "cartlabs:catalog-depth";
 const catalogDocumentKey = "cartlabs:catalog-document";
 
 function initializeCatalogDepth() {
@@ -42,6 +45,7 @@ export function CatalogProductList({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const visibleCount = useRef(initialProducts.length);
+  const resetGeneration = useRef(0);
 
   const rebuildCatalog = useEffectEvent(
     async (targetCount: number, isCancelled: () => boolean) => {
@@ -84,6 +88,16 @@ export function CatalogProductList({
     },
   );
 
+  const resetCatalog = useEffectEvent(() => {
+    resetGeneration.current += 1;
+    window.sessionStorage.removeItem(catalogDepthKey);
+    visibleCount.current = initialProducts.length;
+    setProducts(initialProducts);
+    setHasMore(initialHasMore);
+    setLoading(false);
+    setError("");
+  });
+
   const startRebuild = useEffectEvent((isCancelled: () => boolean) => {
     initializeCatalogDepth();
     const storedCount = Number(window.sessionStorage.getItem(catalogDepthKey));
@@ -101,15 +115,24 @@ export function CatalogProductList({
   });
 
   useEffect(() => {
+    const handleReset = () => resetCatalog();
+    window.addEventListener(catalogDepthResetEvent, handleReset);
+    return () =>
+      window.removeEventListener(catalogDepthResetEvent, handleReset);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
-    startRebuild(() => cancelled);
+    const generation = resetGeneration.current;
+    startRebuild(() => cancelled || resetGeneration.current !== generation);
     return () => {
       cancelled = true;
     };
-  }, [catalogKey]);
+  }, [catalogKey, filterQuery]);
 
   async function loadMore() {
     if (loading || !hasMore) return;
+    const generation = resetGeneration.current;
     setLoading(true);
     setError("");
     try {
@@ -117,6 +140,7 @@ export function CatalogProductList({
         filterQuery,
         products.map((product) => product.id),
       );
+      if (resetGeneration.current !== generation) return;
       setProducts((current) => {
         const updated = [...current, ...nextPage.items];
         visibleCount.current = updated.length;
@@ -125,9 +149,10 @@ export function CatalogProductList({
       });
       setHasMore(nextPage.hasMore);
     } catch {
-      setError("More products could not be loaded. Try again.");
+      if (resetGeneration.current === generation)
+        setError("More products could not be loaded. Try again.");
     } finally {
-      setLoading(false);
+      if (resetGeneration.current === generation) setLoading(false);
     }
   }
 

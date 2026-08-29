@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import { loadCatalogPage } from "@/app/catalog-actions";
+import { CatalogClearLink } from "@/components/catalog-clear-link";
 import { CatalogProductList } from "@/components/catalog-product-list";
 import { apiGet, type Category, type ProductPage } from "@/lib/api/client";
 
@@ -208,9 +208,9 @@ export default async function Home({
             <button className="button button-primary" type="submit">
               Apply filters <span>→</span>
             </button>
-            <Link className="button button-secondary" href="/" scroll={false}>
+            <CatalogClearLink className="button button-secondary">
               Clear
-            </Link>
+            </CatalogClearLink>
           </div>
         </form>
         {invalidFilters ? (
@@ -220,9 +220,9 @@ export default async function Home({
               Use positive prices, minimum not above maximum, and page 1 or
               higher.
             </p>
-            <Link className="button button-secondary" href="/" scroll={false}>
+            <CatalogClearLink className="button button-secondary">
               Clear filters
-            </Link>
+            </CatalogClearLink>
           </div>
         ) : loadError ? (
           <div className="state-panel" role="alert">
@@ -242,9 +242,9 @@ export default async function Home({
           <div className="state-panel">
             <h2>No products match</h2>
             <p>Clear filters or use another search term.</p>
-            <Link className="button button-secondary" href="/" scroll={false}>
+            <CatalogClearLink className="button button-secondary">
               Reset catalog
-            </Link>
+            </CatalogClearLink>
           </div>
         )}
       </section>
