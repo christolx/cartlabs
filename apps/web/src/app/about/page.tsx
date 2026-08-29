@@ -83,7 +83,7 @@ export default function AboutPage() {
         family="ABOUT / ENGINEERING"
         index="01"
         title="A multi-vendor marketplace case study."
-        description="Cartlabs is a deployable full-stack system running on self-hosted Kubernetes, built to explore transactional checkout, authorization, service boundaries, and operational recovery."
+        description="Cartlabs is a deployable full-stack system running on self-hosted Kubernetes. I built it as a hands-on lab for experimenting with infrastructure and backend tools while solving real systems problems such as transactional checkout, authorization, service boundaries, and operational recovery."
         meta={
           <>
             <span>Next.js + Go</span>
