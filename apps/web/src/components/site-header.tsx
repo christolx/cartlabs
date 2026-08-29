@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { actorHome, useSession } from "@/components/session-provider";
+import { useSession } from "@/components/session-provider";
 
 const publicLinks = [
   ["Home", "/"],
@@ -18,7 +18,7 @@ const roleLinks = {
     ["Notifications", "/notifications"],
   ],
   seller: [
-    ["Home", "/seller"],
+    ["Dashboard", "/seller"],
     ["Store", "/seller/store"],
     ["Products", "/seller/products"],
     ["Orders", "/seller/orders"],
@@ -95,11 +95,7 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <div className="header-inner">
-        <Link
-          className="wordmark"
-          href={user ? actorHome(user.role) : "/"}
-          aria-label="Cartlabs home"
-        >
+        <Link className="wordmark" href="/" aria-label="Cartlabs home">
           <span className="wordmark-text">Cartlabs</span>
         </Link>
         <nav aria-label="Primary navigation">
