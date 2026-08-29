@@ -15,20 +15,20 @@ export function SiteFooter() {
           </p>
         </div>
         <nav aria-label="Browse links">
-          <Link href="/#catalog">Browse</Link>
-          <Link href="/about">About</Link>
-          <Link href="/docs">Docs</Link>
+          <Link href="/#catalog">Browse all</Link>
+          <Link href="/#catalog">All categories</Link>
+          <Link href="/#catalog">Stores</Link>
         </nav>
         <button className="footer-region" type="button">
           INDONESIA (IDR)
         </button>
-        <nav className="footer-social" aria-label="Project links">
+        <nav className="footer-social" aria-label="Social links">
           <a
-            href="https://github.com/christolx/cartlabs"
+            href="https://christofle.dev"
             target="_blank"
             rel="noopener noreferrer"
           >
-            Repository
+            christofle.dev
           </a>
         </nav>
       </div>
