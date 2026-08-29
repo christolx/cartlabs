@@ -155,10 +155,17 @@ export default async function ProductPage({
           <AddToCart product={product} />
           <div className="seller-trust-strip">
             <span>Verified seller</span>
-            <Link href={`/stores/${product.storeSlug}`}>
-              {product.storeName}
-            </Link>
-            <small>View store →</small>
+            <div className="seller-store-row">
+              <Link href={`/stores/${product.storeSlug}`}>
+                {product.storeName}
+              </Link>
+              <Link
+                className="seller-store-link"
+                href={`/stores/${product.storeSlug}`}
+              >
+                View store →
+              </Link>
+            </div>
           </div>
         </div>
       </article>

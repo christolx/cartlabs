@@ -15,6 +15,14 @@
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .store-page .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .store-page .product-grid > .product-card {
+    grid-column: auto;
+  }
   .header-inner {
     grid-template-columns: auto 1fr;
     gap: 16px;
@@ -818,14 +826,13 @@
   }
 
   .store-profile {
-    grid-template-columns: 34px minmax(0, 1fr);
-    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .store-profile > .eyebrow,
   .store-profile > h1,
   .store-profile > p:not(.eyebrow) {
-    grid-column: 2;
+    grid-column: 1;
     margin-inline: 14px;
   }
 
@@ -843,11 +850,16 @@
   }
 
   .store-profile dl {
-    grid-column: 2;
+    grid-column: 1;
     grid-row: auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     border-top: var(--keyline);
     border-left: 0;
+  }
+
+  .store-browse-action {
+    grid-column: 1;
+    margin-left: 14px;
   }
 
   .store-profile dl div {
@@ -856,6 +868,11 @@
   }
 
   .store-profile dl div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .store-profile dl div:last-child {
+    grid-column: 1 / -1;
     border-right: 0;
   }
 
