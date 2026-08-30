@@ -1,8 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { components } from "@/lib/api/schema";
 import { RequireRole } from "@/components/require-role";
 import { useSession } from "@/components/session-provider";
 import { EmptyState, ErrorState, LoadingState } from "@/components/async-state";
@@ -13,55 +13,22 @@ import {
   Status,
 } from "@/components/marketplace-ui";
 import { errorMessage } from "@/lib/api/browser";
-
-type Purchase = components["schemas"]["Purchase"];
-type PurchaseFilter = "all" | "awaiting" | "active" | "delivered" | "cancelled";
-
-const purchaseFilters: { value: PurchaseFilter; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "awaiting", label: "Awaiting payment" },
-  { value: "active", label: "Active" },
-  { value: "delivered", label: "Delivered" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-function itemCount(purchase: Purchase) {
-  return purchase.sellerOrders.reduce(
-    (total, order) =>
-      total + order.items.reduce((count, item) => count + item.quantity, 0),
-    0,
-  );
-}
-
-function fulfillmentLabel(purchase: Purchase) {
-  const delivered = purchase.sellerOrders.filter(
-    (order) => order.status === "delivered",
-  ).length;
-  return `${delivered}/${purchase.sellerOrders.length} delivered`;
-}
-
-function matchesFilter(purchase: Purchase, filter: PurchaseFilter) {
-  if (filter === "all") return true;
-  if (filter === "awaiting") return purchase.status === "pending_payment";
-  if (filter === "cancelled")
-    return ["cancelled", "expired", "payment_failed"].includes(purchase.status);
-  if (filter === "delivered")
-    return (
-      purchase.sellerOrders.length > 0 &&
-      purchase.sellerOrders.every((order) => order.status === "delivered")
-    );
-  return (
-    ["paid"].includes(purchase.status) ||
-    purchase.sellerOrders.some((order) =>
-      ["processing", "shipped"].includes(order.status),
-    )
-  );
-}
+import {
+  fulfillmentLabel,
+  itemCount,
+  matchesPurchaseFilter,
+  matchesPurchaseQuery,
+  purchaseFilters,
+  purchaseItems,
+  type Purchase,
+  type PurchaseFilter,
+} from "@/lib/purchase-filters";
 
 function PurchasesContent() {
   const { request } = useSession();
   const [items, setItems] = useState<Purchase[] | null>(null);
   const [filter, setFilter] = useState<PurchaseFilter>("all");
+  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const load = useCallback(async () => {
     setError("");
@@ -76,8 +43,25 @@ function PurchasesContent() {
     return () => window.clearTimeout(timer);
   }, [load]);
   const filtered = useMemo(
-    () => (items ?? []).filter((purchase) => matchesFilter(purchase, filter)),
-    [filter, items],
+    () =>
+      (items ?? []).filter(
+        (purchase) =>
+          matchesPurchaseFilter(purchase, filter) &&
+          matchesPurchaseQuery(purchase, query),
+      ),
+    [filter, items, query],
+  );
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(
+        purchaseFilters.map((option) => [
+          option.value,
+          (items ?? []).filter((purchase) =>
+            matchesPurchaseFilter(purchase, option.value),
+          ).length,
+        ]),
+      ) as Record<PurchaseFilter, number>,
+    [items],
   );
   if (error)
     return (
@@ -120,7 +104,7 @@ function PurchasesContent() {
                   aria-selected={filter === option.value}
                   onClick={() => setFilter(option.value)}
                 >
-                  {option.label}
+                  {option.label} <b>{counts[option.value] ?? 0}</b>
                 </button>
               ))}
             </div>
@@ -128,6 +112,26 @@ function PurchasesContent() {
               {filtered.length} of {items.length} purchase
               {items.length === 1 ? "" : "s"}
             </p>
+          </div>
+          <div className="workspace-filter-band purchase-filter-band">
+            <label>
+              <span>Search purchases</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Reference, product, or store"
+              />
+            </label>
+            {query ? (
+              <button
+                className="button button-secondary filter-clear"
+                type="button"
+                onClick={() => setQuery("")}
+              >
+                Clear search
+              </button>
+            ) : null}
           </div>
           {!filtered.length ? (
             <EmptyState
@@ -168,7 +172,35 @@ function PurchasesContent() {
                     <Status value={purchase.paymentStatus} />
                     <Status value={purchase.status} />
                   </div>
-                  <span role="cell">{itemCount(purchase)}</span>
+                  <div role="cell" className="purchase-item-summary">
+                    {purchaseItems(purchase)[0]?.imageUrl ? (
+                      <span className="purchase-item-thumb">
+                        <Image
+                          src={purchaseItems(purchase)[0].imageUrl}
+                          alt=""
+                          fill
+                          sizes="56px"
+                        />
+                      </span>
+                    ) : (
+                      <span className="purchase-item-thumb-fallback">
+                        No image
+                      </span>
+                    )}
+                    <span>
+                      <strong>
+                        {purchaseItems(purchase)[0]?.productName ??
+                          "No item details"}
+                      </strong>
+                      <small>
+                        {itemCount(purchase)} item
+                        {itemCount(purchase) === 1 ? "" : "s"}
+                        {purchaseItems(purchase).length > 1
+                          ? ` / +${purchaseItems(purchase).length - 1} more`
+                          : ""}
+                      </small>
+                    </span>
+                  </div>
                   <span role="cell">{fulfillmentLabel(purchase)}</span>
                   <div role="cell">
                     <strong>
