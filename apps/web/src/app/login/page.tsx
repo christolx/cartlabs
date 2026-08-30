@@ -8,10 +8,25 @@ import { errorMessage } from "@/lib/api/browser";
 
 type Role = components["schemas"]["Role"];
 
-function safeDestination(value: string | null, fallback: string) {
-  return value && value.startsWith("/") && !value.startsWith("//")
-    ? value
-    : fallback;
+const protectedDestinations: { prefix: string; roles: Role[] }[] = [
+  { prefix: "/admin", roles: ["admin"] },
+  { prefix: "/seller", roles: ["seller"] },
+  { prefix: "/cart", roles: ["buyer"] },
+  { prefix: "/checkout", roles: ["buyer"] },
+  { prefix: "/purchases", roles: ["buyer"] },
+  { prefix: "/notifications", roles: ["buyer", "seller"] },
+];
+
+function safeDestination(value: string | null, fallback: string, role: Role) {
+  if (!value || !value.startsWith("/") || value.startsWith("//"))
+    return fallback;
+  const pathname = value.split(/[?#]/, 1)[0];
+  const owner = protectedDestinations.find(
+    (destination) =>
+      pathname === destination.prefix ||
+      pathname.startsWith(`${destination.prefix}/`),
+  );
+  return !owner || owner.roles.includes(role) ? value : fallback;
 }
 
 export default function LoginPage() {
@@ -26,6 +41,7 @@ export default function LoginPage() {
         safeDestination(
           new URLSearchParams(window.location.search).get("next"),
           actorHome(user.role),
+          user.role,
         ),
       );
   }, [router, status, user]);
@@ -45,6 +61,7 @@ export default function LoginPage() {
         safeDestination(
           new URLSearchParams(window.location.search).get("next"),
           actorHome(current.role),
+          current.role,
         ),
       );
     } catch (error) {
@@ -64,6 +81,7 @@ export default function LoginPage() {
         safeDestination(
           new URLSearchParams(window.location.search).get("next"),
           actorHome(current.role),
+          current.role,
         ),
       );
     } catch (error) {
