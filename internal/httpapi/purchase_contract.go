@@ -290,7 +290,7 @@ func toContractNotification(value purchase.Notification) (contract.Notification,
 	if err != nil {
 		return contract.Notification{}, err
 	}
-	return contract.Notification{Id: id, Kind: value.Kind, Title: value.Title, Body: value.Body, ReadAt: value.ReadAt, CreatedAt: value.CreatedAt}, nil
+	return contract.Notification{Id: id, Kind: value.Kind, Title: value.Title, Body: value.Body, Href: value.Href, ReadAt: value.ReadAt, CreatedAt: value.CreatedAt}, nil
 }
 
 func toContractNotifications(values []purchase.Notification) ([]contract.Notification, error) {

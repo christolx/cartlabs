@@ -1171,6 +1171,8 @@ export interface components {
             kind: string;
             title: string;
             body: string;
+            /** Format: uri-reference */
+            href: string;
             /** Format: date-time */
             readAt?: string;
             /** Format: date-time */

@@ -25,11 +25,25 @@ func TestNotificationCopy(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.eventType, func(t *testing.T) {
-			title, body, valid := notificationCopy(test.eventType, "CL-01989F000000")
+			title, body, valid := notificationCopy(test.eventType, "CL-01989F000000", "buyer")
 			if valid != test.valid || title != test.wantTitle || valid && body == "" {
 				t.Fatalf("title=%q body=%q valid=%v", title, body, valid)
 			}
 		})
+	}
+}
+
+func TestNotificationCopyIsRoleAware(t *testing.T) {
+	_, buyerBody, buyerValid := notificationCopy("order.delivered", "CL-01989F000000", "buyer")
+	_, sellerBody, sellerValid := notificationCopy("order.delivered", "CL-01989F000000", "seller")
+	if !buyerValid || !sellerValid || buyerBody == sellerBody {
+		t.Fatalf("buyer=%q seller=%q", buyerBody, sellerBody)
+	}
+	if got := notificationHref("order.delivered", "purchase-1", "buyer"); got != "/purchases/purchase-1" {
+		t.Fatalf("buyer href=%q", got)
+	}
+	if got := notificationHref("order.delivered", "purchase-1", "seller"); got != "/seller/orders" {
+		t.Fatalf("seller href=%q", got)
 	}
 }
 

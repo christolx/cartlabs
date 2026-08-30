@@ -1305,11 +1305,12 @@ components:
             currency: {type: string, enum: [IDR]}
     Notification:
       type: object
-      required: [id, kind, title, body, createdAt]
+      required: [id, kind, title, body, href, createdAt]
       properties:
         id: {type: string, format: uuid}
         kind: {type: string}
         title: {type: string}
         body: {type: string}
+        href: {type: string, format: uri-reference}
         readAt: {type: string, format: date-time}
         createdAt: {type: string, format: date-time}

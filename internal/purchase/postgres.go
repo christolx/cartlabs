@@ -765,7 +765,7 @@ func (r *PostgresRepository) ExpireReservations(ctx context.Context, now time.Ti
 
 func (r *PostgresRepository) ListNotifications(ctx context.Context, userID string) ([]Notification, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id::text,kind,title,body,read_at,created_at FROM notifications
+		SELECT id::text,kind,title,body,href,read_at,created_at FROM notifications
 		WHERE user_id=$1 ORDER BY created_at DESC LIMIT 100`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("list notifications: %w", err)
@@ -774,7 +774,7 @@ func (r *PostgresRepository) ListNotifications(ctx context.Context, userID strin
 	items := []Notification{}
 	for rows.Next() {
 		var item Notification
-		if err := rows.Scan(&item.ID, &item.Kind, &item.Title, &item.Body, &item.ReadAt, &item.CreatedAt); err != nil {
+		if err := rows.Scan(&item.ID, &item.Kind, &item.Title, &item.Body, &item.Href, &item.ReadAt, &item.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan notification: %w", err)
 		}
 		items = append(items, item)

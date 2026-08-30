@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -487,31 +488,41 @@ func (h *NotificationHandler) Handle(ctx context.Context, body []byte) error {
 	if err := json.Unmarshal(event.Data, &data); err != nil || data.PurchaseID == "" || data.Reference == "" || len(data.RecipientIDs) == 0 {
 		return domain.ErrInvalid
 	}
-	title, message, ok := notificationCopy(event.Type, data.Reference)
-	if !ok {
-		return domain.ErrInvalid
-	}
 	for _, recipientID := range data.RecipientIDs {
+		var role string
+		if err := h.pool.QueryRow(ctx, `SELECT role::text FROM users WHERE id=$1`, recipientID).Scan(&role); errors.Is(err, pgx.ErrNoRows) {
+			continue
+		} else if err != nil {
+			return fmt.Errorf("find notification recipient: %w", err)
+		}
+		title, message, ok := notificationCopy(event.Type, data.Reference, role)
+		if !ok {
+			return domain.ErrInvalid
+		}
+		href := notificationHref(event.Type, data.PurchaseID, role)
 		notificationID, err := uuid.NewV7()
 		if err != nil {
 			return fmt.Errorf("generate notification ID: %w", err)
 		}
 		if _, err := h.pool.Exec(ctx, `
-			INSERT INTO notifications (id,user_id,source_event_id,kind,title,body,created_at)
-			SELECT $1,$2,$3,$4,$5,$6,$7 WHERE EXISTS (SELECT 1 FROM users WHERE id=$2)
+			INSERT INTO notifications (id,user_id,source_event_id,kind,title,body,href,created_at)
+			SELECT $1,$2,$3,$4,$5,$6,$7,$8 WHERE EXISTS (SELECT 1 FROM users WHERE id=$2)
 			ON CONFLICT (user_id,source_event_id) DO NOTHING`, notificationID.String(), recipientID, event.ID,
-			event.Type, title, message, event.OccurredAt); err != nil {
+			event.Type, title, message, href, event.OccurredAt); err != nil {
 			return fmt.Errorf("insert notification: %w", err)
 		}
 	}
 	return nil
 }
 
-func notificationCopy(eventType, reference string) (string, string, bool) {
+func notificationCopy(eventType, reference, role string) (string, string, bool) {
 	switch eventType {
 	case "purchase.created":
 		return "Checkout started", reference + " inventory reserved while payment is pending.", true
 	case "purchase.paid":
+		if role == "seller" {
+			return "Payment confirmed", reference + " is paid. Fulfillment can begin.", true
+		}
 		return "Payment confirmed", reference + " is paid and ready for seller fulfillment.", true
 	case "purchase.payment_failed":
 		return "Payment failed", reference + " was not paid; reserved inventory was released.", true
@@ -520,14 +531,39 @@ func notificationCopy(eventType, reference string) (string, string, bool) {
 	case "purchase.cancelled":
 		return "Purchase cancelled", reference + " was cancelled and eligible inventory was restored.", true
 	case "order.processing":
+		if role == "seller" {
+			return "Order processing", reference + " is now being prepared.", true
+		}
 		return "Order processing", reference + " is being prepared by the seller.", true
 	case "order.shipped":
+		if role == "seller" {
+			return "Order shipped", reference + " was marked shipped.", true
+		}
 		return "Order shipped", reference + " has left the seller.", true
 	case "order.delivered":
+		if role == "seller" {
+			return "Order delivered", reference + " was delivered. No seller action is required.", true
+		}
 		return "Order delivered", reference + " was delivered and can now be reviewed.", true
 	case "order.cancelled":
+		if role == "seller" {
+			return "Order cancelled", reference + " was cancelled. Reserved inventory was restored.", true
+		}
 		return "Order cancelled", reference + " seller order was cancelled and inventory restored.", true
 	default:
 		return "", "", false
 	}
+}
+
+func notificationHref(eventType, purchaseID, role string) string {
+	if !strings.HasPrefix(eventType, "purchase.") && !strings.HasPrefix(eventType, "order.") {
+		return ""
+	}
+	if role == "seller" {
+		return "/seller/orders"
+	}
+	if role == "buyer" {
+		return "/purchases/" + purchaseID
+	}
+	return ""
 }

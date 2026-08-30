@@ -137,6 +137,7 @@ type Notification struct {
 	Kind      string     `json:"kind"`
 	Title     string     `json:"title"`
 	Body      string     `json:"body"`
+	Href      string     `json:"href"`
 	ReadAt    *time.Time `json:"readAt,omitempty"`
 	CreatedAt time.Time  `json:"createdAt"`
 }
