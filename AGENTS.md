@@ -19,6 +19,8 @@ Runtime entry points live in `apps/`: `api`, `worker`, `mock-payment`, and datab
 
 Format Go with `gofmt`; use standard Go package names, exported `PascalCase` identifiers, and local `camelCase` identifiers. Name Go tests `*_test.go` and test functions `TestXxx`. Frontend code uses strict TypeScript, Next.js App Router conventions, two-space indentation, and ESLint configuration from `apps/web/eslint.config.mjs`. Keep route folders lowercase and React components `PascalCase`. Do not edit `internal/contract/openapi.gen.go` or `apps/web/src/lib/api/schema.d.ts` manually; update OpenAPI and run `make generate`. Follow additional rules in `apps/web/AGENTS.md` for web changes.
 
+For visual frontend changes, audit existing styles first and follow the [design system](docs/ui-overhaul/design-system.md).
+
 ## Testing Guidelines
 
 Place Go tests beside implementation and prefer table-driven cases, `httptest`, and small fakes at package boundaries. Add regression coverage for changed behavior. No frontend test runner or numeric coverage threshold exists yet; `pnpm web:typecheck` and `pnpm web:lint` are mandatory. Run `make check` before opening a pull request.
