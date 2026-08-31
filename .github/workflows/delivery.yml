@@ -92,7 +92,7 @@ jobs:
           printf '%s' "$KUBE_CONFIG_B64" | base64 --decode > "$RUNNER_TEMP/kube/config"
           chmod 0600 "$RUNNER_TEMP/kube/config"
           echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
-      - name: Reconcile pull and application secrets
+      - name: Reconcile pull, application, and cleanup secrets
         env:
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
@@ -111,7 +111,13 @@ jobs:
           BACKUP_S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
           GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
         run: |
+          : "${CLOUDINARY_CLOUD_NAME:?CLOUDINARY_CLOUD_NAME secret is required}"
+          : "${CLOUDINARY_API_KEY:?CLOUDINARY_API_KEY secret is required}"
+          : "${CLOUDINARY_API_SECRET:?CLOUDINARY_API_SECRET secret is required}"
           kubectl create namespace cartlabs --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n cartlabs create secret docker-registry ghcr-pull \
             --docker-server=ghcr.io --docker-username="$GHCR_USERNAME" --docker-password="$GHCR_PULL_TOKEN" \
@@ -132,6 +138,11 @@ jobs:
             --from-literal=BACKUP_S3_BUCKET="$BACKUP_S3_BUCKET" \
             --from-literal=GRAFANA_ADMIN_USER="$GRAFANA_ADMIN_USER" \
             --from-literal=GRAFANA_ADMIN_PASSWORD="$GRAFANA_ADMIN_PASSWORD" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n cartlabs create secret generic cartlabs-cloudinary-cleanup \
+            --from-literal=CLOUDINARY_CLOUD_NAME="$CLOUDINARY_CLOUD_NAME" \
+            --from-literal=CLOUDINARY_API_KEY="$CLOUDINARY_API_KEY" \
+            --from-literal=CLOUDINARY_API_SECRET="$CLOUDINARY_API_SECRET" \
             --dry-run=client -o yaml | kubectl apply -f -
       - name: Deploy immutable release
         env:
