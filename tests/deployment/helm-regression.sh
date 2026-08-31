@@ -14,6 +14,12 @@ helm template cartlabs "$chart" --namespace cartlabs --values "$values" \
   --set observability.enabled=true \
   --show-only templates/observability.yaml >"$work_dir/observability.yaml"
 
+if helm lint "$chart" --values "$values" \
+  --set-string observability.traceSampleRatio=0 >"$work_dir/zero-trace-ratio.log" 2>&1; then
+  echo 'trace sampling ratio must reject zero' >&2
+  exit 1
+fi
+
 if grep -q 'namespaceSelector:' "$work_dir/networkpolicy.yaml"; then
   echo 'network policies must use release pod selectors for same-namespace traffic' >&2
   exit 1
