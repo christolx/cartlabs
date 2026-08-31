@@ -51,7 +51,7 @@ function AuditContent() {
     <>
       <PageHeading
         title="Audit history"
-        description="Newest immutable trust and fulfillment actions. Current API provides no search, export, or pagination."
+        description="Newest immutable trust and fulfillment actions. Filters apply to currently loaded events only."
         family="ADMIN / AUDIT"
         index="05"
         meta={
@@ -79,17 +79,30 @@ function AuditContent() {
           <input
             value={resourceType}
             onChange={(event) => setResourceType(event.target.value)}
-            placeholder="Loaded events only"
+            placeholder="Filter loaded events"
           />
         </label>
         <label>
           <span>Action</span>
           <input
+            type="search"
             value={action}
             onChange={(event) => setAction(event.target.value)}
-            placeholder="Search action"
+            placeholder="Filter loaded events"
           />
         </label>
+        <button
+          className="button button-secondary filter-clear"
+          type="button"
+          disabled={!actorRole && !resourceType && !action}
+          onClick={() => {
+            setActorRole("");
+            setResourceType("");
+            setAction("");
+          }}
+        >
+          Clear filters
+        </button>
       </div>
       {!filtered.length ? (
         <EmptyState
