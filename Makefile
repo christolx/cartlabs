@@ -66,8 +66,8 @@ search-reindex: ## Rebuild search documents from authoritative catalog
 	@set -a; [ ! -f .env ] || . ./.env; set +a; go run ./apps/search-reindex
 
 seed: ## Apply deterministic demo seed
-	@set -a; [ ! -f .env ] || . ./.env; set +a; go run ./apps/seed; \
-		[ -z "$$SEARCH_GRPC_ADDR" ] || go run ./apps/search-reindex
+	@set -a; [ ! -f .env ] || . ./.env; set +a; go run ./apps/seed && \
+		{ [ -z "$$SEARCH_GRPC_ADDR" ] || go run ./apps/search-reindex; }
 
 reset: ## Rebuild local/demo database from migrations and seed
 	@set -a; [ ! -f .env ] || . ./.env; set +a; go run ./apps/reset
