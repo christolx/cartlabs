@@ -271,133 +271,155 @@ export function ProductImageManager({
         </div>
         <span className="count-badge">{images.length} / 8</span>
       </div>
-      {images.length ? (
-        <div className="image-management-grid">
-          {images.map((image) => (
-            <figure key={image.id}>
-              <Image
-                src={image.url}
-                alt={image.altText}
-                width={240}
-                height={180}
-              />
-              <figcaption>
-                {image.position === 0 ? "Cover · " : ""}
-                {image.altText || "No alt text"}
-              </figcaption>
-              <label>
-                <span>Alt text for replacement</span>
-                <input
-                  value={replacementAlt[image.id] ?? image.altText}
-                  maxLength={160}
-                  onChange={(event) =>
-                    setReplacementAlt((values) => ({
-                      ...values,
-                      [image.id]: event.currentTarget.value,
-                    }))
-                  }
-                  disabled={Boolean(busy)}
-                />
-              </label>
-              <div className="image-actions">
-                <label className="button button-secondary">
-                  {busy === image.id ? "Working" : "Replace"}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/avif"
-                    disabled={Boolean(busy)}
-                    onChange={(event) => void replaceImage(event, image)}
-                  />
-                </label>
-                <button
-                  className="text-button danger-button"
-                  type="button"
-                  disabled={Boolean(busy) || lastPublishedImage}
-                  title={
-                    lastPublishedImage
-                      ? "Published product must keep one image"
-                      : undefined
-                  }
-                  onClick={() => void deleteImage(image.id)}
-                >
-                  Delete
-                </button>
-              </div>
-            </figure>
-          ))}
-        </div>
-      ) : (
-        <p className="empty-copy">No images uploaded.</p>
-      )}
-      <form
-        className="stack-form compact-form image-upload-form"
-        onSubmit={addImage}
+      <div
+        className={`image-manager-layout ${images.length ? "has-images" : "is-empty"}`}
       >
-        <div
-          className="image-drop-zone"
-          onDragOver={(event: DragEvent) => event.preventDefault()}
-          onDrop={(event: DragEvent) => {
-            event.preventDefault();
-            void selectFile(event.dataTransfer.files[0]);
-          }}
-        >
-          {preview ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element -- Blob URLs bypass Next image optimization. */}
-              <img
-                src={preview}
-                alt="Selected image preview"
-                width={240}
-                height={180}
-              />
-            </>
+        <div className="image-manager-gallery">
+          {images.length ? (
+            <div className="image-management-grid">
+              {images.map((image) => (
+                <figure className="image-record" key={image.id}>
+                  <Image
+                    src={image.url}
+                    alt={image.altText}
+                    width={320}
+                    height={240}
+                  />
+                  <figcaption>
+                    {image.position === 0 ? <strong>Cover</strong> : null}
+                    <span>{image.altText || "No alt text"}</span>
+                  </figcaption>
+                  <label>
+                    <span>Replacement alt text</span>
+                    <input
+                      value={replacementAlt[image.id] ?? image.altText}
+                      maxLength={160}
+                      onChange={(event) =>
+                        setReplacementAlt((values) => ({
+                          ...values,
+                          [image.id]: event.currentTarget.value,
+                        }))
+                      }
+                      disabled={Boolean(busy)}
+                    />
+                  </label>
+                  <div className="image-actions">
+                    <label className="button button-secondary">
+                      {busy === image.id ? "Working" : "Replace"}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/avif"
+                        disabled={Boolean(busy)}
+                        onChange={(event) => void replaceImage(event, image)}
+                      />
+                    </label>
+                    <button
+                      className="text-button danger-button"
+                      type="button"
+                      disabled={Boolean(busy) || lastPublishedImage}
+                      title={
+                        lastPublishedImage
+                          ? "Published product must keep one image"
+                          : undefined
+                      }
+                      onClick={() => void deleteImage(image.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </figure>
+              ))}
+            </div>
           ) : (
-            <p>
-              {validating
-                ? "Checking image…"
-                : "Drop image here or choose file."}
-            </p>
+            <div className="image-empty-state">
+              <strong>No product images</strong>
+              <p>Upload one image to make this listing publishable.</p>
+            </div>
           )}
-          <label className="sr-only" htmlFor="product-image-file">
-            Product image file
-          </label>
-          <input
-            id="product-image-file"
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            disabled={atLimit || validating || Boolean(busy)}
-            onChange={(event) =>
-              void selectFile(event.currentTarget.files?.[0])
-            }
-          />
         </div>
-        <label>
-          <span>Alt text</span>
-          <input
-            value={altText}
-            onChange={(event) => setAltText(event.currentTarget.value)}
-            maxLength={160}
-            required
-            disabled={atLimit || validating || Boolean(busy)}
-          />
-        </label>
-        {busy && progress ? (
-          <progress value={progress} max="100">
-            {progress}%
-          </progress>
-        ) : null}
-        <button
-          className="button button-primary"
-          disabled={atLimit || !file || validating || Boolean(busy)}
+        <form
+          className="stack-form compact-form image-upload-form"
+          onSubmit={addImage}
         >
-          {busy === "add"
-            ? `Uploading ${progress}%`
-            : atLimit
-              ? "Eight-image limit reached"
-              : "Add image"}
-        </button>
-      </form>
+          <div className="image-upload-heading">
+            <strong>Add image</strong>
+            <span>
+              {atLimit ? "Limit reached" : `${8 - images.length} slots left`}
+            </span>
+          </div>
+          <div
+            className="image-drop-zone"
+            onDragOver={(event: DragEvent) => event.preventDefault()}
+            onDrop={(event: DragEvent) => {
+              event.preventDefault();
+              void selectFile(event.dataTransfer.files[0]);
+            }}
+          >
+            {preview ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- Blob URLs bypass Next image optimization. */}
+                <img
+                  src={preview}
+                  alt="Selected image preview"
+                  width={240}
+                  height={180}
+                />
+              </>
+            ) : (
+              <p>{validating ? "Checking image…" : "Drop image here"}</p>
+            )}
+            <input
+              id="product-image-file"
+              ref={inputRef}
+              className="sr-only"
+              aria-label="Product image file"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              disabled={atLimit || validating || Boolean(busy)}
+              onChange={(event) =>
+                void selectFile(event.currentTarget.files?.[0])
+              }
+            />
+            <label
+              className={`button button-secondary image-file-trigger ${
+                atLimit || validating || Boolean(busy) ? "is-disabled" : ""
+              }`}
+              htmlFor="product-image-file"
+              aria-disabled={atLimit || validating || Boolean(busy)}
+            >
+              Choose image
+            </label>
+            <span className="image-file-name">
+              {file ? file.name : "No file selected"}
+            </span>
+          </div>
+          <label>
+            <span>Alt text</span>
+            <input
+              value={altText}
+              onChange={(event) => setAltText(event.currentTarget.value)}
+              maxLength={160}
+              required
+              disabled={atLimit || validating || Boolean(busy)}
+            />
+          </label>
+          {busy && progress ? (
+            <progress value={progress} max="100">
+              {progress}%
+            </progress>
+          ) : null}
+          <button
+            className="button button-primary"
+            disabled={atLimit || !file || validating || Boolean(busy)}
+          >
+            {busy === "add"
+              ? `Uploading ${progress}%`
+              : atLimit
+                ? "Eight-image limit reached"
+                : "Add image"}
+          </button>
+        </form>
+      </div>
       {message ? (
         <p className="form-message" role="status">
           {message}

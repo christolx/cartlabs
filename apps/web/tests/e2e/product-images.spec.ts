@@ -138,6 +138,11 @@ test("seller uploads, replaces, and deletes product image", async ({
   await expect(
     page.getByRole("heading", { name: "Product images" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Listing readiness" }),
+  ).toBeVisible();
+  await expect(page.getByText("2 / 3")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish" })).toBeDisabled();
 
   await page
     .getByRole("button", { name: "Product image file" })
@@ -147,6 +152,8 @@ test("seller uploads, replaces, and deletes product image", async ({
   await page.getByLabel("Alt text").fill("Desk lamp");
   await page.getByRole("button", { name: "Add image" }).click();
   await expect(page.getByRole("status")).toHaveText("Image added.");
+  await expect(page.getByText("3 / 3")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Publish" })).toBeEnabled();
 
   await page
     .locator(".image-actions input[type=file]")
@@ -155,7 +162,7 @@ test("seller uploads, replaces, and deletes product image", async ({
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.getByRole("status")).toHaveText("Image deleted.");
-  await expect(page.getByText("No images uploaded.")).toBeVisible();
+  await expect(page.getByText("No product images")).toBeVisible();
 });
 
 test("seller cannot add ninth image or delete only published image", async ({
