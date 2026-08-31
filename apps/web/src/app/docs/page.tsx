@@ -22,7 +22,7 @@ const workflows = [
       ["Review sellers", "Check cart lines grouped by seller before checkout."],
       [
         "Check out",
-        "Enter recipient and delivery address. Inventory becomes reserved.",
+        "Review cart contents. Inventory becomes reserved when checkout is confirmed.",
       ],
       ["Pay", "Complete mock payment with a success or failure result."],
       [
