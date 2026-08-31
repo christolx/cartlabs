@@ -686,9 +686,7 @@
 }
 
 .user-filters {
-  position: sticky;
-  top: 68px;
-  z-index: 3;
+  position: static;
   border: var(--keyline);
   background: var(--color-white);
 }

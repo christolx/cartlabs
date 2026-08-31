@@ -977,10 +977,6 @@
     padding: 16px 12px;
   }
 
-  .user-filters {
-    top: 56px;
-  }
-
   .user-table-row {
     gap: 8px 12px;
     padding: 12px;
@@ -1123,7 +1119,6 @@
 }
 
 @media (max-width: 767px) {
-  .user-filters,
   .editor-section-nav {
     position: static;
     top: auto;
