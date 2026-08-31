@@ -15,6 +15,24 @@ import { errorMessage } from "@/lib/api/browser";
 
 type Order = components["schemas"]["SellerOrder"];
 type NextStatus = "processing" | "shipped" | "delivered" | "cancelled";
+type OrderQueue =
+  | "action"
+  | "all"
+  | "paid"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+const orderQueues: OrderQueue[] = [
+  "action",
+  "all",
+  "paid",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+];
 
 const nextStatus: Partial<Record<Order["status"], NextStatus>> = {
   paid: "processing",
@@ -22,10 +40,36 @@ const nextStatus: Partial<Record<Order["status"], NextStatus>> = {
   shipped: "delivered",
 };
 
+function matchesOrderQueue(order: Order, queue: OrderQueue) {
+  if (queue === "all") return true;
+  if (queue === "action")
+    return ["paid", "processing", "shipped"].includes(order.status);
+  return order.status === queue;
+}
+
+function matchesOrderQuery(order: Order, query: string) {
+  const normalized = query.trim().toLocaleLowerCase();
+  if (!normalized) return true;
+  return [
+    order.reference,
+    order.purchaseId,
+    order.storeName,
+    ...order.items.flatMap((item) => [
+      item.productName,
+      item.variantName,
+      item.sku,
+    ]),
+  ]
+    .join(" ")
+    .toLocaleLowerCase()
+    .includes(normalized);
+}
+
 function OrdersContent() {
   const { request } = useSession();
   const [items, setItems] = useState<Order[] | null>(null);
-  const [queue, setQueue] = useState("action");
+  const [queue, setQueue] = useState<OrderQueue>("action");
+  const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState("");
@@ -41,12 +85,16 @@ function OrdersContent() {
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
   }, [load]);
-  const visible = (items ?? []).filter((order) => {
-    if (queue === "all") return true;
-    if (queue === "action")
-      return ["paid", "processing", "shipped"].includes(order.status);
-    return order.status === queue;
-  });
+  const visible = (items ?? []).filter(
+    (order) =>
+      matchesOrderQueue(order, queue) && matchesOrderQuery(order, query),
+  );
+  const counts = Object.fromEntries(
+    orderQueues.map((value) => [
+      value,
+      (items ?? []).filter((order) => matchesOrderQueue(order, value)).length,
+    ]),
+  ) as Record<OrderQueue, number>;
 
   async function update(orderId: string, status: NextStatus, reason = "") {
     setBusy(orderId);
@@ -111,15 +159,7 @@ function OrdersContent() {
             role="tablist"
             aria-label="Order queues"
           >
-            {[
-              "action",
-              "all",
-              "paid",
-              "processing",
-              "shipped",
-              "delivered",
-              "cancelled",
-            ].map((status) => (
+            {orderQueues.map((status) => (
               <button
                 className={queue === status ? "is-active" : ""}
                 key={status}
@@ -128,9 +168,33 @@ function OrdersContent() {
                 aria-selected={queue === status}
                 onClick={() => setQueue(status)}
               >
-                {status === "action" ? "Action needed" : status}
+                {status === "action" ? "Action needed" : status}{" "}
+                <b>{counts[status]}</b>
               </button>
             ))}
+          </div>
+          <span className="tab-scroll-hint" aria-hidden="true">
+            More queues available
+          </span>
+          <div className="workspace-filter-band seller-filter-band">
+            <label>
+              <span>Search orders</span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Order, product, or SKU"
+              />
+            </label>
+            {query ? (
+              <button
+                className="button button-secondary filter-clear"
+                type="button"
+                onClick={() => setQuery("")}
+              >
+                Clear search
+              </button>
+            ) : null}
           </div>
           {!visible.length ? (
             <EmptyState
