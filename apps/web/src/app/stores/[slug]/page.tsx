@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/product-card";
+import { formatDate } from "@/components/marketplace-ui";
 import {
   APIError,
   apiGet,
@@ -150,7 +151,7 @@ export default async function StorePage({
           </div>
           <div>
             <dt>On Cartlabs since</dt>
-            <dd>{new Date(store.createdAt).toLocaleDateString("id-ID")}</dd>
+            <dd>{formatDate(store.createdAt, "date")}</dd>
           </div>
           <div>
             <dt>Published products</dt>

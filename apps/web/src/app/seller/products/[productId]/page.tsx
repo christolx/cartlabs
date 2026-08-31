@@ -6,7 +6,12 @@ import type { components } from "@/lib/api/schema";
 import { RequireRole } from "@/components/require-role";
 import { useSession } from "@/components/session-provider";
 import { ErrorState, LoadingState } from "@/components/async-state";
-import { Money, PageHeading, Status } from "@/components/marketplace-ui";
+import {
+  formatDate,
+  Money,
+  PageHeading,
+  Status,
+} from "@/components/marketplace-ui";
 import { ProductImageManager } from "@/components/product-image-manager";
 import { errorMessage } from "@/lib/api/browser";
 
@@ -190,11 +195,7 @@ function ProductManagementContent() {
         description="Owned product detail, supply, inventory, images, and publication."
         family="SELLER / PRODUCT EDITOR"
         index="04"
-        meta={
-          <span>
-            Updated {new Date(product.updatedAt).toLocaleDateString("id-ID")}
-          </span>
-        }
+        meta={<span>Updated {formatDate(product.updatedAt, "date")}</span>}
         actions={<Status value={product.status} />}
       />
       {product.status === "suspended" ? (

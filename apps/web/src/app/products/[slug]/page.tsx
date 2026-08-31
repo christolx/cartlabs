@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
+import { formatDate } from "@/components/marketplace-ui";
 import {
   APIError,
   apiGet,
@@ -204,7 +205,7 @@ export default async function ProductPage({
                   <span>{review.buyerName}</span>
                   <span>Verified purchase</span>
                   <time dateTime={review.createdAt}>
-                    {new Date(review.createdAt).toLocaleDateString("id-ID")}
+                    {formatDate(review.createdAt, "date")}
                   </time>
                 </footer>
               </article>

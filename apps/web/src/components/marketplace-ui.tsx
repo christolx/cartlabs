@@ -56,9 +56,12 @@ export function Money({
   return <>{formatMoney(value, currency)}</>;
 }
 
-export function formatDate(value: string) {
+export function formatDate(
+  value: string,
+  precision: "date" | "datetime" = "datetime",
+) {
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "medium",
-    timeStyle: "short",
+    ...(precision === "datetime" ? { timeStyle: "short" } : {}),
   }).format(new Date(value));
 }
