@@ -126,12 +126,14 @@ function CartContent() {
                 {store.items.map((item) => (
                   <article className="cart-line" key={item.variantId}>
                     {item.imageUrl ? (
-                      <Image
-                        src={item.imageUrl}
-                        alt=""
-                        width={96}
-                        height={72}
-                      />
+                      <span className="cart-line-image">
+                        <Image
+                          src={item.imageUrl}
+                          alt=""
+                          fill
+                          sizes="(max-width: 767px) 64px, 88px"
+                        />
+                      </span>
                     ) : (
                       <div className="line-image-fallback">No image</div>
                     )}
