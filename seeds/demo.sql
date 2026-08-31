@@ -468,13 +468,13 @@ FROM catalog_sales;
 DELETE FROM notifications
 WHERE id BETWEEN '01989f00-0000-7000-8000-000000000651' AND '01989f00-0000-7000-8000-000000000654';
 
-INSERT INTO notifications (id, user_id, source_event_id, kind, title, body, read_at, created_at)
+INSERT INTO notifications (id, user_id, source_event_id, kind, title, body, href, read_at, created_at)
 VALUES
-    ('01989f00-0000-7000-8000-000000000651', '01989f00-0000-7000-8000-000000000001', '01989f00-0000-7000-8000-000000000604', 'order.delivered', 'Order delivered', 'CL-DEMO00000004 was delivered.', now() - interval '1 day', now() - interval '1 day'),
-    ('01989f00-0000-7000-8000-000000000652', '01989f00-0000-7000-8000-000000000001', '01989f00-0000-7000-8000-000000000605', 'order.delivered', 'Order delivered', 'CL-DEMO00000005 was delivered and can now be reviewed.', NULL, now() - interval '12 days'),
-    ('01989f00-0000-7000-8000-000000000653', '01989f00-0000-7000-8000-000000000006', '01989f00-0000-7000-8000-000000000603', 'order.delivered', 'Order delivered', 'CL-DEMO00000003 was delivered.', NULL, now() - interval '10 days'),
-    ('01989f00-0000-7000-8000-000000000654', '01989f00-0000-7000-8000-000000000002', '01989f00-0000-7000-8000-000000000605', 'order.delivered', 'Order delivered', 'CL-DEMO00000005 was delivered and can now be reviewed.', now() - interval '10 days', now() - interval '12 days')
-ON CONFLICT (user_id, source_event_id) DO UPDATE SET kind = EXCLUDED.kind, title = EXCLUDED.title, body = EXCLUDED.body, read_at = EXCLUDED.read_at, created_at = EXCLUDED.created_at;
+    ('01989f00-0000-7000-8000-000000000651', '01989f00-0000-7000-8000-000000000001', '01989f00-0000-7000-8000-000000000604', 'order.delivered', 'Order delivered', 'CL-DEMO00000004 was delivered and can now be reviewed.', '/purchases/01989f00-0000-7000-8000-000000000604', now() - interval '1 day', now() - interval '1 day'),
+    ('01989f00-0000-7000-8000-000000000652', '01989f00-0000-7000-8000-000000000001', '01989f00-0000-7000-8000-000000000605', 'order.delivered', 'Order delivered', 'CL-DEMO00000005 was delivered and can now be reviewed.', '/purchases/01989f00-0000-7000-8000-000000000605', NULL, now() - interval '12 days'),
+    ('01989f00-0000-7000-8000-000000000653', '01989f00-0000-7000-8000-000000000006', '01989f00-0000-7000-8000-000000000603', 'order.delivered', 'Order delivered', 'CL-DEMO00000003 was delivered and can now be reviewed.', '/purchases/01989f00-0000-7000-8000-000000000603', NULL, now() - interval '10 days'),
+    ('01989f00-0000-7000-8000-000000000654', '01989f00-0000-7000-8000-000000000002', '01989f00-0000-7000-8000-000000000605', 'order.delivered', 'Order delivered', 'CL-DEMO00000005 was delivered. No seller action is required.', '/seller/orders', now() - interval '10 days', now() - interval '12 days')
+ON CONFLICT (user_id, source_event_id) DO UPDATE SET kind = EXCLUDED.kind, title = EXCLUDED.title, body = EXCLUDED.body, href = EXCLUDED.href, read_at = EXCLUDED.read_at, created_at = EXCLUDED.created_at;
 
 INSERT INTO audit_log (id, actor_id, action, resource_type, resource_id, metadata, created_at)
 VALUES
@@ -485,7 +485,7 @@ VALUES
     ('01989f00-0000-7000-8000-000000000665', '01989f00-0000-7000-8000-000000000002', 'inventory.adjusted', 'product_variant', '01989f00-0000-7000-8000-000000000442', '{"delta":-3,"resultingStock":2,"reason":"Demo cycle count correction."}', now() - interval '7 days'),
     ('01989f00-0000-7000-8000-000000000666', '01989f00-0000-7000-8000-000000000009', 'seller_order.shipped', 'seller_order', '01989f00-0000-7000-8000-000000000614', '{"from":"processing","to":"shipped"}', now() - interval '2 days'),
     ('01989f00-0000-7000-8000-000000000667', '01989f00-0000-7000-8000-000000000002', 'seller_order.delivered', 'seller_order', '01989f00-0000-7000-8000-000000000615', '{"from":"shipped","to":"delivered"}', now() - interval '12 days'),
-    ('01989f00-0000-7000-8000-000000000668', '01989f00-0000-7000-8000-000000000001', 'seller_order.delivered', 'seller_order', '01989f00-0000-7000-8000-000000000617', '{"from":"shipped","to":"delivered"}', now() - interval '18 days'),
+    ('01989f00-0000-7000-8000-000000000668', '01989f00-0000-7000-8000-000000000002', 'seller_order.delivered', 'seller_order', '01989f00-0000-7000-8000-000000000617', '{"from":"shipped","to":"delivered"}', now() - interval '18 days'),
     ('01989f00-0000-7000-8000-000000000669', '01989f00-0000-7000-8000-000000000001', 'review.created', 'review', '01989f00-0000-7000-8000-000000000641', '{"rating":5,"productId":"01989f00-0000-7000-8000-000000000341","purchaseItemId":"01989f00-0000-7000-8000-000000000625"}', now() - interval '11 days')
 ON CONFLICT (id) DO UPDATE SET actor_id = EXCLUDED.actor_id, action = EXCLUDED.action, resource_type = EXCLUDED.resource_type, resource_id = EXCLUDED.resource_id, metadata = EXCLUDED.metadata, created_at = EXCLUDED.created_at;
 
