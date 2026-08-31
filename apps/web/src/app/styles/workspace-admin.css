@@ -1400,3 +1400,55 @@
   gap: 0;
   margin-bottom: 32px;
 }
+
+.workspace-filter-band {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 14px;
+  border: var(--keyline);
+  background: var(--color-surface);
+}
+
+.workspace-filter-band label {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.workspace-filter-band label span {
+  color: var(--color-ink-muted);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.workspace-filter-band .filter-clear {
+  align-self: end;
+}
+
+.audit-filter-band .filter-clear {
+  align-self: end;
+}
+
+.seller-filter-band {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.store-filter-band {
+  grid-template-columns: minmax(0, 1fr) 180px auto;
+}
+
+.ledger-tab b,
+.product-status-tabs b {
+  color: var(--color-action);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.tab-scroll-hint {
+  display: none;
+}

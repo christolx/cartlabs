@@ -107,6 +107,9 @@ function ProductsContent() {
               ),
             )}
           </div>
+          <span className="tab-scroll-hint" aria-hidden="true">
+            More lifecycle filters available
+          </span>
           <div className="moderation-filter-band seller-filter-band">
             <label>
               <span>Search products</span>

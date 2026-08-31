@@ -827,3 +827,90 @@ details summary {
 .demo-login .button-row .button {
   min-height: 44px;
 }
+
+.purchase-item-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.purchase-ledger-header,
+.purchase-ledger-row {
+  grid-template-columns:
+    minmax(150px, 1.2fr) minmax(130px, 1fr) minmax(150px, 1.1fr)
+    minmax(190px, 1.6fr) 130px 130px;
+}
+
+.purchase-item-summary > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.purchase-item-summary strong {
+  overflow: hidden;
+  margin-bottom: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.purchase-item-summary small {
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.purchase-item-thumb,
+.purchase-item-thumb-fallback {
+  position: relative;
+  display: grid;
+  width: 56px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  background: var(--color-surface);
+  color: var(--color-ink-muted);
+  font-family: var(--font-data), monospace;
+  font-size: 9px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.purchase-item-thumb img {
+  object-fit: cover;
+}
+
+.notification-meta,
+.notification-content {
+  min-width: 0;
+}
+
+.notification-content {
+  display: block !important;
+}
+
+.notification-link {
+  display: inline-flex;
+  min-height: var(--touch-target);
+  align-items: center;
+  margin-top: 12px;
+  color: var(--color-action);
+  font-family: var(--font-data), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.cart-line-image {
+  position: relative;
+  display: block;
+  width: 88px;
+  height: 66px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.cart-line-image img {
+  object-fit: cover;
+}
