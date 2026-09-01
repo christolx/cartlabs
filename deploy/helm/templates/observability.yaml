@@ -62,6 +62,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ $fullname }}-prometheus
+  annotations:
+    helm.sh/resource-policy: keep
   labels:
     {{- include "cartlabs.labels" . | nindent 4 }}
     app.kubernetes.io/component: prometheus
@@ -77,6 +79,8 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: {{ $fullname }}-tempo
+  annotations:
+    helm.sh/resource-policy: keep
   labels:
     {{- include "cartlabs.labels" . | nindent 4 }}
     app.kubernetes.io/component: tempo

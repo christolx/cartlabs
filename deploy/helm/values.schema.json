@@ -21,6 +21,19 @@
         "retention": { "type": "string", "pattern": "^[0-9]+[dh]$" }
       }
     },
+    "ingress": {
+      "type": "object",
+      "required": ["enabled", "externalHTTPS", "tls"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "externalHTTPS": { "type": "boolean" },
+        "tls": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": { "enabled": { "type": "boolean" } }
+        }
+      }
+    },
     "observability": {
       "type": "object",
       "properties": {

@@ -13,6 +13,8 @@ helm template cartlabs "$chart" --namespace cartlabs --values "$values" \
 helm template cartlabs "$chart" --namespace cartlabs --values "$values" \
   --set observability.enabled=true \
   --show-only templates/observability.yaml >"$work_dir/observability.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --show-only templates/deployments.yaml >"$work_dir/k3s-deployments.yaml"
 
 if helm lint "$chart" --values "$values" \
   --set-string observability.traceSampleRatio=0 >"$work_dir/zero-trace-ratio.log" 2>&1; then
@@ -39,6 +41,17 @@ fi
 
 if ! grep -A5 'startupProbe:' "$work_dir/observability.yaml" | grep -q 'failureThreshold: 30'; then
   echo 'Tempo startup probe grace missing' >&2
+  exit 1
+fi
+
+if ! grep -q 'name: COOKIE_SECURE' "$work_dir/k3s-deployments.yaml" || \
+    ! grep -A1 'name: COOKIE_SECURE' "$work_dir/k3s-deployments.yaml" | grep -q 'value: "true"'; then
+  echo 'external HTTPS must enable secure cookies independently of origin TLS' >&2
+  exit 1
+fi
+
+if ! grep -A1 'name: DEMO_MODE' "$work_dir/k3s-deployments.yaml" | grep -q 'value: "true"'; then
+  echo 'web deployment must receive demo mode' >&2
   exit 1
 fi
 

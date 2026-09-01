@@ -72,7 +72,7 @@ spec:
             - { name: PAYMENT_PROVIDER_URL, value: {{ printf "http://%s-mock-payment:8081" $fullname | quote }} }
             - { name: PAYMENT_WEBHOOK_URL, value: {{ printf "http://%s-api:8080/api/v1/payments/webhook" $fullname | quote }} }
             - { name: DEMO_MODE, value: {{ .Values.demoMode | quote }} }
-            - { name: COOKIE_SECURE, value: {{ .Values.ingress.tls.enabled | quote }} }
+            - { name: COOKIE_SECURE, value: {{ or .Values.ingress.externalHTTPS .Values.ingress.tls.enabled | quote }} }
             - { name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, value: {{ include "cartlabs.otlpTraceEndpoint" . | quote }} }
             - { name: OTEL_TRACES_SAMPLER_ARG, value: {{ .Values.observability.traceSampleRatio | quote }} }
             - { name: SEARCH_GRPC_ADDR, value: {{ printf "%s-search:9092" $fullname | quote }} }

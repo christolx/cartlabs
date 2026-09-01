@@ -1,10 +1,11 @@
 global:
   environment: demo
   imageRegistry: ghcr.io/christolx
-  imageTag: sha-0000000
-  domain: cartlabs.christofle.dev
+  imageTag: sha-0000000000000000000000000000000000000000
+  imagePullPolicy: IfNotPresent
   imagePullSecrets:
     - name: ghcr-pull
+  domain: cartlabs.christofle.dev
 
 ingress:
   enabled: true
@@ -13,7 +14,7 @@ ingress:
     enabled: false
 
 backup:
-  enabled: true
+  enabled: false
 
 demoReset:
   enabled: true
@@ -24,4 +25,9 @@ observability:
   traceSampleRatio: "1"
 
 syntheticTraffic:
+  enabled: false
+  readInterval: 30s
+  journeyInterval: 30m
+
+networkPolicy:
   enabled: true
