@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.k3s.local.example
 
 # JavaScript
 node_modules/

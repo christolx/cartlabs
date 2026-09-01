@@ -10,10 +10,11 @@ HURL ?= hurl
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev search-dev search-migrate search-reindex \
 	compose-up compose-full compose-down compose-logs migrate seed reset web-e2e \
 	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset \
-	helm-check helm-regression k3s-e2e infra-check platform-check deployment-smoke microservice-test search-outage clean
+	helm-check helm-regression k3s-e2e infra-check platform-check deployment-smoke microservice-test search-outage clean \
+	k3s-up k3s-rebuild k3s-status k3s-logs k3s-down k3s-purge
 
 help: ## Show available commands
-	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 setup: ## Install dependencies and generate API types
 	pnpm install --frozen-lockfile
@@ -157,6 +158,24 @@ deployment-smoke: ## Smoke-test an already deployed demo URL
 
 k3s-e2e: ## Build, import, install, upgrade, and verify an isolated local k3s release
 	bash tests/deployment/k3s-e2e.sh
+
+k3s-up: ## Reconcile persistent home-server release from .env.k3s.local
+	bash tests/deployment/k3s-local.sh up
+
+k3s-rebuild: ## Reconcile then restart persistent application Deployments
+	bash tests/deployment/k3s-local.sh rebuild
+
+k3s-status: ## Show persistent release and workload status
+	bash tests/deployment/k3s-local.sh status
+
+k3s-logs: ## Follow persistent release logs; optionally set K3S_LOG_COMPONENT
+	bash tests/deployment/k3s-local.sh logs
+
+k3s-down: ## Uninstall persistent release while retaining namespace and PVCs
+	bash tests/deployment/k3s-local.sh down
+
+k3s-purge: ## Delete persistent namespace/PVCs; requires K3S_PURGE=1
+	bash tests/deployment/k3s-local.sh purge
 
 check: generate lint test build ## Run full local verification
 	@git diff --exit-code -- internal/contract/openapi.gen.go apps/web/src/lib/api/schema.d.ts
