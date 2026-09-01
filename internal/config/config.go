@@ -34,6 +34,7 @@ type Config struct {
 	CloudinaryCloudName  string
 	CloudinaryAPIKey     string
 	CloudinaryAPISecret  string
+	TrustedProxyToken    string
 }
 
 func Load() (Config, error) {
@@ -61,6 +62,7 @@ func Load() (Config, error) {
 		CloudinaryCloudName:  envOr("CLOUDINARY_CLOUD_NAME", envOr("NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME", "")),
 		CloudinaryAPIKey:     envOr("CLOUDINARY_API_KEY", ""),
 		CloudinaryAPISecret:  envOr("CLOUDINARY_API_SECRET", ""),
+		TrustedProxyToken:    envOr("TRUSTED_PROXY_TOKEN", ""),
 	}
 	var err error
 	if cfg.TraceSampleRatio, err = envFloat("OTEL_TRACES_SAMPLER_ARG", 1); err != nil {
@@ -103,6 +105,9 @@ func Load() (Config, error) {
 	}
 	if cfg.Environment != "local" && cfg.Environment != "test" && cfg.SearchServiceToken == "cartlabs-local-search-token-change-me" {
 		return Config{}, fmt.Errorf("SEARCH_SERVICE_TOKEN must be set outside local environment")
+	}
+	if cfg.TrustedProxyToken != "" && len(cfg.TrustedProxyToken) < 32 {
+		return Config{}, fmt.Errorf("TRUSTED_PROXY_TOKEN must contain at least 32 bytes")
 	}
 
 	return cfg, nil

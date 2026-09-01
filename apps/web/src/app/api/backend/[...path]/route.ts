@@ -1,3 +1,5 @@
+import { isIP } from "node:net";
+
 const backendURL = () =>
   (
     process.env.API_INTERNAL_URL ??
@@ -23,6 +25,15 @@ async function proxy(
   ]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
+  }
+  const forwardedClient = request.headers
+    .get("x-forwarded-for")
+    ?.split(",", 1)[0]
+    ?.trim();
+  const trustedProxyToken = process.env.TRUSTED_PROXY_TOKEN;
+  if (trustedProxyToken && forwardedClient && isIP(forwardedClient)) {
+    headers.set("x-cartlabs-client-ip", forwardedClient);
+    headers.set("x-cartlabs-proxy-token", trustedProxyToken);
   }
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (contentLength > 1_048_576)

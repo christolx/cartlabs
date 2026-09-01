@@ -152,6 +152,28 @@ func TestLoginRateLimit(t *testing.T) {
 	}
 }
 
+func TestClientIPTrustsAuthenticatedInternalHeader(t *testing.T) {
+	application := &api{config: serverConfig{trustedProxyToken: "01234567890123456789012345678901"}}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
+	request.RemoteAddr = "10.42.0.12:4321"
+	request.Header.Set("X-Cartlabs-Client-IP", "203.0.113.9")
+	request.Header.Set("X-Cartlabs-Proxy-Token", "01234567890123456789012345678901")
+	if got := application.clientIP(request); got != "203.0.113.9" {
+		t.Fatalf("clientIP() = %q, want forwarded client", got)
+	}
+}
+
+func TestClientIPRejectsUnauthenticatedInternalHeader(t *testing.T) {
+	application := &api{config: serverConfig{trustedProxyToken: "01234567890123456789012345678901"}}
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", nil)
+	request.RemoteAddr = "10.42.0.12:4321"
+	request.Header.Set("X-Cartlabs-Client-IP", "203.0.113.9")
+	request.Header.Set("X-Cartlabs-Proxy-Token", "wrong")
+	if got := application.clientIP(request); got != "10.42.0.12" {
+		t.Fatalf("clientIP() = %q, want direct peer", got)
+	}
+}
+
 func TestLoginRejectsUnknownJSONField(t *testing.T) {
 	server := New(fakeChecker{ready: true}, slog.New(slog.NewTextHandler(io.Discard, nil)), WithServices(fakeIdentity{}, nil, nil))
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewBufferString(`{"email":"buyer@example.com","password":"valid-password","admin":true}`))

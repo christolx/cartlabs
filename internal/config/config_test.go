@@ -48,3 +48,12 @@ func TestLoadRejectsShortSearchServiceToken(t *testing.T) {
 		t.Fatalf("Load() error = %v, want search token rejection", err)
 	}
 }
+
+func TestLoadRejectsShortTrustedProxyToken(t *testing.T) {
+	t.Setenv("APP_ENV", "test")
+	t.Setenv("TRUSTED_PROXY_TOKEN", "short")
+	_, err := Load()
+	if err == nil || !strings.Contains(err.Error(), "TRUSTED_PROXY_TOKEN") {
+		t.Fatalf("Load() error = %v, want trusted proxy token rejection", err)
+	}
+}

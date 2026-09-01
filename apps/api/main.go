@@ -96,6 +96,7 @@ func main() {
 			httpapi.WithServices(identityService, storeService, catalogService),
 			httpapi.WithPurchaseService(purchaseService),
 			httpapi.WithAuthRateLimiter(identity.NewRedisRateLimiter(dependencies.Redis)),
+			httpapi.WithTrustedClientIP(cfg.TrustedProxyToken),
 			httpapi.WithRefreshCookie(cfg.CookieSecure, cfg.RefreshTokenTTL),
 			httpapi.WithMetrics(metrics),
 		).Handler(),

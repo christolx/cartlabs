@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -97,20 +98,25 @@ type Server struct {
 }
 
 type serverConfig struct {
-	identity      IdentityService
-	stores        StoreService
-	catalog       CatalogService
-	purchases     PurchaseService
-	cookieSecure  bool
-	refreshMaxAge int
-	rateLimiter   RateLimiter
-	cookieName    string
-	cookiePath    string
-	metrics       *observability.HTTPMetrics
+	identity          IdentityService
+	stores            StoreService
+	catalog           CatalogService
+	purchases         PurchaseService
+	cookieSecure      bool
+	refreshMaxAge     int
+	rateLimiter       RateLimiter
+	cookieName        string
+	cookiePath        string
+	metrics           *observability.HTTPMetrics
+	trustedProxyToken string
 }
 
 func WithAuthRateLimiter(limiter RateLimiter) Option {
 	return func(config *serverConfig) { config.rateLimiter = limiter }
+}
+
+func WithTrustedClientIP(proxyToken string) Option {
+	return func(config *serverConfig) { config.trustedProxyToken = proxyToken }
 }
 
 type Option func(*serverConfig)
@@ -322,10 +328,7 @@ func (a *api) checkAuthLimit(r *http.Request, subject string) error {
 	if a.config.rateLimiter == nil {
 		return nil
 	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
+	host := a.clientIP(r)
 	allowed, err := a.config.rateLimiter.Allow(r.Context(), identity.RateLimitKey(host, subject), 10, time.Minute)
 	if err != nil {
 		return domain.ErrUnavailable
@@ -334,6 +337,22 @@ func (a *api) checkAuthLimit(r *http.Request, subject string) error {
 		return domain.ErrRateLimited
 	}
 	return nil
+}
+
+func (a *api) clientIP(r *http.Request) string {
+	proxyToken := r.Header.Get("X-Cartlabs-Proxy-Token")
+	if len(a.config.trustedProxyToken) > 0 && len(proxyToken) == len(a.config.trustedProxyToken) &&
+		subtle.ConstantTimeCompare([]byte(proxyToken), []byte(a.config.trustedProxyToken)) == 1 {
+		forwarded := strings.TrimSpace(r.Header.Get("X-Cartlabs-Client-IP"))
+		if net.ParseIP(forwarded) != nil {
+			return forwarded
+		}
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	return host
 }
 
 func (a *api) checkMutationLimit(r *http.Request, principal identity.Principal) error {
