@@ -28,11 +28,24 @@ jobs:
           printf '%s' "$KUBE_CONFIG_B64" | base64 --decode > "$RUNNER_TEMP/kube/config"
           chmod 0600 "$RUNNER_TEMP/kube/config"
           echo "KUBECONFIG=$RUNNER_TEMP/kube/config" >> "$GITHUB_ENV"
-      - name: Run serialized reset from release CronJob
+      - name: Run reset in maintenance window
         run: |
+          replicas="$RUNNER_TEMP/reset-replicas"
+          : > "$replicas"
+          restore() {
+            while read -r deployment count; do
+              kubectl -n cartlabs scale "deployment/$deployment" --replicas="$count" || true
+            done < "$replicas"
+            kubectl -n cartlabs delete "job/$RESET_JOB" --ignore-not-found=true || true
+          }
+          trap restore EXIT
+          for deployment in cartlabs-web cartlabs-api cartlabs-worker cartlabs-synthetic-traffic; do
+            count=$(kubectl -n cartlabs get "deployment/$deployment" -o jsonpath='{.spec.replicas}' 2>/dev/null) || continue
+            printf '%s %s\n' "$deployment" "$count" >> "$replicas"
+            kubectl -n cartlabs scale "deployment/$deployment" --replicas=0
+          done
+          kubectl -n cartlabs wait --for=delete pod \
+            -l 'app.kubernetes.io/component in (web,api,worker,synthetic-traffic)' --timeout=3m || true
           kubectl -n cartlabs create job "$RESET_JOB" --from=cronjob/cartlabs-reset
           kubectl -n cartlabs wait --for=condition=Complete "job/$RESET_JOB" --timeout=6m
-      - if: always()
-        run: |
           kubectl -n cartlabs logs "job/$RESET_JOB" --all-containers=true || true
-          kubectl -n cartlabs delete "job/$RESET_JOB" --ignore-not-found=true
