@@ -66,7 +66,7 @@ evidence from earlier work.
 **Status:** Complete (2026-08-08)
 
 - Helm chart and environment values
-- Terraform and Ansible for chosen platform
+- Debian Ansible provisioning and Cloudflare Tunnel
 - GHCR publishing and GitHub Actions deployment
 - TLS, ingress, secrets, backups, probes, and smoke tests
 

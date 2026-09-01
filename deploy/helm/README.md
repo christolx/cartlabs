@@ -21,6 +21,7 @@ default name is `cartlabs-secrets`.
 | `RABBITMQ_DEFAULT_PASS` | Initializes the bundled RabbitMQ user |
 | `SEARCH_DATABASE_URL` | Independent search-owned PostgreSQL database URL |
 | `SEARCH_SERVICE_TOKEN` | Authenticates internal search gRPC calls |
+| `TRUSTED_PROXY_TOKEN` | Authenticates web BFF client-IP assertions to API |
 | `CLOUDINARY_CLOUD_NAME` | Restricts seller image URLs |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Selects browser upload account |
 | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Selects restricted unsigned browser preset |
@@ -58,6 +59,11 @@ helm upgrade --install cartlabs deploy/helm \
 helm test cartlabs --namespace cartlabs --logs
 ```
 
+Persistent Debian server uses `values-k3s.yaml` and `.env.k3s.local` through
+`make k3s-up`. It enables observability, keeps synthetic traffic opt-in, uses
+Cloudflare public HTTPS with HTTP origin, and reconciles pull/application/reset
+Secrets idempotently. See `docs/platform.md`.
+
 `values-local.yaml` uses unqualified local images and `imagePullPolicy: Never`.
 Build, import, install, upgrade, and verify an isolated local release with:
 
@@ -79,7 +85,8 @@ Set `K3S_KEEP_NAMESPACE=1` only when failed-release inspection is needed.
 - Search reindex hook repairs initial state and drift after install or upgrade.
 - A Helm migration hook runs after install and before each upgrade.
 - Deterministic seed runs after first install only.
-- Reset CronJob is suspended; serialized GitHub workflow creates manual jobs.
+- Reset CronJob is suspended; serialized workflow gates public/synthetic traffic
+  during maintenance before creating manual job.
 - Backup CronJob creates custom-format dumps and uploads them to external
   S3-compatible storage with seven-day retention.
 - Demo values deploy small Prometheus and Tempo PVCs, internal Grafana, and a

@@ -194,6 +194,15 @@ Reset recreated deterministic state. Daily backup uploaded a 57.73 KiB custom
 PostgreSQL dump to an ephemeral S3-compatible target; restore into an isolated
 database recovered both seeded products.
 
+### Current state
+
+This milestone records platform delivered on 2026-08-08. Platform later moved
+from Hetzner/Ubuntu/Terraform/cert-manager to an existing Debian laptop managed
+with Ansible and published through Cloudflare Tunnel. Cloudflare now terminates
+public TLS; Traefik serves HTTP origin traffic. Persistent lifecycle uses
+`make k3s-up`; external database backup remains disabled until a durable target
+and restore test exist. See [`docs/platform.md`](./platform.md).
+
 Verified through:
 
 - Helm lint and strict kubeconform validation: 23 local and 24 demo resources

@@ -18,14 +18,14 @@
 | Product model | Products with SKU variants | Useful complexity without catalog sprawl |
 | Local runtime | Docker Compose | Low-friction development and testing |
 | Demo runtime | k3s + Helm | Platform-learning target |
-| Demo host | Single Hetzner Cloud `cx23` | Reproducible platform within EUR 15 monthly ceiling |
+| Demo host | Existing Debian laptop | Persistent 24/7 home server without provider infrastructure |
 | Demo delivery | Direct Helm from protected GitHub environment | Small cluster does not justify GitOps controller overhead |
-| Deployment runner | Unprivileged self-hosted runner on demo node | Outbound GitHub link keeps Kubernetes API off public CI networks |
-| Demo edge | Traefik + cert-manager + external DNS records | Native k3s ingress with automated public TLS |
+| Deployment runner | Optional unprivileged self-hosted runner | Protected deploy only; local Make lifecycle remains primary |
+| Demo edge | Cloudflare Tunnel + Traefik | Outbound-only publication; Cloudflare owns public TLS |
 | Demo secrets | Protected GitHub environment to Kubernetes Secret | Audited injection without secrets in Git |
 | Registry/CI | GHCR + GitHub Actions | Integrated image delivery workflow |
 | Product media | One shared local demo asset | User-approved placeholder avoids premature media pipeline |
-| Demo backups | External S3 dumps + etcd/provider snapshots | Independent, layered recovery with seven-day dump retention |
+| Demo backups | Local etcd snapshots initially | DB backup disabled until destination and restore test exist |
 | Observability | OpenTelemetry + Prometheus/Grafana | Portable instrumentation, metrics, and dashboards |
 | Browser testing | Agent-browser + Axe | Fast cross-role QA, responsive review, and accessibility evidence |
 | Security scanning | Trivy | Scans images, dependencies, manifests, and IaC in CI |

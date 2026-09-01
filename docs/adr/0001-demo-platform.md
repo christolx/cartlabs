@@ -1,6 +1,11 @@
 # 0001 — Single-node k3s demo platform
 
-Status: accepted
+Status: superseded by the implemented home-server platform in
+[`docs/platform.md`](../platform.md)
+
+The original cloud-host decision remains recorded below for historical context.
+Cartlabs later moved to an existing Debian laptop with Cloudflare Tunnel to
+remove provider cost and public origin ingress while retaining k3s and Helm.
 
 ## Context
 

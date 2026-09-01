@@ -1,185 +1,99 @@
-# Demo platform
+# Home-server k3s platform
 
-Cartlabs runs as a reproducible, single-node k3s demo. It is intentionally
-small, recoverable, and educational; it is not a production high-availability
-topology.
+Cartlabs runs persistently on one Debian 12+ laptop. Cloudflare Tunnel publishes
+`cartlabs.christofle.dev`; no inbound WAN port is required.
 
-## Platform shape
-
-| Concern | Choice |
-| --- | --- |
-| Host | One Hetzner Cloud Ubuntu 24.04 `cx23` node |
-| Provisioning | Terraform with encrypted S3-compatible remote state |
-| Configuration | Ansible, pinned checksum-verified k3s binary |
-| Kubernetes | `v1.36.3+k3s1`, embedded etcd, Traefik |
-| TLS | cert-manager `v1.21.1` and Let's Encrypt HTTP-01 |
-| Delivery | Direct Helm on dedicated self-hosted deployment runner |
-| Images | GHCR, immutable full-commit SHA tags, SBOM and provenance |
-| Secrets | GitHub environment secrets reconciled to one Kubernetes Secret |
-| Backups | Daily PostgreSQL dump to external S3 plus k3s etcd snapshots |
-| Recovery | Helm rollback, forward database fixes, daily deterministic reset |
-
-Base demo infrastructure must stay below EUR 15 per month before taxes. Check
-the provider quote before every first apply or server-class change. External
-DNS and S3-compatible storage remain provider-independent.
-
-## Provisioning workflow
-
-### 1. Prepare state and host inputs
-
-Create an Ed25519 operator key and an S3 bucket with versioning and encryption
-for Terraform state. Copy `infra/terraform/terraform.tfvars.example` to the
-ignored `terraform.tfvars`, restrict `operator_cidrs` to trusted public CIDRs,
-and export the Hetzner token through `TF_VAR_hcloud_token`.
-
-Initialize the locked backend using the command in `infra/terraform/README.md`, then:
-
-```bash
-terraform -chdir=infra/terraform plan -out=cartlabs.tfplan
-terraform -chdir=infra/terraform apply cartlabs.tfplan
+```text
+Browser HTTPS -> Cloudflare -> cloudflared host service -> Traefik HTTP -> web BFF -> API
 ```
 
-Terraform creates one host, an operator SSH key, and a firewall. Only ports 80,
-443, and ICMP are public. SSH and Kubernetes API access are restricted to
-`operator_cidrs`. `prevent_destroy` blocks accidental server deletion.
+Cloudflare terminates public TLS. Traefik keeps host routing. Helm sets
+`ingress.externalHTTPS=true`, so API emits Secure refresh cookies even though
+origin Ingress uses HTTP. This is single-node demo infrastructure, not HA.
 
-### 2. Configure DNS and host
+## Provision host
 
-Create an A record from `server_ipv4` and, when used, an AAAA record from
-`server_ipv6`. Wait for public resolution before requesting a production
-certificate.
-
-Wait for `cloud-init status --wait`. Copy Ansible examples to ignored real
-files, set the domain and certificate email, verify the SSH host key out of
-band, then run:
+Install Debian, create sudo-capable operator, enable SSH only on trusted LAN/VPN,
+then copy Ansible examples:
 
 ```bash
-cd infra/ansible
-ansible-playbook -i inventory.yml playbook.yml
+cp infra/ansible/inventory.example.yml infra/ansible/inventory.yml
+cp infra/ansible/group_vars/all.example.yml infra/ansible/group_vars/all.yml
 ```
 
-Ansible hardens the host, disables swap, installs k3s, enables secrets
-encryption and twice-daily embedded-etcd snapshots, and installs cert-manager.
-Use the staging issuer while validating new DNS or ingress changes to avoid
-Let's Encrypt rate limits.
+Create remotely managed Cloudflare Tunnel. Dashboard public hostname must route
+`cartlabs.christofle.dev` to `http://localhost:80`. Export token only for
+provisioning, enable role in ignored group vars, run playbook:
 
-Create a repository runner registration token, export it as
-`GITHUB_RUNNER_REGISTRATION_TOKEN`, enable `github_runner_enabled`, and rerun
-Ansible. The checksum-pinned runner uses an unprivileged account, accepts only
-jobs carrying label `cartlabs-demo`, and reaches Kubernetes through the local
-API. It builds no images; hosted runners retain that work. Never target this
-runner from pull-request workflows because a cluster-admin job can become host
-control through Kubernetes.
+```bash
+export CLOUDFLARE_TUNNEL_TOKEN='...'
+ansible-playbook -i infra/ansible/inventory.yml infra/ansible/playbook.yml
+```
 
-### 3. Configure protected GitHub environment
+Ansible installs checksum-verified k3s, embedded-etcd snapshots, Traefik trust
+for host tunnel path, official Cloudflare APT package, root-only token file, and
+systemd service. GitHub runner is opt-in. Never expose ports 80, 443, or 6443 to
+WAN; tunnel uses outbound connections.
 
-Fetch `/etc/rancher/k3s/k3s.yaml` over SSH, retain its `127.0.0.1` API endpoint,
-base64-encode the complete file, and store it as `KUBE_CONFIG_B64` in the
-protected `demo` environment. Require reviewer approval for that environment.
-Keep a separate operator copy using the server TLS SAN; never place it in Git.
+## Prepare release input
 
-Set environment variable `DEMO_HOST` and these environment secrets:
+Hosted CI publishes every runtime image to GHCR using `sha-<full-commit>` tags.
+Copy operator example and fill all values:
 
-- `KUBE_CONFIG_B64`, `GHCR_USERNAME`, `GHCR_PULL_TOKEN`
-- `ACCESS_TOKEN_SECRET`, `PAYMENT_WEBHOOK_SECRET`, `MOCK_PAYMENT_API_KEY`
-- `DATABASE_URL`, `POSTGRES_PASSWORD`
-- `RABBITMQ_URL`, `RABBITMQ_DEFAULT_PASS`
-- `SEARCH_DATABASE_URL`, `SEARCH_SERVICE_TOKEN`
-- `BACKUP_S3_ENDPOINT`, `BACKUP_S3_ACCESS_KEY`, `BACKUP_S3_SECRET_KEY`,
-  `BACKUP_S3_BUCKET`
-- `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`
+```bash
+cp .env.k3s.local.example .env.k3s.local
+```
 
-Use internal hosts `cartlabs-postgresql:5432` and
-`cartlabs-rabbitmq:5672` in application URLs. Grant GHCR token read-only package
-scope. Create backup bucket before first deployment. Rotate a secret in GitHub,
-then dispatch delivery; `global.secretRevision` rolls affected Pods.
+Use read-only GHCR package token. Generate independent random app secrets. DB
+and RabbitMQ passwords must use URL-safe characters; lifecycle script derives
+cluster service URLs. File stays ignored.
 
-## Delivery and verification
+## Lifecycle
 
-Default-branch delivery builds twelve runtime images independently, publishes
-full-SHA tags with SBOM and provenance, and deploys the exact SHA through Helm.
-Deployment and reset share `cartlabs-demo-mutation` concurrency, preventing
-migrations and destructive demo resets from overlapping.
+```bash
+make k3s-up       # reconcile namespace, Secrets, immutable Helm release, tests
+make k3s-status
+make k3s-logs     # K3S_LOG_COMPONENT=api narrows stream
+make k3s-rebuild  # reconcile same/new SHA, restart app Deployments
+make k3s-down     # uninstall release, retain namespace and PVCs
+```
 
-Helm waits for probes, runs migrations, seeds first install, runs an in-cluster
-test, then external smoke checks readiness, homepage rendering, catalog data,
-request IDs, demo login, and cart access.
+Normal down never deletes persistent data. Explicit destructive removal:
 
-Demo Helm values also run internal Prometheus, Tempo, and Grafana. Prometheus
-keeps three days of metrics, Tempo keeps 24 hours of traces, and both use small
-PVCs. Synthetic traffic performs catalog reads every ten seconds and a failed
-payment journey every 15 minutes with the dedicated `buyer3` demo account;
-failed payment restores reserved inventory.
-Grafana has no ingress. Access it through port-forward:
+```bash
+K3S_PURGE=1 make k3s-purge
+```
+
+Observability defaults on. Synthetic traffic defaults off to avoid startup
+noise; opt in with `K3S_SYNTHETIC_TRAFFIC=true`. Grafana stays cluster-internal:
 
 ```bash
 kubectl -n cartlabs port-forward service/cartlabs-grafana 3001:3000
 ```
 
-Operator checks:
+## Proxy trust chain
 
-```bash
-kubectl -n cartlabs get pods,jobs,ingress
-kubectl -n cartlabs get certificate
-helm status cartlabs -n cartlabs
-DEMO_URL=https://demo.example.com make deployment-smoke
-```
+`cloudflared` is only origin client. k3s Traefik trusts `X-Forwarded-*` from
+loopback and node address, not arbitrary peers. Web BFF validates first
+`X-Forwarded-For` address and converts it to internal `X-Cartlabs-Client-IP`.
+API accepts that header only with matching `TRUSTED_PROXY_TOKEN`; otherwise
+rate limiting uses direct socket peer. Never expose web service directly outside
+trusted host path.
 
-## Rollback
+## Reset maintenance
 
-Images are immutable, so application rollback targets a known Helm revision:
+Reset drops/recreates demo tables. Scheduled reset workflow scales public web,
+API, worker, and synthetic Deployments to zero, runs reset job, then restores
+replicas even on failure. Expect maintenance downtime; this is not zero-downtime
+reset. Manual reset must use equivalent gating.
 
-```bash
-helm history cartlabs -n cartlabs
-helm rollback cartlabs REVISION -n cartlabs --wait --timeout 12m
-helm test cartlabs -n cartlabs --logs
-```
+## Recovery
 
-Migrations are forward-only. Roll back application images only when intervening
-schema changes are backward-compatible. Otherwise deploy a forward fix. Never
-delete or edit an applied migration. Inspect hook logs and events before retrying
-a failed release.
+Use `helm history`, immutable SHA rollback, and Helm tests for application
+failure. Migrations remain forward-only. k3s stores twice-daily embedded-etcd
+snapshots locally; copy snapshots off laptop before claiming disaster recovery.
+Database backup remains disabled until local/external destination and restore
+test exist.
 
-## Backup and restore
-
-Backup CronJob runs at 02:17 UTC, waits for PostgreSQL, creates custom-format
-dumps for main and search-owned databases, uploads them under `cartlabs/`, and
-deletes objects older than 168 hours.
-External S3 storage must enable encryption, versioning, and restricted
-credentials. Hetzner whole-server backups and five twice-daily embedded-etcd
-snapshots complement database dumps; neither replaces them.
-
-Trigger and inspect a backup:
-
-```bash
-job="cartlabs-backup-$(date -u +%Y%m%d%H%M%S)"
-kubectl -n cartlabs create job "$job" --from=cronjob/cartlabs-backup
-kubectl -n cartlabs wait --for=condition=Complete "job/$job" --timeout=10m
-kubectl -n cartlabs logs "job/$job" --all-containers=true
-```
-
-Restore procedure for demo incidents:
-
-1. Disable delivery and reset dispatch; take one final backup when possible.
-2. Download selected dump from external storage and verify object size/date.
-3. Scale API, worker, and search Deployments to zero, leaving PostgreSQL running.
-4. Terminate sessions, drop and recreate `cartlabs` and `cartlabs_search`, then
-   restore matching dumps with `pg_restore --no-owner --no-privileges` as the
-   `cartlabs` user. If search dump is unavailable, migrate it and run reindex.
-5. Run table-count and migration-version checks before scaling workloads up.
-6. Wait for readiness, run Helm and external smoke tests, then re-enable jobs.
-7. Record selected object, timestamps, commands, and verification in incident
-   notes. Retain failed database or server snapshot until review completes.
-
-Test restores into a separate temporary database before relying on a new backup
-configuration. Milestone verification restored the uploaded dump separately and
-confirmed both seeded products without altering the live database.
-
-## Limits and failure model
-
-Single node means host, disk, control plane, and workloads share one failure
-domain. Maintenance causes downtime; no autoscaling or zone redundancy exists.
-Bundled PostgreSQL, Redis, and RabbitMQ serve demonstration workloads only.
-Provider rebuild plus Terraform, Ansible, Helm, and external backup is the
-disaster-recovery path. Move stateful dependencies off-node and add multiple
-nodes before treating this design as production.
+Single laptop means disk, power, network, and control plane share one failure
+domain. Keep Debian, cloudflared, k3s, images, and snapshots patched/monitored.

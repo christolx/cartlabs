@@ -4,105 +4,40 @@
 
 | Environment | Runtime | Purpose |
 | --- | --- | --- |
-| Local | Docker Compose | Fast development and integration testing |
-| CI | Compose or service containers | Automated verification |
-| Demo | k3s + Helm | Portfolio deployment and operations practice |
+| Local | Docker Compose | Fast development |
+| Deployment test | Disposable local k3s | `make k3s-e2e` |
+| Demo | Persistent Debian laptop k3s | Public home-server release |
 
-Terraform provisions one Hetzner Cloud demo host; Ansible configures pinned k3s,
-host hardening, Traefik, and cert-manager. Helm packages application workloads.
-See [Demo platform](./platform.md) for the accepted topology and runbook.
+`make k3s-e2e` builds/imports `:local` images with pull policy `Never`, refuses
+namespace reuse, and removes namespace afterward. Never use it as persistent
+server deployment.
 
-## Repository Shape
+Default-branch and tag delivery builds runtime images on GitHub-hosted runners,
+publishes immutable full-SHA GHCR tags with SBOM/provenance, then optionally
+deploys from protected self-hosted runner. Persistent local operator path uses
+same GHCR artifacts through `make k3s-up`; it never builds/imports images.
 
-```text
-apps/
-  web/
-  api/
-  worker/
-  mock-payment/
-  search/
-  search-migrate/
-  search-reindex/
-  synthetic-traffic/
-  migrate/
-  seed/
-  reset/
-api/
-  openapi/
-  proto/
-deploy/
-  compose/
-  helm/
-infra/
-  terraform/
-  ansible/
-docs/
+Both delivery workflow and local lifecycle reconcile complete application,
+Cloudinary cleanup, and GHCR pull Secrets before Helm. Secrets never enter Git
+or command output. Rotate input then reconcile; `global.secretRevision` rolls
+affected app Pods.
+
+Cloudflare owns public DNS/TLS/tunnel. Traefik origin remains HTTP. Helm's
+external HTTPS value controls Secure cookies independently from origin TLS.
+Forwarded client IP crosses BFF/API only through authenticated internal headers.
+
+Reset is maintenance-window work. Workflow serializes with deploys, removes
+public/synthetic traffic during reset, restores replicas through failure trap.
+
+Required verification before merge:
+
+```bash
+make lint
+make test
+make helm-check
+make infra-check
+make build
 ```
 
-Go API and worker may share one Go module and container build stages while
-remaining separate runtime commands.
-
-## CI
-
-Pull requests should run:
-
-1. Formatting, linting, and static analysis
-2. Unit and module integration tests
-3. OpenAPI linting and generated-client drift check
-4. Database migration tests
-5. Compose-backed end-to-end tests
-6. Container build and vulnerability scan
-7. Helm lint/render and infrastructure validation
-
-Default-branch builds publish immutable images to GHCR using commit SHA tags.
-Release tags add semantic-version tags. Avoid mutable `latest` in deployments.
-
-## CD
-
-- GitHub Actions authenticates with least privilege.
-- Helm values reference immutable image tags or digests.
-- Demo deployment runs migrations as a controlled pre-deploy job.
-- Smoke tests verify deployment before success is reported.
-- Daily scheduled workflow resets database through migration-and-seed job.
-- Reset job is mutually exclusive with active migration/deployment jobs.
-
-## Testing Strategy
-
-- **Unit:** domain state transitions and pure business rules
-- **Integration:** PostgreSQL repositories, Redis, RabbitMQ, and payment webhooks
-- **Contract:** OpenAPI request/response behavior and event schemas
-- **End-to-end:** Hurl API vertical slices; agent-browser buyer, seller, and admin journeys
-- **Security:** authorization matrix, webhook replay, rate limits, dependency scan
-- **Resilience:** duplicate events, worker restart, dependency outage, retry behavior
-
-Use Testcontainers for backend integration tests where practical. Keep a small,
-deterministic end-to-end suite for CI speed.
-
-## Local Developer Experience
-
-- One command starts required services.
-- Compose profiles enable optional observability and tooling.
-- Health checks gate dependent containers.
-- Example environment file contains no secrets.
-- Makefile or task runner exposes consistent commands for lint, test, seed, reset,
-  generate, and run.
-- `make e2e-api` runs native Hurl workflows against a running local API. Override
-  `E2E_API_URL` when targeting another environment.
-
-## Security Baseline
-
-- Secrets come from environment or deployment secret store, never Git.
-- Containers run non-root with read-only filesystem where practical.
-- Images use pinned minimal bases and multi-stage builds.
-- CORS, CSRF, cookie, upload, and proxy trust policies are explicit.
-- Uploaded media validates size and type; object storage is recommended over DB.
-- Admin and seller mutations produce audit records.
-- Demo quick login is impossible outside demo mode.
-
-## Recommended Supporting Tools
-
-- S3-compatible object storage such as MinIO for local backup testing
-- OpenTelemetry Collector, Prometheus, Grafana, and optionally Loki/Tempo
-- Trivy for images and IaC; Dependabot or Renovate for dependencies
-- Hurl for black-box API slice workflows; agent-browser and Axe for browser flows
-- `golangci-lint`, TypeScript ESLint, and OpenAPI linting
+See [platform runbook](./platform.md) for provisioning, lifecycle, proxy trust,
+rollback, and recovery limits.

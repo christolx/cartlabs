@@ -83,9 +83,13 @@ HIGH/CRITICAL Trivy scans for every runtime image. Local dependency gate is
 
 `make demo-reset` recreates only local/demo database state from ordered
 migrations and deterministic seed data. Reset refuses every other environment.
-Install `deploy/cron/cartlabs-demo-reset.cron` on the demo host to run at 03:00
-UTC. Reset is destructive to demo data; its schedule and logs should be visible
-to demo users and operators.
+Persistent k3s reset runs through the serialized `demo-reset` GitHub workflow.
+It records replica counts, scales web, API, worker, and synthetic traffic to
+zero, waits for public workloads to stop, runs the reset Job, then restores
+replicas through an exit trap. Manual cluster reset must use the same maintenance
+window. Reset is destructive to demo data; its schedule, downtime, and logs
+should be visible to demo users and operators. See
+[`docs/platform.md`](./platform.md#reset-maintenance).
 
 ## Incident checks
 
