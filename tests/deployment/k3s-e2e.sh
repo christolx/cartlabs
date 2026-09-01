@@ -83,6 +83,10 @@ kubectl --namespace "$namespace" create secret generic cartlabs-secrets \
   --from-literal=RABBITMQ_DEFAULT_PASS="$rabbitmq_password" \
   --from-literal=SEARCH_DATABASE_URL="postgres://cartlabs:$postgres_password@cartlabs-postgresql:5432/cartlabs_search?sslmode=disable" \
   --from-literal=SEARCH_SERVICE_TOKEN="$(openssl rand -hex 24)" \
+  --from-literal=TRUSTED_PROXY_TOKEN= \
+  --from-literal=CLOUDINARY_CLOUD_NAME= \
+  --from-literal=NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME= \
+  --from-literal=NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET= \
   --from-literal=BACKUP_S3_ENDPOINT=http://unused.invalid \
   --from-literal=BACKUP_S3_ACCESS_KEY=unused \
   --from-literal=BACKUP_S3_SECRET_KEY=unused \

@@ -358,6 +358,8 @@ spec:
       labels:
         {{- include "cartlabs.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: web
+      annotations:
+        cartlabs.io/secret-revision: {{ .Values.global.secretRevision | quote }}
     spec:
       serviceAccountName: {{ include "cartlabs.serviceAccountName" . }}
       automountServiceAccountToken: false
@@ -378,6 +380,10 @@ spec:
             - { name: http, containerPort: 3000 }
           env:
             - { name: API_INTERNAL_URL, value: {{ printf "http://%s-api:8080/api/v1" $fullname | quote }} }
+            - { name: DEMO_MODE, value: {{ .Values.demoMode | quote }} }
+            - name: TRUSTED_PROXY_TOKEN
+              valueFrom:
+                secretKeyRef: { name: {{ .Values.global.existingSecret }}, key: TRUSTED_PROXY_TOKEN, optional: true }
             - name: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
               valueFrom:
                 secretKeyRef: { name: {{ .Values.global.existingSecret }}, key: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }

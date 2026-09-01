@@ -112,12 +112,18 @@ jobs:
           GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME }}
+          NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: ${{ secrets.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET }}
           CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
           CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          TRUSTED_PROXY_TOKEN: ${{ secrets.TRUSTED_PROXY_TOKEN }}
         run: |
           : "${CLOUDINARY_CLOUD_NAME:?CLOUDINARY_CLOUD_NAME secret is required}"
           : "${CLOUDINARY_API_KEY:?CLOUDINARY_API_KEY secret is required}"
           : "${CLOUDINARY_API_SECRET:?CLOUDINARY_API_SECRET secret is required}"
+          : "${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:?NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME secret is required}"
+          : "${NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET:?NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET secret is required}"
+          : "${TRUSTED_PROXY_TOKEN:?TRUSTED_PROXY_TOKEN secret is required}"
           kubectl create namespace cartlabs --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n cartlabs create secret docker-registry ghcr-pull \
             --docker-server=ghcr.io --docker-username="$GHCR_USERNAME" --docker-password="$GHCR_PULL_TOKEN" \
@@ -132,6 +138,10 @@ jobs:
             --from-literal=RABBITMQ_DEFAULT_PASS="$RABBITMQ_DEFAULT_PASS" \
             --from-literal=SEARCH_DATABASE_URL="$SEARCH_DATABASE_URL" \
             --from-literal=SEARCH_SERVICE_TOKEN="$SEARCH_SERVICE_TOKEN" \
+            --from-literal=TRUSTED_PROXY_TOKEN="$TRUSTED_PROXY_TOKEN" \
+            --from-literal=CLOUDINARY_CLOUD_NAME="$CLOUDINARY_CLOUD_NAME" \
+            --from-literal=NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="$NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME" \
+            --from-literal=NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET="$NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET" \
             --from-literal=BACKUP_S3_ENDPOINT="$BACKUP_S3_ENDPOINT" \
             --from-literal=BACKUP_S3_ACCESS_KEY="$BACKUP_S3_ACCESS_KEY" \
             --from-literal=BACKUP_S3_SECRET_KEY="$BACKUP_S3_SECRET_KEY" \
