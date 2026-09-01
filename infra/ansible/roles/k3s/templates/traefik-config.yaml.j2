@@ -1,0 +1,15 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    ports:
+      web:
+        forwardedHeaders:
+          insecure: false
+          trustedIPs:
+            - 127.0.0.1/32
+            - ::1/128
+            - {{ ansible_default_ipv4.address }}/32

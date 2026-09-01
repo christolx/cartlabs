@@ -1,8 +1,0 @@
-project_name   = "cartlabs-demo"
-location       = "nbg1"
-server_type    = "cx23"
-operator_cidrs = ["203.0.113.10/32"]
-ssh_public_key = "ssh-ed25519 REPLACE_WITH_OPERATOR_KEY cartlabs-demo"
-
-# Supply token out of band:
-# export TF_VAR_hcloud_token='...'

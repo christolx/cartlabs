@@ -2,6 +2,6 @@ all:
   children:
     k3s:
       hosts:
-        cartlabs-demo:
-          ansible_host: 203.0.113.20
-          ansible_user: root
+        cartlabs-home:
+          ansible_host: 192.0.2.20
+          ansible_user: operator

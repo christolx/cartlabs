@@ -1,5 +1,5 @@
 ---
-- name: Configure Cartlabs k3s demo host
+- name: Configure Cartlabs Debian k3s home server
   hosts: k3s
   become: true
   gather_facts: true
@@ -10,12 +10,14 @@
     - name: Validate operator inputs
       ansible.builtin.assert:
         that:
-          - ansible_distribution == "Ubuntu"
-          - ansible_distribution_version is version('24.04', '>=')
-          - cert_manager_email | length > 3
-          - demo_domain | length > 3
-        fail_msg: "Ubuntu 24.04+, cert_manager_email, and demo_domain are required."
+          - ansible_distribution == "Debian"
+          - ansible_distribution_major_version | int >= 12
+          - not (cloudflared_enabled | default(false) | bool) or cloudflared_tunnel_token | length > 20
+        fail_msg: "Debian 12+ and a tunnel token when cloudflared is enabled are required."
+        no_log: true
   roles:
     - role: k3s
+    - role: cloudflared
+      when: cloudflared_enabled | default(false) | bool
     - role: github_runner
       when: github_runner_enabled | default(false) | bool

@@ -1,0 +1,4 @@
+---
+cloudflared_enabled: false
+cloudflared_tunnel_token: "{{ lookup('ansible.builtin.env', 'CLOUDFLARE_TUNNEL_TOKEN') }}"
+cloudflared_token_file: /etc/cloudflared/token

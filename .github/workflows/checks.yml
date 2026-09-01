@@ -189,8 +189,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
         with: { version: v4.2.3 }
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.15.8 }
       - uses: actions/setup-python@v5
         with: { python-version: "3.13" }
       - run: pip install ansible-core==2.21.2 ansible-lint==26.6.0
@@ -198,24 +196,24 @@ jobs:
         run: |
           helm lint deploy/helm --values deploy/helm/values-local.yaml
           helm lint deploy/helm --values deploy/helm/values-demo.yaml
+          helm lint deploy/helm --values deploy/helm/values-k3s.yaml
           helm template cartlabs deploy/helm --namespace cartlabs \
             --values deploy/helm/values-local.yaml > "$RUNNER_TEMP/cartlabs.yaml"
           helm template cartlabs deploy/helm --namespace cartlabs \
             --values deploy/helm/values-demo.yaml > "$RUNNER_TEMP/cartlabs-demo.yaml"
+          helm template cartlabs deploy/helm --namespace cartlabs \
+            --values deploy/helm/values-k3s.yaml > "$RUNNER_TEMP/cartlabs-k3s.yaml"
           docker run --rm -v "$RUNNER_TEMP:/work:ro" \
             ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
             -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas /work/cartlabs.yaml
           docker run --rm -v "$RUNNER_TEMP:/work:ro" \
             ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
             -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas /work/cartlabs-demo.yaml
-      - name: Validate Terraform
-        run: |
-          terraform -chdir=infra/terraform fmt -check -recursive
-          terraform -chdir=infra/terraform init -backend=false
-          terraform -chdir=infra/terraform validate
+          docker run --rm -v "$RUNNER_TEMP:/work:ro" \
+            ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
+            -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas /work/cartlabs-k3s.yaml
       - name: Validate Ansible
         working-directory: infra/ansible
         run: |
           ansible-lint playbook.yml
-          ansible-playbook -i inventory.example.yml playbook.yml --syntax-check \
-            -e cert_manager_email=operator@example.com -e demo_domain=demo.cartlabs.example.com
+          ansible-playbook -i inventory.example.yml playbook.yml --syntax-check

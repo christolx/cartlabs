@@ -1,0 +1,19 @@
+[Unit]
+Description=Cartlabs Cloudflare Tunnel
+Documentation=https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
+Wants=network-online.target k3s.service
+After=network-online.target k3s.service
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/cloudflared tunnel --no-autoupdate run --token-file {{ cloudflared_token_file }}
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=0
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

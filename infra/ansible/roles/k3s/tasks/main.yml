@@ -131,40 +131,25 @@
   until: k3s_kubernetes_ready.rc == 0
   changed_when: false
 
-- name: Install pinned cert-manager HelmChart
+- name: Configure Traefik forwarded-header trust for host tunnel
   ansible.builtin.template:
-    src: cert-manager.yaml.j2
-    dest: /var/lib/rancher/k3s/server/manifests/cert-manager.yaml
+    src: traefik-config.yaml.j2
+    dest: /var/lib/rancher/k3s/server/manifests/traefik-config.yaml
     owner: root
     group: root
     mode: "0644"
 
-- name: Wait for cert-manager deployments
-  ansible.builtin.command: >-
-    k3s kubectl wait --namespace cert-manager --for=condition=Available
-    deployment --all --timeout=300s
-  register: k3s_cert_manager_ready
-  retries: 10
-  delay: 10
-  until: k3s_cert_manager_ready.rc == 0
-  changed_when: false
-
-- name: Render Let's Encrypt cluster issuers
-  ansible.builtin.template:
-    src: cluster-issuers.yaml.j2
-    dest: /etc/rancher/k3s/cluster-issuers.yaml
-    owner: root
-    group: root
-    mode: "0600"
-
-- name: Apply Let's Encrypt cluster issuers
-  ansible.builtin.command: k3s kubectl apply -f /etc/rancher/k3s/cluster-issuers.yaml
-  register: k3s_issuer_apply
-  changed_when: "'created' in k3s_issuer_apply.stdout or 'configured' in k3s_issuer_apply.stdout"
+- name: Remove retired cert-manager manifests
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/rancher/k3s/server/manifests/cert-manager.yaml
+    - /etc/rancher/k3s/cluster-issuers.yaml
 
 - name: Report kubeconfig retrieval command
   ansible.builtin.debug:
     msg: >-
       Fetch /etc/rancher/k3s/k3s.yaml securely. Keep loopback for the protected
       deployment runner secret; use {{ ansible_host }} only in the separate
-      operator copy.
+      operator copy. No WAN firewall rule should expose port 6443.
