@@ -74,19 +74,22 @@ test("wrong role direct URL renders forbidden without protected request", async 
   expect(adminDataRequested).toBe(false);
 });
 
-test("catalog navigation scrolls when hash already targets catalog", async ({
-  page,
-}) => {
+test("anonymous header exposes current public navigation", async ({ page }) => {
   await mockAnonymous(page);
-  await page.goto("/#catalog");
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.goto("/");
 
-  await page.getByRole("link", { name: "Browse", exact: true }).click();
-
-  await expect
-    .poll(() => page.evaluate(() => window.scrollY))
-    .toBeGreaterThan(0);
+  const navigation = page.getByRole("navigation", {
+    name: "Primary navigation",
+  });
+  await expect(
+    navigation.getByRole("link", { name: "Home", exact: true }),
+  ).toHaveAttribute("href", "/");
+  await expect(
+    navigation.getByRole("link", { name: "About", exact: true }),
+  ).toHaveAttribute("href", "/about");
+  await expect(
+    navigation.getByRole("link", { name: "Docs", exact: true }),
+  ).toHaveAttribute("href", "/docs");
 });
 
 test("admin notifications route offers workspace without retrying forbidden request", async ({

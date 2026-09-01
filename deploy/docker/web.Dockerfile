@@ -19,7 +19,8 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 WORKDIR /app
 
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/pnpm /usr/local/bin/pnpx \
     && addgroup -S cartlabs \
     && adduser -S -G cartlabs cartlabs

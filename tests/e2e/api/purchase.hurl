@@ -7,6 +7,17 @@ HTTP 200
 [Captures]
 buyer_token: jsonpath "$.accessToken"
 
+DELETE {{base_url}}/cart/items/01989f00-0000-7000-8000-000000000441
+Authorization: Bearer {{buyer_token}}
+HTTP 200
+
+DELETE {{base_url}}/cart/items/01989f00-0000-7000-8000-000000000403
+Authorization: Bearer {{buyer_token}}
+HTTP 200
+[Asserts]
+jsonpath "$.totalQuantity" == 0
+jsonpath "$.subtotalMinor" == 0
+
 PUT {{base_url}}/cart/items/01989f00-0000-7000-8000-000000000401
 Authorization: Bearer {{buyer_token}}
 Content-Type: application/json

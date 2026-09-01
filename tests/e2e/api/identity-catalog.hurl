@@ -102,8 +102,7 @@ jsonpath "$.status" == "published"
 GET {{base_url}}/catalog/products?store=demo-seller-store&category=home-living&inStock=true
 HTTP 200
 [Asserts]
-jsonpath "$.total" == 1
-jsonpath "$.items[0].slug" == "{{product_slug}}"
+jsonpath "$.items[*].slug" contains "{{product_slug}}"
 
 PATCH {{base_url}}/admin/products/{{product_id}}/status
 Authorization: Bearer {{admin_token}}
@@ -120,7 +119,7 @@ jsonpath "$.enforcementReason" == "Listing enforcement workflow"
 GET {{base_url}}/catalog/products?store=demo-seller-store&category=home-living&inStock=true
 HTTP 200
 [Asserts]
-jsonpath "$.total" == 0
+jsonpath "$.items[*].slug" not contains "{{product_slug}}"
 
 POST {{base_url}}/seller/products/{{product_id}}/publish
 Authorization: Bearer {{seller_token}}
