@@ -117,7 +117,7 @@ export function SiteHeader() {
         </nav>
         <div className="session-nav">
           {status === "loading" ? (
-            <span className="session-loading">Loading session</span>
+            <span className="session-loading">Loading</span>
           ) : user ? (
             <>
               <span className="session-user">

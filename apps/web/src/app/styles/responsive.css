@@ -364,43 +364,244 @@
   }
 }
 
+@media (min-width: 768px) and (max-width: 1350px) {
+  .site-header {
+    position: sticky;
+    overflow: visible;
+  }
+
+  .header-inner {
+    min-height: 56px;
+    grid-template-columns:
+      clamp(245px, 26.7vw, 294px) minmax(0, 1fr)
+      clamp(84px, 9.5vw, 104px);
+    gap: 0;
+    padding: 0;
+  }
+
+  .wordmark {
+    min-height: 56px;
+  }
+
+  .site-header nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0;
+    overflow: hidden;
+    border-top: var(--keyline);
+    padding: 0;
+    font-family: var(--font-ui), monospace;
+    font-size: var(--text-ui);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .nav-global {
+    flex: none;
+    min-height: 48px;
+    gap: 0;
+    overflow-x: auto;
+    border-right: var(--keyline);
+    padding-inline: 12px;
+    scrollbar-width: none;
+  }
+
+  .nav-global::-webkit-scrollbar,
+  .nav-workspace::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-header nav a {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    padding-inline: 14px;
+    white-space: nowrap;
+  }
+
+  .nav-workspace {
+    flex: 1 1 auto;
+    min-height: 48px;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin-left: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    border: 0;
+    padding: 0;
+    scrollbar-width: none;
+  }
+
+  .site-header .nav-workspace a {
+    min-height: 48px;
+  }
+
+  .nav-role-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    flex: none;
+    min-height: 48px;
+    padding-inline: 26px;
+    border-right: 3px solid var(--color-action);
+    background: var(--color-canvas);
+  }
+
+  .site-header nav a[aria-current="page"]::after {
+    position: absolute;
+    right: 14px;
+    bottom: 0;
+    left: 14px;
+    height: 3px;
+    background: var(--color-action);
+    content: "";
+  }
+
+  .session-nav {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    height: 56px;
+    border-left: var(--keyline);
+    padding: 0 20px;
+    font-family: var(--font-ui), monospace;
+    font-size: var(--text-ui);
+  }
+
+  .session-nav .text-button,
+  .header-login {
+    display: inline-flex;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 12px;
+    font-size: var(--text-ui);
+    white-space: nowrap;
+  }
+
+  .cart-link {
+    grid-column: 3;
+    grid-row: 1;
+    min-height: 56px;
+  }
+}
+
 @media (max-width: 767px) {
   .site-header {
     position: sticky;
+    overflow: visible;
   }
   .header-inner {
     min-height: 56px;
-    grid-template-columns: minmax(0, 1fr) auto 66px;
+    grid-template-columns: minmax(0, 1fr) 98px 66px;
+    gap: 0;
     padding: 0;
   }
   .wordmark {
+    min-height: 56px;
     padding-inline: 18px;
     font-size: 29px;
   }
   .site-header nav {
     grid-column: 1 / -1;
     grid-row: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
     gap: 0;
-    border-top: 1px solid var(--color-border);
-    padding: 11px 18px;
-    font-size: 14px;
+    overflow: hidden;
+    border-top: var(--keyline);
+    padding: 0;
+    font-family: var(--font-ui), monospace;
+    font-size: var(--text-ui);
+    font-weight: 700;
+    letter-spacing: 0.04em;
   }
   .nav-global {
-    gap: 24px;
+    min-height: var(--touch-target);
+    gap: 0;
+    overflow-x: auto;
+    border-bottom: var(--keyline);
+    padding-inline: 4px;
+    scrollbar-width: none;
+  }
+  .nav-global::-webkit-scrollbar,
+  .nav-workspace::-webkit-scrollbar {
+    display: none;
+  }
+  .site-header nav a {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    min-height: var(--touch-target);
+    align-items: center;
+    padding-inline: 14px;
+    white-space: nowrap;
   }
   .nav-workspace {
-    gap: 10px 24px;
-    padding-top: 10px;
+    min-height: 48px;
+    flex-wrap: nowrap;
+    gap: 0;
+    margin-left: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    border: 0;
+    padding: 0;
+    scrollbar-width: none;
+  }
+  .site-header .nav-workspace a {
+    min-height: 48px;
+  }
+  .nav-role-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    flex: none;
+    min-height: 48px;
+    padding-inline: 18px;
+    border-right: 3px solid var(--color-action);
+    background: var(--color-canvas);
+  }
+  .site-header nav a[aria-current="page"]::after {
+    position: absolute;
+    right: 14px;
+    bottom: 0;
+    left: 14px;
+    height: 3px;
+    background: var(--color-action);
+    content: "";
   }
   .session-nav {
     grid-column: 2;
     grid-row: 1;
-    padding-inline: 16px;
-    font-size: 14px;
+    min-width: 0;
+    height: 56px;
+    border-left: var(--keyline);
+    padding: 0;
+    font-family: var(--font-ui), monospace;
+    font-size: var(--text-ui);
+  }
+  .session-nav .text-button,
+  .header-login {
+    display: inline-flex;
+    width: 100%;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    font-size: var(--text-ui);
+    white-space: nowrap;
   }
   .cart-link {
     grid-column: 3;
     grid-row: 1;
+    min-height: 56px;
   }
   .home-hero {
     grid-template-columns: 40px minmax(0, 1fr) 42px;
@@ -540,12 +741,11 @@
   }
 
   .site-header {
-    overflow: hidden;
+    overflow: visible;
   }
 
   .site-header nav {
-    flex-wrap: wrap;
-    overflow: visible;
+    overflow: hidden;
   }
 
   .workspace-page {
@@ -637,13 +837,17 @@
 }
 
 @media (max-width: 380px) {
+  .header-inner {
+    grid-template-columns: minmax(0, 1fr) 84px 58px;
+  }
+
   .wordmark {
     padding-inline: 12px;
     font-size: 25px;
   }
 
   .session-nav {
-    padding-inline: 8px;
+    padding: 0;
   }
 
   .cart-link {
@@ -652,8 +856,18 @@
 
   .site-header nav {
     min-width: 0;
-    gap: 18px;
+    gap: 0;
+    padding: 0;
+  }
+
+  .site-header nav a,
+  .nav-role-label {
     padding-inline: 12px;
+  }
+
+  .site-header nav a[aria-current="page"]::after {
+    right: 12px;
+    left: 12px;
   }
 
   .shell {
