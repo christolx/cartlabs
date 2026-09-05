@@ -1,8 +1,9 @@
 # Debian home-server configuration
 
-Ansible configures Debian 12+ laptop with checksum-verified k3s, embedded-etcd
-snapshots, host hardening, Traefik forwarded-header trust, optional cloudflared,
-and optional protected deployment runner.
+Ansible configures Debian 12+ laptop with checksum-verified k3s, pinned Helm 4,
+operator kubectl access, embedded-etcd snapshots, host hardening, Traefik
+forwarded-header trust, optional cloudflared, and optional protected deployment
+runner.
 
 ```bash
 cp inventory.example.yml inventory.yml

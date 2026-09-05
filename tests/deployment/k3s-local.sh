@@ -26,6 +26,17 @@ need_command() {
   }
 }
 
+need_helm_v4() {
+  helm_version=$(helm version --template '{{.Version}}')
+  case "$helm_version" in
+    v4.*) ;;
+    *)
+      echo "Helm 4 required; found ${helm_version:-unknown}" >&2
+      exit 1
+      ;;
+  esac
+}
+
 need_value() {
   eval "value=\${$1-}"
   [ -n "$value" ] || {
@@ -144,11 +155,13 @@ valid_name "$release" || { echo "invalid K3S_RELEASE: $release" >&2; exit 1; }
 case "$action" in
   up)
     for command_name in kubectl helm sha256sum; do need_command "$command_name"; done
+    need_helm_v4
     load_config
     reconcile
     ;;
   rebuild)
     for command_name in kubectl helm sha256sum; do need_command "$command_name"; done
+    need_helm_v4
     load_config
     reconcile
     kubectl -n "$namespace" rollout restart deployment -l "app.kubernetes.io/instance=$release"

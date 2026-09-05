@@ -31,8 +31,9 @@ Skip to [Prepare release config](#prepare-release-config).
 
 ## Path B: new Debian host with Ansible
 
-Use Debian 12 or newer. From an operator machine with Ansible, `kubectl`, and
-Helm installed, copy the ignored host config:
+Use Debian 12 or newer. From an operator machine with Ansible, copy the ignored
+host config. The playbook installs pinned Helm 4 and configures `kubectl` on the
+target host; an external operator machine still needs its own copies:
 
 ```bash
 cp infra/ansible/inventory.example.yml infra/ansible/inventory.yml
@@ -73,9 +74,10 @@ ansible-playbook \
   infra/ansible/playbook.yml
 ```
 
-Ansible installs pinned checksum-verified k3s, host prerequisites, hardening,
-embedded-etcd snapshots, and Traefik forwarded-header trust. When enabled, it
-also installs `cloudflared` as a systemd service.
+Ansible installs pinned checksum-verified k3s and Helm 4, a k3s-backed `kubectl`
+command with private kubeconfig access for the SSH/local operator, host
+prerequisites, hardening, embedded-etcd snapshots, and Traefik forwarded-header
+trust. When enabled, it also installs `cloudflared` as a systemd service.
 
 Before deploying from another machine, securely copy
 `/etc/rancher/k3s/k3s.yaml`, change its server address from loopback to the
