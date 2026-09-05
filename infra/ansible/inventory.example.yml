@@ -5,3 +5,4 @@ all:
         cartlabs-home:
           ansible_host: 192.0.2.20
           ansible_user: operator
+          ansible_python_interpreter: /usr/bin/python3
