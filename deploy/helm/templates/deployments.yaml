@@ -337,6 +337,7 @@ spec:
       volumes:
         - name: tmp
           emptyDir: {}
+{{- if .Values.web.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -391,13 +392,13 @@ spec:
               valueFrom:
                 secretKeyRef: { name: {{ .Values.global.existingSecret }}, key: NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET }
           startupProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /health/live, port: http }
             failureThreshold: 30
             periodSeconds: 2
           readinessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /health/ready, port: http }
           livenessProbe:
-            httpGet: { path: /, port: http }
+            httpGet: { path: /health/live, port: http }
           resources: {{ toYaml .Values.resources.web | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
@@ -411,3 +412,4 @@ spec:
           emptyDir: {}
         - name: next-cache
           emptyDir: {}
+{{- end }}

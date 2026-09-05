@@ -29,6 +29,9 @@ replicas:
   mockPayment: 1
   search: 1
 
+web:
+  enabled: true
+
 demoMode: true
 
 resources:
@@ -50,6 +53,7 @@ resources:
 
 ingress:
   enabled: true
+  target: web
   className: traefik
   externalHTTPS: false
   tls:

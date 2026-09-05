@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["global", "images", "ingress", "postgresql", "redis", "rabbitmq"],
+  "required": ["global", "images", "web", "ingress", "postgresql", "redis", "rabbitmq"],
   "properties": {
     "global": {
       "type": "object",
@@ -21,11 +21,19 @@
         "retention": { "type": "string", "pattern": "^[0-9]+[dh]$" }
       }
     },
+    "web": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
     "ingress": {
       "type": "object",
-      "required": ["enabled", "externalHTTPS", "tls"],
+      "required": ["enabled", "target", "externalHTTPS", "tls"],
       "properties": {
         "enabled": { "type": "boolean" },
+        "target": { "enum": ["web", "api"] },
         "externalHTTPS": { "type": "boolean" },
         "tls": {
           "type": "object",
@@ -73,5 +81,23 @@
         "cloudinarySecret": { "type": "string", "minLength": 1 }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "web": {
+            "properties": { "enabled": { "const": false } }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "ingress": {
+            "properties": { "target": { "const": "api" } }
+          }
+        }
+      }
+    }
+  ]
 }

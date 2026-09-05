@@ -39,12 +39,23 @@ load_config() {
     echo "missing $env_file; copy .env.k3s.local.example and fill it" >&2
     exit 1
   }
+  requested_deployment_mode=${K3S_DEPLOYMENT_MODE-}
   set -a
   # shellcheck disable=SC1090
   . "$env_file"
   set +a
 
-  required='K3S_IMAGE_TAG GHCR_USERNAME GHCR_PULL_TOKEN ACCESS_TOKEN_SECRET PAYMENT_WEBHOOK_SECRET MOCK_PAYMENT_API_KEY POSTGRES_PASSWORD RABBITMQ_DEFAULT_PASS SEARCH_SERVICE_TOKEN TRUSTED_PROXY_TOKEN CLOUDINARY_CLOUD_NAME NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET CLOUDINARY_API_KEY CLOUDINARY_API_SECRET GRAFANA_ADMIN_USER GRAFANA_ADMIN_PASSWORD'
+  K3S_DEPLOYMENT_MODE=${requested_deployment_mode:-${K3S_DEPLOYMENT_MODE:-full}}
+  case "$K3S_DEPLOYMENT_MODE" in
+    full) web_enabled=true; ingress_target=web ;;
+    backend) web_enabled=false; ingress_target=api ;;
+    *) echo 'K3S_DEPLOYMENT_MODE must be full or backend' >&2; exit 1 ;;
+  esac
+
+  required='K3S_IMAGE_TAG GHCR_USERNAME GHCR_PULL_TOKEN ACCESS_TOKEN_SECRET PAYMENT_WEBHOOK_SECRET MOCK_PAYMENT_API_KEY POSTGRES_PASSWORD RABBITMQ_DEFAULT_PASS SEARCH_SERVICE_TOKEN TRUSTED_PROXY_TOKEN CLOUDINARY_CLOUD_NAME CLOUDINARY_API_KEY CLOUDINARY_API_SECRET GRAFANA_ADMIN_USER GRAFANA_ADMIN_PASSWORD'
+  if [ "$K3S_DEPLOYMENT_MODE" = full ]; then
+    required="$required NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET"
+  fi
   for key in $required; do need_value "$key"; done
   case "$K3S_IMAGE_TAG" in
     sha-*[!0-9a-f]*|sha-) valid_tag=0 ;;
@@ -63,7 +74,9 @@ load_config() {
   case "$POSTGRES_PASSWORD$RABBITMQ_DEFAULT_PASS" in
     *[!A-Za-z0-9._~-]*) echo 'database and RabbitMQ passwords must use URL-safe characters' >&2; exit 1 ;;
   esac
-  [ "$CLOUDINARY_CLOUD_NAME" = "$NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME" ] || {
+  NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME:-}
+  NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=${NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET:-}
+  [ -z "$NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME" ] || [ "$CLOUDINARY_CLOUD_NAME" = "$NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME" ] || {
     echo 'CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME must match' >&2
     exit 1
   }
@@ -118,6 +131,8 @@ reconcile() {
     --set-string global.imageTag="$K3S_IMAGE_TAG" \
     --set-string global.domain="$K3S_DOMAIN" \
     --set-string global.secretRevision="$secret_revision" \
+    --set web.enabled="$web_enabled" \
+    --set-string ingress.target="$ingress_target" \
     --set syntheticTraffic.enabled="$K3S_SYNTHETIC_TRAFFIC" \
     --rollback-on-failure --wait --timeout 12m
   helm test "$release" --namespace "$namespace" --logs --timeout 3m
