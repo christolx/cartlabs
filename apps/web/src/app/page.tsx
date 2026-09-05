@@ -74,10 +74,12 @@ export default async function Home({
   let loadError = false;
   if (!invalidFilters) {
     try {
-      const [products, categoryResponse] = await Promise.all([
-        apiGet<ProductPage>(`/catalog/products?${query.toString()}`),
-        apiGet<{ items: Category[] }>("/categories"),
-      ]);
+      const products = await apiGet<ProductPage>(
+        `/catalog/products?${query.toString()}`,
+      );
+      const categoryResponse = await apiGet<{ items: Category[] }>(
+        "/categories",
+      );
       catalog = products;
       categories = categoryResponse.items;
     } catch (error) {
