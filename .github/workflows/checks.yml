@@ -197,12 +197,18 @@ jobs:
           helm lint deploy/helm --values deploy/helm/values-local.yaml
           helm lint deploy/helm --values deploy/helm/values-demo.yaml
           helm lint deploy/helm --values deploy/helm/values-k3s.yaml
+          helm lint deploy/helm --values deploy/helm/values-k3s.yaml \
+            --set web.enabled=false --set-string ingress.target=api
           helm template cartlabs deploy/helm --namespace cartlabs \
             --values deploy/helm/values-local.yaml > "$RUNNER_TEMP/cartlabs.yaml"
           helm template cartlabs deploy/helm --namespace cartlabs \
             --values deploy/helm/values-demo.yaml > "$RUNNER_TEMP/cartlabs-demo.yaml"
           helm template cartlabs deploy/helm --namespace cartlabs \
             --values deploy/helm/values-k3s.yaml > "$RUNNER_TEMP/cartlabs-k3s.yaml"
+          helm template cartlabs deploy/helm --namespace cartlabs \
+            --values deploy/helm/values-k3s.yaml \
+            --set web.enabled=false --set-string ingress.target=api \
+            > "$RUNNER_TEMP/cartlabs-k3s-backend.yaml"
           docker run --rm -v "$RUNNER_TEMP:/work:ro" \
             ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
             -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas /work/cartlabs.yaml
@@ -212,6 +218,9 @@ jobs:
           docker run --rm -v "$RUNNER_TEMP:/work:ro" \
             ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
             -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas /work/cartlabs-k3s.yaml
+          docker run --rm -v "$RUNNER_TEMP:/work:ro" \
+            ghcr.io/yannh/kubeconform@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e \
+            -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas /work/cartlabs-k3s-backend.yaml
       - name: Validate Ansible
         working-directory: infra/ansible
         run: |

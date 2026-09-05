@@ -109,6 +109,8 @@ helm upgrade "$release" "$chart" \
   --namespace "$namespace" \
   --values "$values" \
   --set ingress.enabled=false \
+  --set-string ingress.target=api \
+  --set web.enabled=false \
   --set observability.enabled=true \
   --set syntheticTraffic.enabled=true \
   --set syntheticTraffic.journeyInterval=20s \
@@ -116,6 +118,14 @@ helm upgrade "$release" "$chart" \
 
 kubectl --namespace "$namespace" wait \
   --for=condition=available deployment --all --timeout=5m
+[ "$(kubectl --namespace "$namespace" get deployment/cartlabs-web --ignore-not-found -o name)" = "" ] || {
+  echo 'backend upgrade retained web Deployment' >&2
+  exit 1
+}
+[ "$(kubectl --namespace "$namespace" get service/cartlabs-web --ignore-not-found -o name)" = "" ] || {
+  echo 'backend upgrade retained web Service' >&2
+  exit 1
+}
 helm test "$release" --namespace "$namespace" --logs --timeout 3m
 
 journey_seen=0
@@ -159,4 +169,4 @@ if ! kubectl --namespace "$namespace" wait --for=jsonpath='{.status.phase}'=Succ
 fi
 kubectl --namespace "$namespace" logs "$check_pod"
 
-echo "k3s install, upgrade, smoke, metrics, traces, and synthetic journey passed: $namespace"
+echo "k3s full install, backend upgrade, smoke, metrics, traces, and synthetic journey passed: $namespace"

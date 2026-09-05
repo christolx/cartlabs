@@ -140,11 +140,16 @@ helm-check: helm-regression ## Lint and render the k3s Helm chart
 	helm lint deploy/helm --values deploy/helm/values-local.yaml
 	helm lint deploy/helm --values deploy/helm/values-demo.yaml
 	helm lint deploy/helm --values deploy/helm/values-k3s.yaml
+	helm lint deploy/helm --values deploy/helm/values-k3s.yaml \
+		--set web.enabled=false --set-string ingress.target=api
 	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-local.yaml | \
 		kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas
 	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-demo.yaml | \
 		kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas
 	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-k3s.yaml | \
+		kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas
+	helm template cartlabs deploy/helm --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+		--set web.enabled=false --set-string ingress.target=api | \
 		kubeconform -strict -summary -kubernetes-version 1.36.0 -ignore-missing-schemas
 
 infra-check: ## Validate Debian home-server Ansible

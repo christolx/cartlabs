@@ -15,10 +15,34 @@ helm template cartlabs "$chart" --namespace cartlabs --values "$values" \
   --show-only templates/observability.yaml >"$work_dir/observability.yaml"
 helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
   --show-only templates/deployments.yaml >"$work_dir/k3s-deployments.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --show-only templates/services.yaml >"$work_dir/full-services.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --show-only templates/ingress.yaml >"$work_dir/full-ingress.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --show-only templates/tests/smoke-test.yaml >"$work_dir/full-smoke.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --set web.enabled=false --set-string ingress.target=api \
+  --show-only templates/deployments.yaml >"$work_dir/backend-deployments.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --set web.enabled=false --set-string ingress.target=api \
+  --show-only templates/services.yaml >"$work_dir/backend-services.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --set web.enabled=false --set-string ingress.target=api \
+  --show-only templates/ingress.yaml >"$work_dir/backend-ingress.yaml"
+helm template cartlabs "$chart" --namespace cartlabs --values deploy/helm/values-k3s.yaml \
+  --set web.enabled=false --set-string ingress.target=api \
+  --show-only templates/tests/smoke-test.yaml >"$work_dir/backend-smoke.yaml"
 
 if helm lint "$chart" --values "$values" \
   --set-string observability.traceSampleRatio=0 >"$work_dir/zero-trace-ratio.log" 2>&1; then
   echo 'trace sampling ratio must reject zero' >&2
+  exit 1
+fi
+
+if helm lint "$chart" --values deploy/helm/values-k3s.yaml \
+  --set web.enabled=false >"$work_dir/invalid-topology.log" 2>&1; then
+  echo 'web-disabled topology must require API ingress target' >&2
   exit 1
 fi
 
@@ -52,6 +76,46 @@ fi
 
 if ! grep -A1 'name: DEMO_MODE' "$work_dir/k3s-deployments.yaml" | grep -q 'value: "true"'; then
   echo 'web deployment must receive demo mode' >&2
+  exit 1
+fi
+
+for full_manifest in "$work_dir/k3s-deployments.yaml" "$work_dir/full-services.yaml"; do
+  if ! grep -q 'name: cartlabs-web' "$full_manifest"; then
+    echo 'full mode must include web Deployment and Service' >&2
+    exit 1
+  fi
+done
+if ! grep -A1 'name: cartlabs-web' "$work_dir/full-ingress.yaml" | grep -q 'number: 3000'; then
+  echo 'full mode ingress must route to web port 3000' >&2
+  exit 1
+fi
+if ! grep -q 'cartlabs-web:3000' "$work_dir/full-smoke.yaml"; then
+  echo 'full mode smoke test must check web' >&2
+  exit 1
+fi
+
+for backend_manifest in "$work_dir/backend-deployments.yaml" "$work_dir/backend-services.yaml"; do
+  if grep -q 'name: cartlabs-web' "$backend_manifest"; then
+    echo 'backend mode must omit web Deployment and Service' >&2
+    exit 1
+  fi
+done
+for component in api worker search mock-payment; do
+  if ! grep -q "name: cartlabs-$component" "$work_dir/backend-deployments.yaml"; then
+    echo "backend mode must retain $component Deployment" >&2
+    exit 1
+  fi
+done
+if ! grep -A1 'name: cartlabs-api' "$work_dir/backend-ingress.yaml" | grep -q 'number: 8080'; then
+  echo 'backend mode ingress must route to API port 8080' >&2
+  exit 1
+fi
+if grep -q 'cartlabs-web:3000' "$work_dir/backend-smoke.yaml"; then
+  echo 'backend mode smoke test must omit web check' >&2
+  exit 1
+fi
+if ! grep -q 'cartlabs-api:8080/api/v1/health/ready' "$work_dir/backend-smoke.yaml"; then
+  echo 'backend mode smoke test must retain API check' >&2
   exit 1
 fi
 
