@@ -95,6 +95,60 @@
     remote_src: true
   notify: Restart k3s
 
+- name: Create Helm staging directory
+  ansible.builtin.file:
+    path: "/tmp/cartlabs-helm-{{ k3s_helm_version }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download pinned Helm archive
+  ansible.builtin.get_url:
+    url: "https://get.helm.sh/helm-{{ k3s_helm_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/cartlabs-helm-{{ k3s_helm_version }}.tar.gz"
+    checksum: "sha256:{{ k3s_helm_archive_sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Extract pinned Helm archive
+  ansible.builtin.unarchive:
+    src: "/tmp/cartlabs-helm-{{ k3s_helm_version }}.tar.gz"
+    dest: "/tmp/cartlabs-helm-{{ k3s_helm_version }}"
+    remote_src: true
+    creates: "/tmp/cartlabs-helm-{{ k3s_helm_version }}/linux-amd64/helm"
+
+- name: Install verified Helm binary
+  ansible.builtin.copy:
+    src: "/tmp/cartlabs-helm-{{ k3s_helm_version }}/linux-amd64/helm"
+    dest: /usr/local/bin/helm
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+
+- name: Install k3s-backed kubectl command
+  ansible.builtin.copy:
+    dest: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      K3S_CONFIG_FILE=${K3S_CONFIG_FILE:-/dev/null}
+      export K3S_CONFIG_FILE
+      if [ -z "${KUBECONFIG:-}" ]; then
+        if [ -r "${HOME}/.kube/config" ]; then
+          KUBECONFIG="${HOME}/.kube/config"
+        else
+          KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        fi
+        export KUBECONFIG
+      fi
+      exec /usr/local/bin/k3s kubectl "$@"
+
 - name: Configure k3s
   ansible.builtin.template:
     src: config.yaml.j2
@@ -131,6 +185,26 @@
   until: k3s_kubernetes_ready.rc == 0
   changed_when: false
 
+- name: Resolve k3s operator account
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ k3s_operator_user }}"
+
+- name: Create operator kubeconfig directory
+  ansible.builtin.file:
+    path: "{{ getent_passwd[k3s_operator_user][4] }}/.kube"
+    state: directory
+    owner: "{{ k3s_operator_user }}"
+    mode: "0700"
+
+- name: Install operator kubeconfig
+  ansible.builtin.copy:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ getent_passwd[k3s_operator_user][4] }}/.kube/config"
+    owner: "{{ k3s_operator_user }}"
+    mode: "0600"
+    remote_src: true
+
 - name: Configure Traefik forwarded-header trust for host tunnel
   ansible.builtin.template:
     src: traefik-config.yaml.j2
@@ -150,6 +224,7 @@
 - name: Report kubeconfig retrieval command
   ansible.builtin.debug:
     msg: >-
-      Fetch /etc/rancher/k3s/k3s.yaml securely. Keep loopback for the protected
-      deployment runner secret; use {{ ansible_host }} only in the separate
-      operator copy. No WAN firewall rule should expose port 6443.
+      kubectl access is configured for {{ k3s_operator_user }} using a private
+      operator copy. Fetch /etc/rancher/k3s/k3s.yaml securely only when managing
+      from another machine, and replace loopback there with {{ ansible_host }}.
+      No WAN firewall rule should expose port 6443.

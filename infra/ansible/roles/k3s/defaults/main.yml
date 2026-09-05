@@ -3,3 +3,6 @@ k3s_version: v1.36.3+k3s1
 k3s_tls_san: "{{ ansible_host }}"
 k3s_snapshot_schedule: "0 */12 * * *"
 k3s_snapshot_retention: 5
+k3s_operator_user: "{{ ansible_user | default(lookup('ansible.builtin.env', 'USER'), true) }}"
+k3s_helm_version: v4.2.3
+k3s_helm_archive_sha256: e9b88b4ee95b18c706839c28d3a0220e5bc470e9cd9262410c90793c45ff8b7c
