@@ -2,7 +2,12 @@ import Image from "next/image";
 import { loadCatalogPage } from "@/app/catalog-actions";
 import { CatalogClearLink } from "@/components/catalog-clear-link";
 import { CatalogProductList } from "@/components/catalog-product-list";
-import { apiGet, type Category, type ProductPage } from "@/lib/api/client";
+import {
+  APIError,
+  apiGet,
+  type Category,
+  type ProductPage,
+} from "@/lib/api/client";
 
 type Search = {
   q?: string;
@@ -75,7 +80,16 @@ export default async function Home({
       ]);
       catalog = products;
       categories = categoryResponse.items;
-    } catch {
+    } catch (error) {
+      console.error("catalog load failed", {
+        name: error instanceof Error ? error.name : "Unknown",
+        message: error instanceof Error ? error.message : String(error),
+        status: error instanceof APIError ? error.status : undefined,
+        cause:
+          error instanceof Error && error.cause instanceof Error
+            ? error.cause.message
+            : undefined,
+      });
       loadError = true;
     }
   }
