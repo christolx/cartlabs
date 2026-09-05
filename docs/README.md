@@ -10,6 +10,7 @@ platform operations, not production-scale commerce.
 - [End-to-end flows](./e2e-flow.md) — buyer, seller, admin, payment, and notification journeys
 - [Architecture](./architecture.md) — system shape and technical boundaries
 - [Delivery](./delivery.md) — environments, CI/CD, testing, and operations
+- [Local k3s setup](./k3s-setup.md) — existing-host and new Debian installation steps
 - [Demo platform](./platform.md) — provisioning, deployment, rollback, and recovery
 - [Operability](./operability.md) — telemetry, recovery, limits, and runbooks
 - [Search service](./search-service.md) — ownership, failure behavior, migration, and rollback

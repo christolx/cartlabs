@@ -62,7 +62,22 @@ helm test cartlabs --namespace cartlabs --logs
 Persistent Debian server uses `values-k3s.yaml` and `.env.k3s.local` through
 `make k3s-up`. It enables observability, keeps synthetic traffic opt-in, uses
 Cloudflare public HTTPS with HTTP origin, and reconciles pull/application/reset
-Secrets idempotently. See `docs/platform.md`.
+Secrets idempotently. Deployment mode defaults to complete stack:
+
+```dotenv
+K3S_DEPLOYMENT_MODE=full
+```
+
+Use backend mode when web runs on Vercel or another external platform:
+
+```bash
+K3S_DEPLOYMENT_MODE=backend make k3s-up
+```
+
+Backend mode applies `web.enabled=false` and `ingress.target=api`. Chart omits
+web Deployment, Service, and smoke request; Ingress sends `/` to API port 8080.
+Frontend Cloudinary secret keys become optional for lifecycle config. Direct
+Helm users can set same values explicitly. See `docs/platform.md`.
 
 `values-local.yaml` uses unqualified local images and `imagePullPolicy: Never`.
 Build, import, install, upgrade, and verify an isolated local release with:
@@ -95,6 +110,13 @@ Set `K3S_KEEP_NAMESPACE=1` only when failed-release inspection is needed.
 - Dependency ingress is limited to pods belonging to the same Helm release.
 - Workloads run non-root with dropped capabilities and read-only root filesystems
   where image behavior permits.
+
+Key topology values:
+
+| Value | Default | Purpose |
+| --- | --- | --- |
+| `web.enabled` | `true` | Create in-cluster Next.js Deployment and Service |
+| `ingress.target` | `web` | Route Ingress to `web:3000` or `api:8080` |
 
 Run `make helm-check` before deployment. See `docs/platform.md` for provisioning,
 rollback, backup, and restore procedures.

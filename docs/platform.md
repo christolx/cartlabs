@@ -1,10 +1,16 @@
 # Home-server k3s platform
 
-Cartlabs runs persistently on one Debian 12+ laptop. Cloudflare Tunnel publishes
-`cartlabs.christofle.dev`; no inbound WAN port is required.
+For copy-paste installation and deployment steps, see
+[Local k3s setup](./k3s-setup.md). This document explains platform design and
+operational constraints.
+
+Cartlabs backend runs persistently on one Debian 12+ laptop. Full mode also runs
+web there. Backend mode allows Vercel-hosted web. Cloudflare Tunnel publishes
+matching Helm hostname; no inbound WAN port is required.
 
 ```text
-Browser HTTPS -> Cloudflare -> cloudflared host service -> Traefik HTTP -> web BFF -> API
+Full:    Browser -> Cloudflare -> cloudflared -> Traefik -> web BFF -> API
+Backend: Browser -> Vercel web BFF -> Cloudflare -> cloudflared -> Traefik -> API
 ```
 
 Cloudflare terminates public TLS. Traefik keeps host routing. Helm sets
@@ -48,6 +54,11 @@ Use read-only GHCR package token. Generate independent random app secrets. DB
 and RabbitMQ passwords must use URL-safe characters; lifecycle script derives
 cluster service URLs. File stays ignored.
 
+Choose `K3S_DEPLOYMENT_MODE=full` (default) with
+`K3S_DOMAIN=cartlabs.christofle.dev`, or `backend` with
+`K3S_DOMAIN=api-cartlabs.christofle.dev`. Both existing-host and Ansible host
+paths use same lifecycle input.
+
 ## Lifecycle
 
 ```bash
@@ -57,6 +68,10 @@ make k3s-logs     # K3S_LOG_COMPONENT=api narrows stream
 make k3s-rebuild  # reconcile same/new SHA, restart app Deployments
 make k3s-down     # uninstall release, retain namespace and PVCs
 ```
+
+`K3S_DEPLOYMENT_MODE=backend make k3s-up` overrides file for one reconcile.
+Backend mode removes web Deployment/Service, routes Ingress to API port 8080,
+and omits web smoke check. Other backend and observability workloads remain.
 
 Normal down never deletes persistent data. Explicit destructive removal:
 
@@ -82,10 +97,11 @@ trusted host path.
 
 ## Reset maintenance
 
-Reset drops/recreates demo tables. Scheduled reset workflow scales public web,
-API, worker, and synthetic Deployments to zero, runs reset job, then restores
-replicas even on failure. Expect maintenance downtime; this is not zero-downtime
-reset. Manual reset must use equivalent gating.
+Reset drops/recreates demo tables. Scheduled reset workflow scales each present
+public web, API, worker, and synthetic Deployment to zero, runs reset job, then
+restores replicas even on failure. Missing web Deployment in backend mode is
+ignored. Expect maintenance downtime; this is not zero-downtime reset. Manual
+reset must use equivalent gating.
 
 ## Recovery
 
