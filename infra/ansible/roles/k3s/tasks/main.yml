@@ -97,7 +97,7 @@
 
 - name: Create Helm staging directory
   ansible.builtin.file:
-    path: "/tmp/cartlabs-helm-{{ helm_version }}"
+    path: "/tmp/cartlabs-helm-{{ k3s_helm_version }}"
     state: directory
     owner: root
     group: root
@@ -105,23 +105,23 @@
 
 - name: Download pinned Helm archive
   ansible.builtin.get_url:
-    url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
-    dest: "/tmp/cartlabs-helm-{{ helm_version }}.tar.gz"
-    checksum: "sha256:{{ helm_archive_sha256 }}"
+    url: "https://get.helm.sh/helm-{{ k3s_helm_version }}-linux-amd64.tar.gz"
+    dest: "/tmp/cartlabs-helm-{{ k3s_helm_version }}.tar.gz"
+    checksum: "sha256:{{ k3s_helm_archive_sha256 }}"
     owner: root
     group: root
     mode: "0644"
 
 - name: Extract pinned Helm archive
   ansible.builtin.unarchive:
-    src: "/tmp/cartlabs-helm-{{ helm_version }}.tar.gz"
-    dest: "/tmp/cartlabs-helm-{{ helm_version }}"
+    src: "/tmp/cartlabs-helm-{{ k3s_helm_version }}.tar.gz"
+    dest: "/tmp/cartlabs-helm-{{ k3s_helm_version }}"
     remote_src: true
-    creates: "/tmp/cartlabs-helm-{{ helm_version }}/linux-amd64/helm"
+    creates: "/tmp/cartlabs-helm-{{ k3s_helm_version }}/linux-amd64/helm"
 
 - name: Install verified Helm binary
   ansible.builtin.copy:
-    src: "/tmp/cartlabs-helm-{{ helm_version }}/linux-amd64/helm"
+    src: "/tmp/cartlabs-helm-{{ k3s_helm_version }}/linux-amd64/helm"
     dest: /usr/local/bin/helm
     owner: root
     group: root
