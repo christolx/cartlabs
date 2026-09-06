@@ -10,6 +10,65 @@ import type { ProductPage } from "@/lib/api/client";
 
 type Product = ProductPage["items"][number];
 const catalogDocumentKey = "cartlabs:catalog-document";
+const catalogStatePrefix = "cartlabs:catalog-state:";
+
+type CatalogState = {
+  products: Product[];
+  hasMore: boolean;
+  scrollY: number;
+};
+
+function catalogStateKey(catalogKey: string) {
+  return `${catalogStatePrefix}${catalogKey}`;
+}
+
+function clearCatalogStates() {
+  for (let index = window.sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.sessionStorage.key(index);
+    if (key?.startsWith(catalogStatePrefix))
+      window.sessionStorage.removeItem(key);
+  }
+}
+
+function readCatalogState(catalogKey: string): CatalogState | null {
+  try {
+    const value = window.sessionStorage.getItem(catalogStateKey(catalogKey));
+    if (!value) return null;
+    const state = JSON.parse(value) as Partial<CatalogState>;
+    if (
+      !Array.isArray(state.products) ||
+      state.products.length === 0 ||
+      state.products.length > 1_000 ||
+      typeof state.hasMore !== "boolean" ||
+      typeof state.scrollY !== "number" ||
+      !Number.isFinite(state.scrollY)
+    )
+      return null;
+    return state as CatalogState;
+  } catch {
+    return null;
+  }
+}
+
+function writeCatalogState(catalogKey: string, state: CatalogState) {
+  try {
+    window.sessionStorage.setItem(
+      catalogStateKey(catalogKey),
+      JSON.stringify(state),
+    );
+  } catch {
+    // Catalog still works when storage is unavailable or full.
+  }
+}
+
+function restoreScrollPosition(scrollY: number, attempt = 0) {
+  window.requestAnimationFrame(() => {
+    window.scrollTo(0, scrollY);
+    if (Math.abs(window.scrollY - scrollY) > 1 && attempt < 20) {
+      window.setTimeout(() => restoreScrollPosition(scrollY, attempt + 1), 50);
+    }
+  });
+}
 
 function initializeCatalogDepth() {
   const documentId = String(window.performance.timeOrigin);
@@ -17,8 +76,10 @@ function initializeCatalogDepth() {
 
   const navigation = window.performance.getEntriesByType("navigation")[0] as
     PerformanceNavigationTiming | undefined;
-  if (navigation?.type === "reload")
+  if (navigation?.type === "reload") {
     window.sessionStorage.removeItem(catalogDepthKey);
+    clearCatalogStates();
+  }
   window.sessionStorage.setItem(catalogDocumentKey, documentId);
 }
 
@@ -28,6 +89,7 @@ export function CatalogProductList({
   initialHasMore,
   filterQuery,
   catalogKey,
+  returnTo,
   loadPage,
 }: {
   initialProducts: Product[];
@@ -35,6 +97,7 @@ export function CatalogProductList({
   initialHasMore: boolean;
   filterQuery: string;
   catalogKey: string;
+  returnTo: string;
   loadPage: (
     filterQuery: string,
     excludeIds: string[],
@@ -45,6 +108,7 @@ export function CatalogProductList({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const visibleCount = useRef(initialProducts.length);
+  const activeCatalogKey = useRef(catalogKey);
   const resetGeneration = useRef(0);
 
   const rebuildCatalog = useEffectEvent(
@@ -91,6 +155,7 @@ export function CatalogProductList({
   const resetCatalog = useEffectEvent(() => {
     resetGeneration.current += 1;
     window.sessionStorage.removeItem(catalogDepthKey);
+    clearCatalogStates();
     visibleCount.current = initialProducts.length;
     setProducts(initialProducts);
     setHasMore(initialHasMore);
@@ -100,6 +165,27 @@ export function CatalogProductList({
 
   const startRebuild = useEffectEvent((isCancelled: () => boolean) => {
     initializeCatalogDepth();
+    if (activeCatalogKey.current !== catalogKey) {
+      activeCatalogKey.current = catalogKey;
+      visibleCount.current = initialProducts.length;
+      setProducts(initialProducts);
+      setHasMore(initialHasMore);
+      setError("");
+    }
+    const savedState = readCatalogState(catalogKey);
+    if (savedState && savedState.products.length >= initialProducts.length) {
+      visibleCount.current = savedState.products.length;
+      setProducts(savedState.products);
+      setHasMore(savedState.hasMore);
+      setError("");
+      setLoading(false);
+      window.sessionStorage.setItem(
+        catalogDepthKey,
+        String(savedState.products.length),
+      );
+      restoreScrollPosition(savedState.scrollY);
+      return;
+    }
     const storedCount = Number(window.sessionStorage.getItem(catalogDepthKey));
     const targetCount = Math.max(
       initialProducts.length,
@@ -111,6 +197,7 @@ export function CatalogProductList({
         : 0,
     );
     window.sessionStorage.setItem(catalogDepthKey, String(targetCount));
+    if (visibleCount.current >= targetCount) return;
     void rebuildCatalog(targetCount, isCancelled);
   });
 
@@ -141,12 +228,15 @@ export function CatalogProductList({
         products.map((product) => product.id),
       );
       if (resetGeneration.current !== generation) return;
-      setProducts((current) => {
-        const updated = [...current, ...nextPage.items];
-        visibleCount.current = updated.length;
-        window.sessionStorage.setItem(catalogDepthKey, String(updated.length));
-        return updated;
+      const updated = [...products, ...nextPage.items];
+      visibleCount.current = updated.length;
+      window.sessionStorage.setItem(catalogDepthKey, String(updated.length));
+      writeCatalogState(catalogKey, {
+        products: updated,
+        hasMore: nextPage.hasMore,
+        scrollY: window.scrollY,
       });
+      setProducts(updated);
       setHasMore(nextPage.hasMore);
     } catch {
       if (resetGeneration.current === generation)
@@ -154,6 +244,14 @@ export function CatalogProductList({
     } finally {
       if (resetGeneration.current === generation) setLoading(false);
     }
+  }
+
+  function rememberCatalogPosition() {
+    writeCatalogState(catalogKey, {
+      products,
+      hasMore,
+      scrollY: window.scrollY,
+    });
   }
 
   return (
@@ -165,6 +263,8 @@ export function CatalogProductList({
             product={product}
             position={initialPosition + index + 1}
             editorial
+            returnTo={returnTo}
+            onProductNavigate={rememberCatalogPosition}
           />
         ))}
       </div>

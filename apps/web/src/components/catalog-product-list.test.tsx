@@ -9,7 +9,10 @@ import { CatalogProductList } from "./catalog-product-list";
 
 type Product = ProductPage["items"][number];
 
-beforeEach(() => window.sessionStorage.clear());
+beforeEach(() => {
+  window.sessionStorage.clear();
+  vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+});
 
 function products(start: number, count: number): Product[] {
   return Array.from({ length: count }, (_, offset) => {
@@ -42,6 +45,7 @@ it("appends eight products per click below current rows", async () => {
       initialHasMore
       filterQuery="category=category"
       catalogKey="category=category"
+      returnTo="/?category=category#catalog"
       loadPage={loadPage}
     />,
   );
@@ -79,6 +83,7 @@ it("rebuilds changed catalogs in new order while preserving loaded depth", async
       initialHasMore
       filterQuery="category=category"
       catalogKey="category=category"
+      returnTo="/?category=category#catalog"
       loadPage={loadPage}
     />,
   );
@@ -94,6 +99,7 @@ it("rebuilds changed catalogs in new order while preserving loaded depth", async
       initialHasMore
       filterQuery=""
       catalogKey="default"
+      returnTo="/#catalog"
       loadPage={loadPage}
     />,
   );
@@ -109,6 +115,57 @@ it("rebuilds changed catalogs in new order while preserving loaded depth", async
   );
 });
 
+it("restores loaded products from the matching catalog snapshot", async () => {
+  const loadPage = vi.fn().mockResolvedValueOnce({
+    items: products(9, 8),
+    hasMore: true,
+  });
+  const firstRender = render(
+    <CatalogProductList
+      initialProducts={products(1, 8)}
+      initialPosition={0}
+      initialHasMore
+      filterQuery="category=category&maxPrice=500000"
+      catalogKey="category=category&maxPrice=500000"
+      returnTo="/?category=category&maxPrice=500000#catalog"
+      loadPage={loadPage}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: /load more/i }));
+  await waitFor(() =>
+    expect(
+      firstRender.container.querySelectorAll(".product-card"),
+    ).toHaveLength(16),
+  );
+  firstRender.unmount();
+
+  const restoreLoadPage = vi.fn();
+  const restored = render(
+    <CatalogProductList
+      initialProducts={products(1, 8)}
+      initialPosition={0}
+      initialHasMore
+      filterQuery="category=category&maxPrice=500000"
+      catalogKey="category=category&maxPrice=500000"
+      returnTo="/?category=category&maxPrice=500000#catalog"
+      loadPage={restoreLoadPage}
+    />,
+  );
+
+  await waitFor(() =>
+    expect(restored.container.querySelectorAll(".product-card")).toHaveLength(
+      16,
+    ),
+  );
+  expect(restoreLoadPage).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("link", { name: "View Product 16" }).getAttribute("href"),
+  ).toBe(
+    "/products/product-16?returnTo=%2F%3Fcategory%3Dcategory%26maxPrice%3D500000%23catalog",
+  );
+});
+
 it("resets loaded depth when clearing filters", async () => {
   const loadPage = vi
     .fn()
@@ -121,6 +178,7 @@ it("resets loaded depth when clearing filters", async () => {
       initialHasMore
       filterQuery="category=category"
       catalogKey="category=category"
+      returnTo="/?category=category#catalog"
       loadPage={loadPage}
     />,
   );
@@ -139,6 +197,7 @@ it("resets loaded depth when clearing filters", async () => {
       initialHasMore
       filterQuery=""
       catalogKey="default"
+      returnTo="/#catalog"
       loadPage={loadPage}
     />,
   );

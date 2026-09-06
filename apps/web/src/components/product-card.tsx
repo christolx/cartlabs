@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { catalogNavigationKey } from "@/components/catalog-navigation";
 import type { components } from "@/lib/api/schema";
 import { formatMoney } from "@/lib/api/client";
 
@@ -24,18 +27,41 @@ export function ProductCard({
   product,
   position,
   editorial = false,
+  returnTo,
+  onProductNavigate,
 }: {
   product: Product;
   position?: number;
   editorial?: boolean;
+  returnTo?: string;
+  onProductNavigate?: () => void;
 }) {
   const imageUrl = editorialImages[product.slug] ?? product.imageUrl;
+  const productPath = `/products/${product.slug}`;
+  const productHref = returnTo
+    ? `${productPath}?returnTo=${encodeURIComponent(returnTo)}`
+    : productPath;
+
+  function handleProductNavigate() {
+    onProductNavigate?.();
+    if (!returnTo) return;
+    try {
+      window.sessionStorage.setItem(
+        catalogNavigationKey,
+        JSON.stringify({ productPath, returnTo }),
+      );
+    } catch {
+      // Product navigation still works when storage is unavailable or full.
+    }
+  }
+
   return (
     <article className={`product-card${editorial ? " editorial-card" : ""}`}>
       <Link
-        href={`/products/${product.slug}`}
+        href={productHref}
         className="product-image-link"
         aria-label={`View ${product.name}`}
+        onNavigate={handleProductNavigate}
       >
         <div className="product-image">
           {position ? (
@@ -57,7 +83,9 @@ export function ProductCard({
       </Link>
       <div className="product-copy">
         <h3>
-          <Link href={`/products/${product.slug}`}>{product.name}</Link>
+          <Link href={productHref} onNavigate={handleProductNavigate}>
+            {product.name}
+          </Link>
         </h3>
         <p className="product-store">
           <Link href={`/stores/${product.storeSlug}`}>{product.storeName}</Link>
@@ -65,7 +93,11 @@ export function ProductCard({
         <div className="product-meta">
           <span>{formatMoney(product.minPriceMinor, product.currency)}</span>
           {product.inStock ? (
-            <Link className="stock-good" href={`/products/${product.slug}`}>
+            <Link
+              className="stock-good"
+              href={productHref}
+              onNavigate={handleProductNavigate}
+            >
               In stock&nbsp; →
             </Link>
           ) : (
