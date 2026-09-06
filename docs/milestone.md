@@ -2,8 +2,8 @@
 
 > Milestones preserve implementation history. Current marketplace behavior uses
 > store verification, immediate verified-seller publishing, and reactive listing
-> suspension/reinstatement as defined in
-> [`risk-based-moderation-refactor.md`](risk-based-moderation-refactor.md).
+> suspension/reinstatement. See current behavior in
+> [`e2e-flow.md`](e2e-flow.md) and [`architecture.md`](architecture.md).
 
 ## Milestone 1 — Identity and Catalog
 

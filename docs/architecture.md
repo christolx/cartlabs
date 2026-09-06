@@ -9,7 +9,7 @@ as one measured learning boundary.
 Browser
   |
   v
-Next.js web ---> Go REST API ---> catalog PostgreSQL
+Next.js web/BFF ---> Go REST API ---> marketplace PostgreSQL
                     |   |               |
                     |   +--> Redis      +--> transactional outbox
                     |                         |
@@ -31,7 +31,7 @@ mock-payment -- signed webhook --> Go REST API
 | `worker` | Go consumers for asynchronous jobs and events |
 | `search` | Internal text candidate retrieval and projection ownership |
 | `mock-payment` | External-gateway simulation and signed webhooks |
-| Catalog PostgreSQL | Marketplace source of truth |
+| Marketplace PostgreSQL | Identity, stores, catalog, purchases, fulfillment, audit, outbox, and notifications source of truth |
 | Search PostgreSQL | Independently migrated text projection |
 | RabbitMQ | Durable async jobs and domain-event delivery |
 | Redis | Cache, rate limits, and short-lived coordination state |
@@ -50,8 +50,11 @@ mock-payment -- signed webhook --> Go REST API
 - Reviews
 - Administration and audit
 
-Each module owns its domain model and persistence access. Cross-module calls use
-explicit interfaces. No module reads another module's tables directly.
+Each module owns its domain model and service boundary. Main marketplace stays
+one PostgreSQL consistency boundary: purchase persistence deliberately joins
+catalog/store data and updates inventory during checkout and cancellation.
+Search alone owns a separate database; it receives projections through events
+and never reads marketplace tables at request time.
 
 ## Contracts
 
@@ -135,6 +138,7 @@ the mock without changing checkout domain logic.
 - Accessible semantic UI and responsive layouts
 - URL-owned search/filter state
 - Role-specific buyer, seller, and admin areas
+- Local deterministic product assets plus validated Cloudinary seller uploads
 
 ## Observability
 

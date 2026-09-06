@@ -24,10 +24,10 @@
 | Demo edge | Cloudflare Tunnel + Traefik | Outbound-only publication; Cloudflare owns public TLS |
 | Demo secrets | Protected GitHub environment to Kubernetes Secret | Audited injection without secrets in Git |
 | Registry/CI | GHCR + GitHub Actions | Integrated image delivery workflow |
-| Product media | One shared local demo asset | User-approved placeholder avoids premature media pipeline |
+| Product media | Deterministic local demo assets + Cloudinary seller uploads | Rich reset-safe catalog while uploaded media stays externally managed |
 | Demo backups | Local etcd snapshots initially | DB backup disabled until destination and restore test exist |
 | Observability | OpenTelemetry + Prometheus/Grafana | Portable instrumentation, metrics, and dashboards |
-| Browser testing | Agent-browser + Axe | Fast cross-role QA, responsive review, and accessibility evidence |
+| Frontend testing | Vitest + Testing Library + Playwright; Agent-browser/Axe for manual audits | Fast unit coverage, repeatable role-flow checks, and accessibility review |
 | Security scanning | Trivy | Scans images, dependencies, manifests, and IaC in CI |
 | Event reliability | Transactional outbox + retries + DLQ | Prevents lost events and isolates persistent failures |
 | Mutation safety | Idempotency keys and event deduplication | Makes retries safe across checkout and payment flows |

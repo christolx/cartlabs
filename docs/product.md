@@ -18,7 +18,8 @@ Three deterministic demo accounts provide quick login for each role.
 1. Seller creates store, products, variants, prices, and stock.
 2. Buyer browses products and builds a multi-seller cart.
 3. Checkout creates one parent purchase and one child order per seller.
-4. Mock payment provider completes, fails, or cancels payment.
+4. Mock payment provider succeeds or fails payment; buyer may cancel an eligible
+   purchase separately.
 5. Signed, idempotent webhook updates payment and order state.
 6. Sellers fulfill only their child orders.
 7. Buyer tracks each seller shipment independently.
@@ -32,6 +33,7 @@ Three deterministic demo accounts provide quick login for each role.
 - SKU-level price and inventory
 - Categories, search, filters, and pagination
 - Product images
+- Cloudinary uploads for seller-managed media; deterministic local assets for seed data
 
 ### Commerce
 
@@ -71,7 +73,7 @@ Three deterministic demo accounts provide quick login for each role.
 
 ## Success Criteria
 
-- Fresh checkout reaches usable state through one documented command.
+- Fresh checkout reaches usable state through documented setup workflow.
 - Buyer can complete full multi-seller purchase flow.
 - Seller and admin permissions remain isolated and test-covered.
 - Compose and k3s deployments use equivalent application contracts.

@@ -1,10 +1,13 @@
-# Cartlabs Planning
+# Cartlabs Documentation
 
-Cartlabs is a portfolio-grade, multi-vendor e-commerce platform inspired by
-Tokopedia and Shopee. It exists to demonstrate full-stack engineering and
-platform operations, not production-scale commerce.
+Cartlabs is a multi-vendor marketplace inspired by Tokopedia and Shopee. Buyers
+shop across independent stores in one cart; sellers manage catalog and
+fulfillment; admins verify stores and enforce marketplace rules.
 
-## Documents
+Last audited against runtime code, contracts, fixtures, delivery config, and CI:
+2026-09-06.
+
+## Current Reference
 
 - [Product](./product.md) — users, scope, and marketplace behavior
 - [End-to-end flows](./e2e-flow.md) — buyer, seller, admin, payment, and notification journeys
@@ -14,8 +17,7 @@ platform operations, not production-scale commerce.
 - [Demo platform](./platform.md) — provisioning, deployment, rollback, and recovery
 - [Operability](./operability.md) — telemetry, recovery, limits, and runbooks
 - [Search service](./search-service.md) — ownership, failure behavior, migration, and rollback
-- [Roadmap](./roadmap.md) — incremental implementation plan
-- [Product completion](./product-completion/README.md) — temporary backend-completion and frontend-redesign plans
+- [Roadmap](./roadmap.md) — completed phases and current platform limits
 - [Milestones](./milestone.md) — completed work and exit evidence
 - [Decisions](./decisions.md) — accepted and pending architecture decisions
 

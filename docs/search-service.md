@@ -18,7 +18,7 @@ visibility decisions.
 
 ```text
 seller/admin product write
-  -> catalog PostgreSQL transaction
+  -> marketplace PostgreSQL transaction
        -> product row
        -> catalog.search.upsert.v1 outbox row
   -> worker relay -> RabbitMQ cartlabs.events
@@ -28,7 +28,7 @@ seller/admin product write
 
 buyer text query
   -> REST API -> gRPC SearchProducts -> candidate IDs
-  -> catalog PostgreSQL applies visibility/price/stock/filter rules
+  -> marketplace PostgreSQL applies visibility/price/stock/filter rules
   -> unchanged REST response
 ```
 
@@ -60,8 +60,13 @@ catalog browsing, product detail, checkout, orders, or payments.
 ```bash
 make compose-up
 make migrate
-make seed
 make search-dev
+```
+
+After search starts, use another terminal:
+
+```bash
+make seed             # reindexes when SEARCH_GRPC_ADDR is configured
 make search-reindex
 ```
 

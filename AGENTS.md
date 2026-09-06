@@ -6,14 +6,15 @@ Runtime entry points live in `apps/`: `api`, `worker`, `mock-payment`, and datab
 
 ## Build, Test, and Development Commands
 
-- `make setup`: install pinned pnpm and Go dependencies, then generate API types.
+- `make setup`: install pnpm and Go dependencies, then generate REST and gRPC types.
 - `make compose-up`: start PostgreSQL, Redis, RabbitMQ, and MinIO.
 - `make migrate && make seed`: prepare local data after copying `.env.example` to `.env`.
-- `make dev`: run web, API, worker, and mock-payment processes concurrently.
-- `make test`: run `go test ./...` plus frontend TypeScript checking.
+- `make dev`: run web, API, worker, search, and mock-payment processes concurrently.
+- `make test`: run Go tests, frontend TypeScript checking, and Vitest.
+- `make web-e2e`: run Playwright browser tests against mocked API boundaries.
 - `make lint`: verify Go formatting/vetting, ESLint, and OpenAPI validity.
 - `make build`: compile all Go commands and create a production Next.js build.
-- `make check`: regenerate contracts and run the complete local CI gate.
+- `make check`: regenerate contracts, lint, run unit/type tests, and build.
 
 ## Coding Style & Naming Conventions
 
@@ -23,7 +24,7 @@ For visual frontend changes, audit existing styles first and follow the [design 
 
 ## Testing Guidelines
 
-Place Go tests beside implementation and prefer table-driven cases, `httptest`, and small fakes at package boundaries. Add regression coverage for changed behavior. No frontend test runner or numeric coverage threshold exists yet; `pnpm web:typecheck` and `pnpm web:lint` are mandatory. Run `make check` before opening a pull request.
+Place Go tests beside implementation and prefer table-driven cases, `httptest`, and small fakes at package boundaries. Add regression coverage for changed behavior. Frontend unit/component tests use Vitest and Testing Library; browser tests use Playwright. No numeric coverage threshold exists. `make test`, `make web-e2e`, and `make lint` are mandatory for relevant changes. Run `make check` before opening a pull request.
 
 ## Commit & Pull Request Guidelines
 

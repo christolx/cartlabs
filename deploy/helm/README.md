@@ -25,10 +25,10 @@ default name is `cartlabs-secrets`.
 | `CLOUDINARY_CLOUD_NAME` | Restricts seller image URLs |
 | `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Selects browser upload account |
 | `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Selects restricted unsigned browser preset |
-| `BACKUP_S3_ENDPOINT` | S3-compatible backup endpoint |
-| `BACKUP_S3_ACCESS_KEY` | Backup access key |
-| `BACKUP_S3_SECRET_KEY` | Backup secret key |
-| `BACKUP_S3_BUCKET` | Existing backup bucket |
+| `BACKUP_S3_ENDPOINT` | S3-compatible backup endpoint; required only when backup is enabled |
+| `BACKUP_S3_ACCESS_KEY` | Backup access key; required only when backup is enabled |
+| `BACKUP_S3_SECRET_KEY` | Backup secret key; required only when backup is enabled |
+| `BACKUP_S3_BUCKET` | Existing backup bucket; required only when backup is enabled |
 | `GRAFANA_ADMIN_USER` | Internal Grafana administrator |
 | `GRAFANA_ADMIN_PASSWORD` | Internal Grafana administrator password |
 
@@ -102,8 +102,9 @@ Set `K3S_KEEP_NAMESPACE=1` only when failed-release inspection is needed.
 - Deterministic seed runs after first install only.
 - Reset CronJob is suspended; serialized host command gates public/synthetic
   traffic during maintenance before creating manual Job.
-- Backup CronJob creates custom-format dumps and uploads them to external
-  S3-compatible storage with seven-day retention.
+- Optional backup CronJob creates custom-format dumps and uploads them to
+  external S3-compatible storage with seven-day retention. `values-k3s.yaml`
+  keeps it disabled until a durable destination and restore test exist.
 - Demo values deploy small Prometheus and Tempo PVCs, internal Grafana, and a
   bounded synthetic buyer journey. Access Grafana with
   `kubectl -n cartlabs port-forward service/cartlabs-grafana 3001:3000`.
@@ -119,4 +120,4 @@ Key topology values:
 | `ingress.target` | `web` | Route Ingress to `web:3000` or `api:8080` |
 
 Run `make helm-check` before deployment. See `docs/platform.md` for provisioning,
-rollback, backup, and restore procedures.
+rollback, reset, and current recovery limits.

@@ -11,7 +11,8 @@ Start the complete stack with `make compose-full`.
 | --- | --- | --- |
 | Cartlabs | `http://localhost:3000` | Production Next.js build |
 | API metrics | `http://localhost:8080/metrics` | Bounded HTTP counters and histograms |
-| Worker metrics | `http://localhost:9091` | Relay, delivery, reservation, and backlog signals |
+| Worker metrics | `http://localhost:9091/metrics` | Relay, delivery, reservation, and backlog signals |
+| Search metrics | `http://localhost:9093/metrics` | Search request, upsert, and document-count signals |
 | Prometheus | `http://localhost:9090` | Metrics storage and queries |
 | Grafana | `http://localhost:3001` | Provisioned `Cartlabs Overview` dashboard |
 | Tempo | `http://localhost:3200` | Trace search and retrieval |

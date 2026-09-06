@@ -124,8 +124,18 @@ or worker republishes do not create duplicate user notifications.
 1. Set `DEMO_MODE=true`.
 2. Start services and seed data; see repository [README](../README.md).
 3. Open `/login`.
-4. Run roles in order: seller store -> admin verification -> seller publish -> buyer purchase ->
-   seller fulfillment -> buyer review.
+4. Buyer starts with two-store cart, delivered purchase history, reviewable
+   items, and read/unread notifications. Complete a fresh checkout to exercise
+   payment states.
+5. Seller starts with approved store, varied listing states, inventory, and
+   delivered-order history. Create/publish a complete listing or fulfill a new
+   paid order created during demo session.
+6. Admin starts with approved/pending/rejected stores, published/suspended
+   listings, active/suspended users, marketplace totals, and audit history.
+
+Seeded purchase history stays completed/delivered so relative timestamps cannot
+expire or mutate it during startup. Pending payment and active fulfillment are
+created through interactive flow.
 
 Demo accounts use password `demo-pass-123`:
 

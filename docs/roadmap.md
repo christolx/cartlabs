@@ -1,7 +1,7 @@
 # Roadmap
 
-Each phase ends with a demonstrable vertical slice. Later phases may change after
-evidence from earlier work.
+Roadmap records completed delivery phases. Future work follows evidence from
+current operation rather than adding service count.
 
 ## 0 — Foundations
 
@@ -65,10 +65,13 @@ evidence from earlier work.
 
 **Status:** Complete (2026-08-08)
 
-- Helm chart and environment values
-- Debian Ansible provisioning and Cloudflare Tunnel
-- GHCR publishing and GitHub Actions deployment
-- TLS, ingress, secrets, backups, probes, and smoke tests
+- Helm chart with full-stack and backend-only modes
+- Debian Ansible provisioning, embedded-etcd snapshots, and Cloudflare Tunnel
+- GHCR publishing, optional protected-runner deployment, and host lifecycle
+- External TLS, ingress, secret reconciliation, guarded reset, probes, and smoke tests
+
+Database backup chart remains available but disabled on current home server
+until durable destination and restore test exist.
 
 **Exit:** reproducible k3s demo deployment from documented workflow.
 
@@ -81,7 +84,8 @@ evidence from earlier work.
 - Extract service with gRPC, independent persistence, and telemetry
 - Add compatibility, failure, and migration strategy
 
-Good first candidates: search or notifications. Avoid extracting orders and
-payments first because their consistency boundaries are central and coupled.
+Search was selected. Notifications remained inside worker because recipient and
+message ownership stay coupled to marketplace state. Orders and payments remain
+inside transactional core.
 
 **Exit:** extracted service demonstrates justified boundary, not service count.

@@ -58,12 +58,14 @@ through failure trap.
 Required verification before merge:
 
 ```bash
-make lint
-make test
-make helm-check
-make infra-check
-make build
+make check
+make web-e2e
+make security
+make platform-check
 ```
+
+CI also runs Compose-backed API workflows, integration tests, runtime image
+builds/scans, and repository/manifest scanning.
 
 See [local k3s setup](./k3s-setup.md) for installation and deployment commands.
 See [platform runbook](./platform.md) for proxy trust, rollback, and recovery

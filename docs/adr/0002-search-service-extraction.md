@@ -19,9 +19,9 @@ explicitly excluded from first extraction.
 
 Extract text candidate retrieval into `apps/search`, an internal protobuf/gRPC
 service. Search owns `cartlabs_search`, including `search_documents` and its
-processed-event ledger. It returns product IDs only. Catalog PostgreSQL remains
-authoritative for publication, listing enforcement, store verification, category, price,
-inventory, image, response shape, ordering, and pagination.
+processed-event ledger. It returns product IDs only. Marketplace PostgreSQL
+remains authoritative for publication, listing enforcement, store verification,
+category, price, inventory, image, response shape, ordering, and pagination.
 
 Catalog create, content update, publish, archive, suspend, and reinstate
 transactions append `catalog.search.upsert.v1` to the
