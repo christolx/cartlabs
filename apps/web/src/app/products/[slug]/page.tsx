@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCart } from "@/components/add-to-cart";
+import { BackToCatalog } from "@/components/back-to-catalog";
 import { formatDate } from "@/components/marketplace-ui";
 import {
   APIError,
@@ -13,6 +14,22 @@ import {
 import type { components } from "@/lib/api/schema";
 
 type ReviewSummary = components["schemas"]["ReviewSummary"];
+
+type Search = { returnTo?: string };
+
+function catalogReturnHref(value: string | undefined) {
+  if (!value) return "/#catalog";
+  try {
+    const base = new URL("https://cartlabs.local");
+    const target = new URL(value, base);
+    if (target.origin !== base.origin || target.pathname !== "/")
+      return "/#catalog";
+    target.hash = "catalog";
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return "/#catalog";
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -33,8 +50,9 @@ export async function generateMetadata({
 
 export default async function ProductPage({
   params,
-}: PageProps<"/products/[slug]">) {
-  const { slug } = await params;
+  searchParams,
+}: PageProps<"/products/[slug]"> & { searchParams: Promise<Search> }) {
+  const [{ slug }, filters] = await Promise.all([params, searchParams]);
   let product: ProductDetail;
   let reviews: ReviewSummary;
   try {
@@ -57,9 +75,10 @@ export default async function ProductPage({
 
   return (
     <main className="product-page shell">
-      <Link className="back-link" href="/#catalog">
-        Back to catalog
-      </Link>
+      <BackToCatalog
+        href={catalogReturnHref(filters.returnTo)}
+        productPath={`/products/${slug}`}
+      />
       <article className="product-detail">
         <div className="detail-gallery">
           <div className="detail-media">

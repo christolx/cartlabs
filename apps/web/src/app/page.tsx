@@ -114,6 +114,14 @@ export default async function Home({
   loadMoreQuery.delete("page");
   loadMoreQuery.delete("pageSize");
   const catalogKey = query.toString();
+  const catalogReturnQuery = new URLSearchParams();
+  if (filters.q?.trim()) catalogReturnQuery.set("q", filters.q.trim());
+  if (filters.category) catalogReturnQuery.set("category", filters.category);
+  if (filters.minPrice) catalogReturnQuery.set("minPrice", filters.minPrice);
+  if (filters.maxPrice) catalogReturnQuery.set("maxPrice", filters.maxPrice);
+  if (filters.inStock === "true") catalogReturnQuery.set("inStock", "true");
+  if (filters.page) catalogReturnQuery.set("page", filters.page);
+  const catalogReturnTo = `/${catalogReturnQuery.size ? `?${catalogReturnQuery}` : ""}#catalog`;
   const filterFormKey = JSON.stringify(filters);
 
   return (
@@ -252,6 +260,7 @@ export default async function Home({
             initialHasMore={hasNextPage}
             filterQuery={loadMoreQuery.toString()}
             catalogKey={catalogKey}
+            returnTo={catalogReturnTo}
             loadPage={loadCatalogPage}
           />
         ) : (
