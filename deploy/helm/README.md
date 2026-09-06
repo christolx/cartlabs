@@ -100,8 +100,8 @@ Set `K3S_KEEP_NAMESPACE=1` only when failed-release inspection is needed.
 - Search reindex hook repairs initial state and drift after install or upgrade.
 - A Helm migration hook runs after install and before each upgrade.
 - Deterministic seed runs after first install only.
-- Reset CronJob is suspended; serialized workflow gates public/synthetic traffic
-  during maintenance before creating manual job.
+- Reset CronJob is suspended; serialized host command gates public/synthetic
+  traffic during maintenance before creating manual Job.
 - Backup CronJob creates custom-format dumps and uploads them to external
   S3-compatible storage with seven-day retention.
 - Demo values deploy small Prometheus and Tempo PVCs, internal Grafana, and a

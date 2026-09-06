@@ -83,12 +83,13 @@ HIGH/CRITICAL Trivy scans for every runtime image. Local dependency gate is
 
 `make demo-reset` recreates only local/demo database state from ordered
 migrations and deterministic seed data. Reset refuses every other environment.
-Persistent k3s reset runs through the serialized `demo-reset` GitHub workflow.
-It records replica counts, scales web, API, worker, and synthetic traffic to
-zero, waits for public workloads to stop, runs the reset Job, then restores
-replicas through an exit trap. Manual cluster reset must use the same maintenance
-window. Reset is destructive to demo data; its schedule, downtime, and logs
-should be visible to demo users and operators. See
+Persistent k3s reset runs on the host with `make k3s-reset`. It serializes with
+other host mutations, records replica counts durably, scales web, API, worker,
+and synthetic traffic to zero, waits for public workloads to stop, runs the
+reset Job, then restores replicas and waits for availability. A later invocation
+recovers replicas left by an interrupted reset before doing new work. Reset is
+destructive to demo data; its schedule, downtime, and logs should be visible to
+demo users and operators. See
 [`docs/platform.md`](./platform.md#reset-maintenance).
 
 ## Incident checks

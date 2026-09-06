@@ -51,8 +51,9 @@ variables when untrusted preview code must not access demo backend. Refresh
 cookies remain isolated to each Vercel deployment origin because browser talks
 only to BFF.
 
-Reset is maintenance-window work. Workflow serializes with deploys, removes
-public/synthetic traffic during reset, restores replicas through failure trap.
+Reset is maintenance-window work. Host command serializes with host lifecycle
+mutations, removes public/synthetic traffic during reset, and restores replicas
+through failure trap.
 
 Required verification before merge:
 

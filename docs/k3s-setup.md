@@ -246,6 +246,31 @@ make k3s-rebuild
 
 Status, logs, rebuild, down, and purge commands work unchanged in both modes.
 
+## Daily demo reset
+
+Run reset from a host account with `kubectl` access. Cron needs explicit UTC,
+command path, kubeconfig, and writable state/log locations. Replica recovery
+state and lifecycle lock live under `K3S_STATE_DIR`.
+
+```bash
+sudo install -d -o "$USER" -g "$(id -gn)" -m 0700 /var/lib/cartlabs
+sudo install -o "$USER" -g "$(id -gn)" -m 0600 /dev/null /var/log/cartlabs-reset.log
+```
+
+Install in that account's crontab, adjusting kubeconfig path when needed:
+
+```cron
+CRON_TZ=UTC
+PATH=/usr/local/bin:/usr/bin:/bin
+KUBECONFIG=/home/operator/.kube/config
+0 3 * * * cd /opt/cartlabs && K3S_STATE_DIR=/var/lib/cartlabs /usr/bin/make k3s-reset >> /var/log/cartlabs-reset.log 2>&1
+```
+
+Keep Helm reset CronJob suspended. `make k3s-reset` refuses overlap, missing or
+active reset CronJob, missing API/worker Deployments, and incomplete pod
+shutdown. It restores recorded replicas after success, failure, or next-run
+recovery. Configure log rotation for `/var/log/cartlabs-reset.log`.
+
 ## Stop or remove
 
 Stop while retaining namespace and persistent data:
