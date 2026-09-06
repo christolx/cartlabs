@@ -176,7 +176,7 @@ Verified through:
 - [x] Terraform-provisioned Hetzner host and restricted provider firewall
 - [x] Ansible-configured pinned k3s, hardening, snapshots, and cert-manager
 - [x] GHCR full-SHA image publishing with SBOM and provenance
-- [x] Protected GitHub environment deployment and serialized demo reset
+- [x] Protected GitHub environment deployment and serialized host demo reset
 - [x] TLS ingress, secret reconciliation, probes, and namespace network policy
 - [x] External S3-compatible PostgreSQL backup and documented restore workflow
 - [x] In-cluster Helm test, external smoke test, and platform validation gates

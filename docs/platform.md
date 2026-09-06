@@ -97,11 +97,13 @@ trusted host path.
 
 ## Reset maintenance
 
-Reset drops/recreates demo tables. Scheduled reset workflow scales each present
-public web, API, worker, and synthetic Deployment to zero, runs reset job, then
-restores replicas even on failure. Missing web Deployment in backend mode is
-ignored. Expect maintenance downtime; this is not zero-downtime reset. Manual
-reset must use equivalent gating.
+Reset drops/recreates demo tables. Host command `make k3s-reset` scales each
+present public web, API, worker, and synthetic Deployment to zero, runs reset
+Job, then restores replicas even on failure. Missing web Deployment in backend
+mode is ignored. Shared lock prevents overlap with host lifecycle mutations;
+durable replica state supports recovery after interruption. Expect maintenance
+downtime; this is not zero-downtime reset. Never run host-side `make reset` for
+cluster data.
 
 ## Recovery
 

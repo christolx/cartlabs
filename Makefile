@@ -10,8 +10,8 @@ HURL ?= hurl
 .PHONY: help setup dev web-dev api-dev worker-dev payment-dev search-dev search-migrate search-reindex \
 	compose-up compose-full compose-down compose-logs migrate seed reset web-e2e \
 	generate fmt lint test e2e-api outage-test performance build check security replay demo-reset \
-	helm-check helm-regression k3s-e2e infra-check platform-check deployment-smoke microservice-test search-outage clean \
-	k3s-up k3s-rebuild k3s-status k3s-logs k3s-down k3s-purge
+	helm-check helm-regression k3s-reset-regression k3s-e2e infra-check platform-check deployment-smoke microservice-test search-outage clean \
+	k3s-up k3s-rebuild k3s-reset k3s-status k3s-logs k3s-down k3s-purge
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*## "; printf "Cartlabs commands:\n"} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -136,7 +136,10 @@ security: ## Scan Go and frontend dependency vulnerabilities
 helm-regression: ## Check rendered k3s behavior that schema validation cannot prove
 	bash tests/deployment/helm-regression.sh
 
-helm-check: helm-regression ## Lint and render the k3s Helm chart
+k3s-reset-regression: ## Exercise guarded k3s reset behavior with fake cluster commands
+	sh tests/deployment/k3s-reset-regression.sh
+
+helm-check: helm-regression k3s-reset-regression ## Lint and render the k3s Helm chart
 	helm lint deploy/helm --values deploy/helm/values-local.yaml
 	helm lint deploy/helm --values deploy/helm/values-demo.yaml
 	helm lint deploy/helm --values deploy/helm/values-k3s.yaml
@@ -169,6 +172,9 @@ k3s-up: ## Reconcile persistent home-server release from .env.k3s.local
 
 k3s-rebuild: ## Reconcile then restart persistent application Deployments
 	bash tests/deployment/k3s-local.sh rebuild
+
+k3s-reset: ## Reset persistent demo data inside guarded k3s maintenance window
+	bash tests/deployment/k3s-local.sh reset
 
 k3s-status: ## Show persistent release and workload status
 	bash tests/deployment/k3s-local.sh status
