@@ -5,7 +5,7 @@ global:
   imagePullPolicy: IfNotPresent
   imagePullSecrets:
     - name: ghcr-pull
-  domain: cartlabs.christofle.dev
+  domain: cartlabs.christofletjhai.dev
 
 ingress:
   enabled: true

@@ -30,10 +30,10 @@ Forwarded client IP crosses BFF/API only through authenticated internal headers.
 ## Vercel web with k3s backend
 
 Deploy k3s with `K3S_DEPLOYMENT_MODE=backend` and backend hostname
-`api-cartlabs.christofle.dev`. Configure Vercel production environment:
+`api-cartlabs.christofletjhai.dev`. Configure Vercel production environment:
 
 ```dotenv
-API_INTERNAL_URL=https://api-cartlabs.christofle.dev/api/v1
+API_INTERNAL_URL=https://api-cartlabs.christofletjhai.dev/api/v1
 TRUSTED_PROXY_TOKEN=<same-value-as-k3s>
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=<cloud-name>
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=<restricted-unsigned-preset>

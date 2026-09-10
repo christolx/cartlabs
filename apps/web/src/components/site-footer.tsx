@@ -24,11 +24,11 @@ export function SiteFooter() {
         </button>
         <nav className="footer-social" aria-label="Social links">
           <a
-            href="https://christofle.dev"
+            href="https://christofletjhai.dev"
             target="_blank"
             rel="noopener noreferrer"
           >
-            christofle.dev
+            christofletjhai.dev
           </a>
         </nav>
       </div>

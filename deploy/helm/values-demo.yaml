@@ -2,7 +2,7 @@ global:
   environment: demo
   imageRegistry: ghcr.io/christolx
   imageTag: sha-0000000
-  domain: cartlabs.christofle.dev
+  domain: cartlabs.christofletjhai.dev
   imagePullSecrets:
     - name: ghcr-pull
 

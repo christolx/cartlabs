@@ -13,7 +13,7 @@ ansible-playbook -i inventory.yml playbook.yml
 ```
 
 Set `cloudflared_enabled: true` only after remotely managed tunnel maps
-`cartlabs.christofle.dev` to `http://localhost:80`. Token is written root-only to
+`cartlabs.christofletjhai.dev` to `http://localhost:80`. Token is written root-only to
 `/etc/cloudflared/token`; never store it in vars files or Git.
 
 Runner defaults off. To install first time, export one-hour registration token,

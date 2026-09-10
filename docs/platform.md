@@ -28,7 +28,7 @@ cp infra/ansible/group_vars/all.example.yml infra/ansible/group_vars/all.yml
 ```
 
 Create remotely managed Cloudflare Tunnel. Dashboard public hostname must route
-`cartlabs.christofle.dev` to `http://localhost:80`. Export token only for
+`cartlabs.christofletjhai.dev` to `http://localhost:80`. Export token only for
 provisioning, enable role in ignored group vars, run playbook:
 
 ```bash
@@ -55,8 +55,8 @@ and RabbitMQ passwords must use URL-safe characters; lifecycle script derives
 cluster service URLs. File stays ignored.
 
 Choose `K3S_DEPLOYMENT_MODE=full` (default) with
-`K3S_DOMAIN=cartlabs.christofle.dev`, or `backend` with
-`K3S_DOMAIN=api-cartlabs.christofle.dev`. Both existing-host and Ansible host
+`K3S_DOMAIN=cartlabs.christofletjhai.dev`, or `backend` with
+`K3S_DOMAIN=api-cartlabs.christofletjhai.dev`. Both existing-host and Ansible host
 paths use same lifecycle input.
 
 ## Lifecycle

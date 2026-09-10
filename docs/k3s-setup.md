@@ -112,7 +112,7 @@ Set the matching immutable image tag and target hostname in
 ```dotenv
 K3S_IMAGE_REGISTRY=ghcr.io/christolx
 K3S_IMAGE_TAG=sha-FULL_40_CHARACTER_LOWERCASE_COMMIT
-K3S_DOMAIN=cartlabs.christofle.dev
+K3S_DOMAIN=cartlabs.christofletjhai.dev
 K3S_DEPLOYMENT_MODE=full
 ```
 
@@ -120,7 +120,7 @@ K3S_DEPLOYMENT_MODE=full
 omit in-cluster web workload and route Traefik directly to API:
 
 ```dotenv
-K3S_DOMAIN=api-cartlabs.christofle.dev
+K3S_DOMAIN=api-cartlabs.christofletjhai.dev
 K3S_DEPLOYMENT_MODE=backend
 ```
 
@@ -213,14 +213,14 @@ Before enabling Cloudflare Tunnel, test Traefik locally using the configured
 hostname:
 
 ```bash
-curl -H 'Host: cartlabs.christofle.dev' \
+curl -H 'Host: cartlabs.christofletjhai.dev' \
   http://127.0.0.1/api/backend/health/ready
 ```
 
 Backend mode health path reaches API directly:
 
 ```bash
-curl -H 'Host: api-cartlabs.christofle.dev' \
+curl -H 'Host: api-cartlabs.christofletjhai.dev' \
   http://127.0.0.1/api/v1/health/ready
 ```
 
@@ -230,9 +230,9 @@ with the k3s host address.
 For public backend mode, configure Cloudflare Tunnel public hostname:
 
 ```text
-Hostname: api-cartlabs.christofle.dev
+Hostname: api-cartlabs.christofletjhai.dev
 Service URL: http://localhost:80
-HTTP Host Header: api-cartlabs.christofle.dev
+HTTP Host Header: api-cartlabs.christofletjhai.dev
 ```
 
 DNS hostname, HTTP Host Header, and `K3S_DOMAIN` must match.

@@ -251,7 +251,7 @@ load_config() {
 
   K3S_IMAGE_REGISTRY=${K3S_IMAGE_REGISTRY:-ghcr.io/christolx}
   case "$K3S_IMAGE_REGISTRY" in ghcr.io/*) ;; *) echo 'K3S_IMAGE_REGISTRY must use ghcr.io' >&2; exit 1 ;; esac
-  K3S_DOMAIN=${K3S_DOMAIN:-cartlabs.christofle.dev}
+  K3S_DOMAIN=${K3S_DOMAIN:-cartlabs.christofletjhai.dev}
   K3S_SYNTHETIC_TRAFFIC=${K3S_SYNTHETIC_TRAFFIC:-false}
   case "$K3S_SYNTHETIC_TRAFFIC" in true|false) ;; *) echo 'K3S_SYNTHETIC_TRAFFIC must be true or false' >&2; exit 1 ;; esac
 }
